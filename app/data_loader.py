@@ -1,0 +1,195 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import geopandas as gpd
+import pandas as pd
+import streamlit as st
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PREFERENCE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "preference_recommendations.csv"
+RENT_COMMUTE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "rent_commute_candidates_expanded.csv"
+LIVABILITY_CSV = PROJECT_ROOT / "data" / "processed" / "livability" / "livability_by_candidate.csv"
+CANDIDATE_LOCATIONS_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "candidate_locations_expanded.csv"
+COMMUTE_EXPANDED_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "commute_to_gangqian_expanded.csv"
+BOUNDARY_SHP = (
+    PROJECT_ROOT
+    / "data"
+    / "interim"
+    / "housing"
+    / "boundaries"
+    / "nlsc_town_boundary_twd97"
+    / "TOWN_MOI_1120317.shp"
+)
+
+MODE_ORDER = ["省租型", "平衡型", "通勤型", "生活品質型"]
+MODE_COLORS = {
+    "省租型": "#78B995",
+    "平衡型": "#6EA7C7",
+    "通勤型": "#E8A05A",
+    "生活品質型": "#A98BC8",
+}
+MODE_SOFT_COLORS = {
+    "省租型": "#EAF6EF",
+    "平衡型": "#EAF4FA",
+    "通勤型": "#FFF1E3",
+    "生活品質型": "#F2ECF8",
+}
+MODE_COPY = {
+    "省租型": "適合願意增加通勤時間，以換取較低租金的使用者。",
+    "平衡型": "在租金與通勤時間之間取得較佳折衷。",
+    "通勤型": "適合最重視每日上下班時間的使用者。",
+    "生活品質型": "優先考慮站點周邊餐飲、採買、休閒、文娛與醫療機能。",
+}
+LIVING_AREA_NAMES = {
+    "板橋站": "板橋生活圈",
+    "汐止車站": "汐止生活圈",
+    "淡水站": "淡水生活圈",
+    "樹林車站": "樹林生活圈",
+    "大坪林站": "大坪林生活圈",
+    "三峽北大特區": "三峽北大生活圈",
+    "景安站": "景安生活圈",
+    "頂溪站": "頂溪生活圈",
+    "三重站": "三重生活圈",
+    "泰山站": "泰山生活圈",
+    "新莊站": "新莊生活圈",
+    "蘆洲站": "蘆洲生活圈",
+    "土城站": "土城生活圈",
+    "鶯歌車站": "鶯歌生活圈",
+    "林口站": "林口生活圈",
+    "五股區公所": "五股生活圈",
+}
+
+
+def living_area(candidate_name: str) -> str:
+    return LIVING_AREA_NAMES.get(candidate_name, candidate_name.replace("車站", "").replace("站", "") + "生活圈")
+
+
+def money(value: float | int) -> str:
+    return f"{float(value):,.0f}"
+
+
+def minutes(value: float | int) -> str:
+    return f"{float(value):.1f} min"
+
+
+def reason_for(mode: str, row: pd.Series) -> str:
+    if mode == "生活品質型":
+        return "周邊生活機能 proxy 較突出，適合重視日常便利的使用者。"
+    if mode == "通勤型":
+        return "以縮短每日上下班時間為主要排序方向。"
+    if mode == "平衡型":
+        return "在租金與通勤時間之間取得較佳折衷。"
+    return "以降低月租為主要排序方向，接受較長通勤換取省租。"
+
+
+@st.cache_data(show_spinner=False)
+def load_dashboard_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, float | str]]:
+    preferences = pd.read_csv(PREFERENCE_CSV)
+    rent_commute = pd.read_csv(RENT_COMMUTE_CSV)
+    livability = pd.read_csv(LIVABILITY_CSV)
+    locations = pd.read_csv(CANDIDATE_LOCATIONS_CSV)
+    commute = pd.read_csv(COMMUTE_EXPANDED_CSV)
+
+    candidates = rent_commute.merge(
+        locations[["candidate_name", "lat", "lon"]],
+        on="candidate_name",
+        how="left",
+        validate="one_to_one",
+    )
+    candidates = candidates.merge(
+        livability[["candidate_name", "equal_weight_livability_index", "total_poi_count"]],
+        on="candidate_name",
+        how="left",
+        validate="one_to_one",
+    )
+    candidates["rent"] = candidates["official_median_rent"]
+    candidates["livability_index"] = candidates["equal_weight_livability_index"]
+    candidates["living_area"] = candidates["candidate_name"].map(living_area)
+
+    recommendations = preferences.copy()
+    recommendations = recommendations.merge(
+        candidates[
+            [
+                "candidate_name",
+                "lat",
+                "lon",
+                "living_area",
+                "livability_index",
+                "total_poi_count",
+                "route_summary",
+            ]
+        ],
+        on="candidate_name",
+        how="left",
+        validate="many_to_one",
+        suffixes=("", "_from_candidates"),
+    )
+    recommendations["livability_index"] = recommendations["livability_index"].fillna(
+        recommendations["livability_index_from_candidates"]
+    )
+    recommendations = recommendations.drop(columns=["livability_index_from_candidates"])
+
+    top3 = recommendations[recommendations["rank"] <= 3].copy()
+
+    _validate_dashboard_data(candidates, recommendations, top3)
+
+    destination_rows = commute[["destination", "destination_lat", "destination_lon"]].drop_duplicates()
+    if len(destination_rows) != 1:
+        raise RuntimeError(f"Expected one workplace destination row, found {len(destination_rows)}.")
+    destination = destination_rows.iloc[0].to_dict()
+    if destination["destination"] != "港墘站":
+        raise RuntimeError(f"Expected workplace 港墘站, found {destination['destination']}.")
+
+    return candidates, recommendations, top3, destination
+
+
+def _validate_dashboard_data(candidates: pd.DataFrame, recommendations: pd.DataFrame, top3: pd.DataFrame) -> None:
+    if len(candidates) != 16:
+        raise RuntimeError(f"Expected 16 evaluated candidates, found {len(candidates)}.")
+    required_candidate_columns = [
+        "candidate_name",
+        "district",
+        "rent",
+        "commute_minutes",
+        "transfer_count",
+        "rent_saving_vs_neihu",
+        "lat",
+        "lon",
+        "livability_index",
+    ]
+    missing_values = candidates[candidates[required_candidate_columns].isna().any(axis=1)]["candidate_name"].tolist()
+    if missing_values:
+        raise RuntimeError(f"Candidates have missing dashboard fields: {missing_values}.")
+
+    for mode in MODE_ORDER:
+        rows = top3[top3["preference_mode"] == mode]
+        if len(rows) != 3:
+            raise RuntimeError(f"Expected three Top 3 recommendations for {mode}, found {len(rows)}.")
+        if sorted(rows["rank"].tolist()) != [1, 2, 3]:
+            raise RuntimeError(f"{mode} ranks are not exactly 1, 2, 3.")
+
+    life_quality_rows = recommendations[recommendations["preference_mode"] == "生活品質型"]
+    if len(life_quality_rows) != 16:
+        raise RuntimeError(f"Expected 16 生活品質型 rows for the full candidate table, found {len(life_quality_rows)}.")
+
+
+@st.cache_data(show_spinner=False)
+def load_boundaries() -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
+    if not BOUNDARY_SHP.exists():
+        raise FileNotFoundError(
+            "Expected existing NLSC/MOI boundary data at "
+            f"{BOUNDARY_SHP.relative_to(PROJECT_ROOT)}; the dashboard does not download new data."
+        )
+    towns = gpd.read_file(BOUNDARY_SHP, encoding="utf-8")
+    if towns.crs is None:
+        towns = towns.set_crs("EPSG:3824")
+    towns = towns.to_crs("EPSG:4326")
+    required = {"COUNTYNAME", "TOWNNAME", "geometry"}
+    missing = required - set(towns.columns)
+    if missing:
+        raise RuntimeError(f"Boundary file is missing expected columns: {sorted(missing)}")
+    towns = towns[towns["COUNTYNAME"].isin(["新北市", "臺北市"])].copy()
+    cities = towns.dissolve(by="COUNTYNAME", as_index=False)
+    return towns, cities
