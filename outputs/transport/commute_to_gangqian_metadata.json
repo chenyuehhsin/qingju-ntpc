@@ -1,0 +1,40 @@
+{
+  "created_at": "2026-08-21T18:51:43",
+  "departure_time": "2026-08-24T08:00:00",
+  "departure_timezone": "Asia/Taipei",
+  "destination": {
+    "candidate_name": "港墘站",
+    "district": "內湖區",
+    "station_name": "港墘",
+    "station_operator": "TRTC",
+    "station_uid": "TRTC-BR17",
+    "station_id": "BR17",
+    "lat": 25.08007,
+    "lon": 121.57516,
+    "source_endpoint": "https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/Station/TRTC",
+    "source_update_time": "2023-10-12T00:00:00+08:00",
+    "tdx_update_time": "2023-10-17T00:00:00+08:00"
+  },
+  "routing_endpoint": "https://tdx.transportdata.tw/api/maas/routing",
+  "routing_parameters": {
+    "gc": "1",
+    "top": "5",
+    "transit": "3,4,5,6,7,8,9",
+    "transfer_time": "5,60",
+    "depart": "2026-08-24T08:00:00",
+    "first_mile_mode": "0",
+    "first_mile_time": "10",
+    "last_mile_mode": "0",
+    "last_mile_time": "10"
+  },
+  "station_endpoints": {
+    "TRTC": "https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/Station/TRTC",
+    "TRA": "https://tdx.transportdata.tw/api/basic/v2/Rail/TRA/Station"
+  },
+  "station_cache_dir": "data/interim/transport/tdx_station_data",
+  "maas_response_dir": "data/interim/transport/tdx_maas_responses",
+  "route_selection": "Fastest route among returned routes with at least one transit section.",
+  "candidate_count": 8,
+  "success_count": 8,
+  "failure_count": 0
+}
