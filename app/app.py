@@ -11,9 +11,9 @@ if str(APP_DIR) not in sys.path:
 
 from components.cards import render_context_chips
 from components.overview import render_overview
-from data_loader import MODE_ORDER, load_boundaries, load_dashboard_data
+from data_loader import MODE_COLORS, MODE_COPY, MODE_ORDER, MODE_SOFT_COLORS, load_boundaries, load_dashboard_data
 from recommendation_view import render_dashboard_view
-from styles import apply_styles
+from styles import apply_selected_radio_style, apply_styles
 
 
 def main() -> None:
@@ -25,9 +25,29 @@ def main() -> None:
     )
     apply_styles()
 
-    st.title("青聚新北｜青年生活圈推薦")
-    st.markdown('<div class="qj-subtitle">工作在內湖，我住新北哪裡比較適合？</div>', unsafe_allow_html=True)
-    render_context_chips()
+    nav_options = ["四模式總覽", *MODE_ORDER]
+    current_view = st.session_state.get("main_view", "四模式總覽")
+    header_left, header_right = st.columns([0.92, 1.08], gap="medium")
+    with header_left:
+        st.markdown(
+            """
+            <div class="qj-header-title">青聚新北｜青年生活圈推薦</div>
+            <div class="qj-subtitle">工作在內湖，我住新北哪裡比較適合？</div>
+            """,
+            unsafe_allow_html=True,
+        )
+        render_context_chips()
+    with header_right:
+        if current_view in MODE_ORDER:
+            st.markdown(
+                f"""
+                <div class="qj-mode-hero">
+                    <div class="qj-mode-heading" style="color: {MODE_COLORS[current_view]};">{current_view}推薦</div>
+                    <div class="qj-mode-subtitle">{MODE_COPY[current_view]}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
     try:
         candidates, recommendations, top3, destination = load_dashboard_data()
@@ -36,23 +56,21 @@ def main() -> None:
         st.error(f"Dashboard data loading failed: {exc}")
         st.stop()
 
-    page_mode = st.radio(
-        "選擇瀏覽模式",
-        ["四模式推薦總覽", "該模式詳細推薦"],
+    selected_view = st.radio(
+        "主畫面切換",
+        nav_options,
         horizontal=True,
-        label_visibility="visible",
+        label_visibility="collapsed",
+        key="main_view",
     )
+    selected_color = MODE_COLORS.get(selected_view, "#78B995")
+    selected_soft_color = MODE_SOFT_COLORS.get(selected_view, "#EAF6EF")
+    apply_selected_radio_style(selected_color, selected_soft_color)
 
-    if page_mode == "四模式推薦總覽":
+    if selected_view == "四模式總覽":
         render_overview(candidates, top3, destination, towns, cities)
     else:
-        st.markdown("## 該模式詳細推薦")
-        mode = st.radio(
-            "選擇推薦模式",
-            MODE_ORDER,
-            horizontal=True,
-            label_visibility="visible",
-        )
+        mode = selected_view
         render_dashboard_view(mode, candidates, recommendations, top3, destination, towns, cities)
 
     st.markdown("---")

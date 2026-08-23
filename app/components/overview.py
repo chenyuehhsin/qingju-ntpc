@@ -26,7 +26,7 @@ def render_overview(
 
     st.markdown("### Overview map")
     overview_map = build_overview_map(candidates, top3, destination, towns, cities)
-    st_folium(overview_map, height=640, use_container_width=True, returned_objects=[])
+    st_folium(overview_map, height=560, use_container_width=True, returned_objects=[])
 
     _render_comparison_bar(top1)
     st.markdown("---")

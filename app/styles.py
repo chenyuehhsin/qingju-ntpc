@@ -17,45 +17,56 @@ def apply_styles() -> None:
             background: var(--qj-bg);
             color: var(--qj-text);
         }
+        .stApp [data-testid="stAppViewContainer"] .main .block-container,
         .block-container {
-            max-width: min(1840px, calc(100vw - 18px));
-            padding-top: 1.1rem;
+            max-width: none;
+            width: 100%;
+            padding-top: 3.05rem;
             padding-bottom: 2.5rem;
-            padding-left: clamp(0.45rem, 1vw, 0.9rem);
-            padding-right: clamp(0.45rem, 1vw, 0.9rem);
+            padding-left: clamp(0.25rem, 0.45vw, 0.55rem);
+            padding-right: clamp(0.25rem, 0.45vw, 0.55rem);
         }
         h1, h2, h3 {
             color: var(--qj-text);
             letter-spacing: 0;
         }
+        .qj-header-title {
+            color: var(--qj-text);
+            font-size: clamp(2rem, 2.7vw, 3rem);
+            font-weight: 900;
+            line-height: 1.08;
+            letter-spacing: 0;
+            margin-top: 0.85rem;
+        }
         .qj-subtitle {
             color: var(--qj-muted);
             font-size: 1.08rem;
-            margin-top: -0.45rem;
-            margin-bottom: 0.85rem;
+            margin-top: 0.25rem;
+            margin-bottom: 0.45rem;
         }
         .qj-chip-row {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.65rem;
-            margin: 0.45rem 0 0.85rem 0;
+            justify-content: flex-start;
+            gap: 0.58rem;
+            margin: 0.42rem 0 0.60rem 0;
         }
         .qj-chip {
             background: #ffffff;
             border: 1px solid #d9e0e2;
             border-radius: 10px;
-            padding: 0.60rem 0.86rem;
+            padding: 0.58rem 0.82rem;
             min-width: 132px;
         }
         .qj-chip-label {
             color: #7a878b;
-            font-size: 0.75rem;
+            font-size: 0.82rem;
             line-height: 1;
         }
         .qj-chip-value {
             color: var(--qj-text);
             font-weight: 700;
-            font-size: 1rem;
+            font-size: 1.08rem;
             line-height: 1.35;
         }
         .qj-panel {
@@ -71,6 +82,97 @@ def apply_styles() -> None:
             border-radius: 12px;
             padding: 0.82rem;
             margin-bottom: 0.66rem;
+        }
+        .qj-top1-card {
+            background: #ffffff;
+            border: 1.5px solid var(--qj-line);
+            border-radius: 14px;
+            padding: 1.08rem;
+            margin-bottom: 0.72rem;
+            box-shadow: 0 4px 14px rgba(36, 50, 56, 0.06);
+        }
+        .qj-top1-rank {
+            color: #ffffff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            font-weight: 900;
+            font-size: 1.02rem;
+            line-height: 1;
+            padding: 0.46rem 0.70rem;
+            margin-bottom: 0.58rem;
+        }
+        .qj-top1-title {
+            color: var(--qj-text);
+            font-size: 1.68rem;
+            font-weight: 900;
+            line-height: 1.12;
+            margin-bottom: 0.15rem;
+        }
+        .qj-top1-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin: 0.72rem 0;
+        }
+        .qj-top1-metrics div {
+            background: #f8faf9;
+            border: 1px solid #edf1f2;
+            border-radius: 10px;
+            padding: 0.55rem;
+        }
+        .qj-top1-metrics span {
+            color: #718086;
+            display: block;
+            font-size: 0.82rem;
+        }
+        .qj-top1-metrics b {
+            color: var(--qj-text);
+            display: block;
+            font-size: 1.12rem;
+            margin-top: 0.1rem;
+        }
+        .qj-top1-reason {
+            color: #58676d;
+            font-size: 0.96rem;
+            line-height: 1.45;
+        }
+        .qj-compact-card {
+            background: #ffffff;
+            border: 1px solid var(--qj-line);
+            border-radius: 12px;
+            padding: 0.75rem 0.82rem;
+            margin-bottom: 0.55rem;
+            display: flex;
+            gap: 0.72rem;
+            align-items: flex-start;
+        }
+        .qj-compact-rank {
+            font-size: 1.18rem;
+            font-weight: 900;
+            min-width: 2.0rem;
+        }
+        .qj-compact-body {
+            min-width: 0;
+        }
+        .qj-compact-title {
+            color: var(--qj-text);
+            font-size: 1.16rem;
+            font-weight: 850;
+            line-height: 1.25;
+        }
+        .qj-compact-meta {
+            color: #4f5f65;
+            font-size: 0.92rem;
+            line-height: 1.35;
+            margin-top: 0.18rem;
+        }
+        .qj-compact-reason {
+            color: #6b797f;
+            font-size: 0.86rem;
+            line-height: 1.35;
+            margin-top: 0.25rem;
         }
         .qj-card-top {
             display: flex;
@@ -123,18 +225,47 @@ def apply_styles() -> None:
             gap: 0.72rem;
         }
         div[data-testid="stHorizontalBlock"] {
-            gap: 1.0rem;
+            gap: 0.72rem;
         }
         .qj-note {
             color: #69777d;
             font-size: 0.78rem;
             line-height: 1.6;
         }
+        .qj-summary-strip {
+            background: #ffffff;
+            border: 1px solid var(--qj-line);
+            border-left: 5px solid #78B995;
+            border-radius: 12px;
+            padding: 0.95rem 1rem;
+            color: #334249;
+            font-size: 0.98rem;
+            line-height: 1.55;
+            margin-top: 0.55rem;
+            box-shadow: 0 1px 2px rgba(36, 50, 56, 0.04);
+        }
         .qj-section-note {
             color: #65747a;
             font-size: 0.92rem;
             margin-top: -0.35rem;
             margin-bottom: 0.55rem;
+        }
+        .qj-mode-heading {
+            font-size: clamp(2.1rem, 3vw, 3.25rem);
+            font-weight: 920;
+            line-height: 1.05;
+            margin: 0.85rem 0 0.3rem 0;
+            letter-spacing: 0;
+        }
+        .qj-mode-hero {
+            text-align: left;
+            margin: 0 0 0.30rem -0.80rem;
+        }
+        .qj-mode-subtitle {
+            color: #65747a;
+            font-size: 1.02rem;
+            line-height: 1.45;
+            margin-top: -0.05rem;
         }
         .qj-overview-card {
             border: 1.3px solid var(--qj-line);
@@ -242,6 +373,11 @@ def apply_styles() -> None:
             font-weight: 760;
             cursor: pointer;
         }
+        div[data-testid="stRadio"] {
+            text-align: center;
+            margin-top: -1.35rem;
+            margin-bottom: 0.15rem;
+        }
         div[data-testid="stRadio"] > div {
             gap: 0.55rem;
         }
@@ -251,15 +387,19 @@ def apply_styles() -> None:
             border-radius: 16px;
             padding: 0.36rem;
             display: inline-flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             gap: 0.45rem;
+            margin-left: auto;
+            margin-right: auto;
+            max-width: 100%;
+            overflow-x: auto;
         }
         div[data-testid="stRadio"] div[role="radiogroup"] label {
             background: #ffffff;
             border: 1px solid #d7e0e2;
             border-radius: 999px;
-            padding: 0.62rem 1.05rem;
-            min-width: 9.5rem;
+            padding: 0.68rem 1.18rem;
+            min-width: 9.6rem;
             justify-content: center;
             box-shadow: 0 1px 2px rgba(36, 50, 56, 0.04);
         }
@@ -279,6 +419,26 @@ def apply_styles() -> None:
         iframe {
             border-radius: 12px;
         }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def apply_selected_radio_style(color: str, soft_color: str) -> None:
+    st.markdown(
+        f"""
+        <style>
+        div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {{
+            background: {soft_color};
+            border-color: {color};
+            color: #243238;
+            box-shadow: 0 4px 12px rgba(36, 50, 56, 0.10);
+        }}
+        div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) p {{
+            color: #243238;
+            font-weight: 850;
+        }}
         </style>
         """,
         unsafe_allow_html=True,

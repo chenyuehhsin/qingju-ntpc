@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 from streamlit_folium import st_folium
 
-from components.cards import render_mode_intro, render_recommendation_cards
+from components.cards import render_recommendation_cards
 from components.map_view import build_recommendation_map
 from data_loader import MODE_COLORS, minutes, money
 
@@ -20,9 +20,8 @@ def render_dashboard_view(
 ) -> None:
     mode_rows = top3[top3["preference_mode"] == mode].sort_values("rank").copy()
 
-    left, right = st.columns([0.92, 2.35], gap="large")
+    left, right = st.columns([0.92, 2.78], gap="medium")
     with left:
-        render_mode_intro(mode)
         st.markdown("### Top 3 推薦")
         render_recommendation_cards(mode, mode_rows)
     with right:
@@ -31,7 +30,8 @@ def render_dashboard_view(
         st_folium(map_obj, height=720, use_container_width=True, returned_objects=[])
 
     _render_mode_summary(mode, mode_rows)
-    render_all_candidates_table(mode, candidates, recommendations)
+    with st.expander("查看全部 16 個候選生活圈", expanded=False):
+        render_all_candidates_table(mode, candidates, recommendations)
 
 
 def render_all_candidates_table(mode: str, candidates: pd.DataFrame, recommendations: pd.DataFrame) -> None:
@@ -52,8 +52,6 @@ def render_all_candidates_table(mode: str, candidates: pd.DataFrame, recommendat
             "rent_saving_vs_neihu": st.column_config.TextColumn("rent_saving_vs_neihu", width="medium"),
             "livability_index": st.column_config.TextColumn("livability_index", width="small"),
             "mode_rank": st.column_config.TextColumn(f"{mode} rank", width="small"),
-            "preference_score": st.column_config.TextColumn("preference_score", width="small"),
-            "preference_cost": st.column_config.TextColumn("preference_cost", width="small"),
         },
     )
 
@@ -104,8 +102,6 @@ def build_all_candidates_table(mode: str, candidates: pd.DataFrame, recommendati
             "rent_saving_vs_neihu",
             "livability_index",
             "mode_rank",
-            "preference_score",
-            "preference_cost",
         ]
     ].copy()
     display["official_median_rent"] = display["official_median_rent"].map(lambda value: f"{money(value)} NTD")
@@ -129,10 +125,10 @@ def _render_mode_summary(mode: str, mode_rows: pd.DataFrame) -> None:
     color = MODE_COLORS[mode]
     st.markdown(
         f"""
-        <div class="qj-panel" style="border-left: 5px solid {color}; margin-top: 0.4rem;">
-            <b>{mode} Top 1：</b>{top1['living_area']}，
-            月租 {money(top1['rent'])} NTD，通勤 {minutes(top1['commute_minutes'])}，
-            相較內湖每月省 {money(top1['rent_saving_vs_neihu'])} NTD。
+        <div class="qj-summary-strip" style="border-left-color: {color};">
+            <b>{mode} Top 1：</b>{top1['living_area']}，月租約 {money(top1['rent'])} 元，
+            到港墘站約 {minutes(top1['commute_minutes'])}，
+            相較內湖租金 benchmark 每月約省 {money(top1['rent_saving_vs_neihu'])} 元。
         </div>
         """,
         unsafe_allow_html=True,

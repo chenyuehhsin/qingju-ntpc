@@ -28,7 +28,8 @@ def build_overview_map(
         control_scale=True,
         prefer_canvas=True,
     )
-    _fit_candidate_bounds(map_obj, candidates, center_lat, center_lon)
+    focus_candidates = candidates[candidates["candidate_name"].isin(top3["candidate_name"])]
+    _fit_candidate_bounds(map_obj, focus_candidates, center_lat, center_lon)
     _add_boundary_layers(map_obj, towns, cities)
 
     top1_names = set(top3[top3["rank"] == 1]["candidate_name"])
@@ -147,7 +148,7 @@ def build_recommendation_map(
         control_scale=True,
         prefer_canvas=True,
     )
-    _fit_candidate_bounds(map_obj, candidates, center_lat, center_lon)
+    _fit_candidate_bounds(map_obj, mode_rows, center_lat, center_lon)
     _add_boundary_layers(map_obj, towns, cities)
 
     for _, row in candidates.iterrows():
@@ -207,6 +208,7 @@ def build_recommendation_map(
                 icon_anchor=(12, 12),
             ),
         ).add_to(map_obj)
+        _add_top3_label(map_obj, row, rank, color)
 
     _add_workplace_marker(map_obj, center_lat, center_lon)
 
@@ -216,12 +218,36 @@ def build_recommendation_map(
     return map_obj
 
 
+def _add_top3_label(map_obj: folium.Map, row: pd.Series, rank: int, color: str) -> None:
+    label = html.escape(f"#{rank} {row['living_area']}")
+    font_size = 13 if rank == 1 else 12
+    font_weight = 900 if rank == 1 else 820
+    map_obj.add_child(
+        folium.Marker(
+            location=[float(row["lat"]), float(row["lon"])],
+            icon=folium.DivIcon(
+                html=(
+                    f'<div style="transform:translate(16px,-38px);'
+                    f'display:inline-flex;align-items:center;white-space:nowrap;'
+                    f'background:rgba(255,255,255,0.92);border:1.6px solid {color};'
+                    f'border-left:7px solid {color};border-radius:999px;'
+                    f'padding:4px 9px;color:#243238;font-size:{font_size}px;'
+                    f'font-weight:{font_weight};line-height:1.2;'
+                    f'box-shadow:0 2px 7px rgba(36,50,56,0.16);">{label}</div>'
+                ),
+                icon_size=(180, 28),
+                icon_anchor=(0, 0),
+            ),
+        )
+    )
+
+
 def _fit_candidate_bounds(map_obj: folium.Map, candidates: pd.DataFrame, center_lat: float, center_lon: float) -> None:
     bounds = [
-        [min(candidates["lat"].min(), center_lat) - 0.055, min(candidates["lon"].min(), center_lon) - 0.065],
-        [max(candidates["lat"].max(), center_lat) + 0.055, max(candidates["lon"].max(), center_lon) + 0.065],
+        [min(candidates["lat"].min(), center_lat) - 0.032, min(candidates["lon"].min(), center_lon) - 0.038],
+        [max(candidates["lat"].max(), center_lat) + 0.032, max(candidates["lon"].max(), center_lon) + 0.038],
     ]
-    map_obj.fit_bounds(bounds)
+    map_obj.fit_bounds(bounds, padding=(6, 6))
 
 
 def _add_boundary_layers(map_obj: folium.Map, towns: gpd.GeoDataFrame, cities: gpd.GeoDataFrame) -> None:
@@ -229,10 +255,11 @@ def _add_boundary_layers(map_obj: folium.Map, towns: gpd.GeoDataFrame, cities: g
         towns,
         name="district boundary",
         style_function=lambda _: {
-            "fillColor": "#F4F6F5",
-            "color": "#DDE3E5",
-            "weight": 0.8,
-            "fillOpacity": 0.42,
+            "fillColor": "#F8FAF9",
+            "color": "#C7D0D2",
+            "weight": 1.05,
+            "opacity": 0.78,
+            "fillOpacity": 0.20,
         },
         tooltip=None,
     ).add_to(map_obj)
