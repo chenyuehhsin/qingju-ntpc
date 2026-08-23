@@ -63,9 +63,29 @@ def apply_styles() -> None:
         div[data-testid="stSelectbox"] {
             margin-top: 0.10rem;
         }
-        .qj-control-row + div[data-testid="stHorizontalBlock"] {
-            max-width: 680px;
-            margin-left: 0;
+        div[data-testid="stTextInput"] label,
+        div[data-testid="stFormSubmitButton"] label,
+        div[data-testid="stButton"] label {
+            color: #65747a;
+            font-size: 0.84rem;
+            font-weight: 760;
+        }
+        div[data-testid="stTextInput"] input {
+            background: #ffffff;
+            border-color: #d9e0e2;
+            border-radius: 10px;
+            min-height: 2.45rem;
+            box-shadow: 0 1px 2px rgba(36, 50, 56, 0.035);
+        }
+        div[data-testid="stFormSubmitButton"],
+        div[data-testid="stButton"] {
+            margin-top: 1.72rem;
+        }
+        div[data-testid="stFormSubmitButton"] button,
+        div[data-testid="stButton"] button {
+            min-height: 2.45rem;
+            border-radius: 10px;
+            font-weight: 820;
         }
         .qj-panel {
             background: #ffffff;

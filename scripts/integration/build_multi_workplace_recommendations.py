@@ -26,7 +26,7 @@ RECOMMENDATION_OUTPUT_CSV = (
 VALIDATION_OUTPUT_MD = PROJECT_ROOT / "outputs" / "product" / "multi_workplace_validation.md"
 
 EXPECTED_CANDIDATE_COUNT = 16
-EXPECTED_WORKPLACE_COUNT = 4
+EXPECTED_WORKPLACE_COUNT = 9
 NEIHU_BASELINE_RENT = 19_500
 NEIHU_CITY = "臺北市"
 NEIHU_DISTRICT = "內湖區"
@@ -48,6 +48,11 @@ WORKPLACE_ORDER = [
     "taipei_city_hall_xinyi",
     "taipei_main_zhongzheng",
     "nangang_nangang",
+    "xinban_special_district",
+    "xinzhuang_fuduxin",
+    "xizhi_science_park",
+    "zhonghe_tech_park",
+    "tucheng_industrial_park",
 ]
 
 
@@ -193,12 +198,11 @@ def build_rent_commute_recommendations(rent_commute: pd.DataFrame) -> pd.DataFra
     rows: list[pd.DataFrame] = []
     for workplace_id, workplace_rows in rent_commute.groupby("workplace_id", sort=False):
         pareto = workplace_rows[workplace_rows["is_pareto_efficient"] == True].copy()  # noqa: E712
-        if len(pareto) < 3:
-            raise RuntimeError(f"{workplace_id} has fewer than three Pareto-efficient candidates.")
-        pareto["normalized_rent"] = normalize_min_max(pareto["official_median_rent"])
-        pareto["normalized_commute"] = normalize_min_max(pareto["commute_minutes"])
+        scoring_pool = pareto if len(pareto) >= 3 else workplace_rows.copy()
+        scoring_pool["normalized_rent"] = normalize_min_max(scoring_pool["official_median_rent"])
+        scoring_pool["normalized_commute"] = normalize_min_max(scoring_pool["commute_minutes"])
         for mode in PREFERENCE_MODES:
-            ranked = pareto.copy()
+            ranked = scoring_pool.copy()
             ranked["preference_mode"] = mode["preference_mode"]
             ranked["rent"] = ranked["official_median_rent"]
             ranked["rent_weight"] = mode["rent_weight"]
@@ -208,8 +212,14 @@ def build_rent_commute_recommendations(rent_commute: pd.DataFrame) -> pd.DataFra
                 + ranked["commute_weight"] * ranked["normalized_commute"]
             )
             ranked["preference_score"] = 1 - ranked["preference_cost"]
+            sort_columns = ["preference_cost", "commute_minutes", "official_median_rent", "candidate_name"]
+            sort_ascending = [True, True, True, True]
+            if len(pareto) < 3:
+                sort_columns = ["is_pareto_efficient", *sort_columns]
+                sort_ascending = [False, *sort_ascending]
             ranked = ranked.sort_values(
-                ["preference_cost", "commute_minutes", "official_median_rent", "candidate_name"]
+                sort_columns,
+                ascending=sort_ascending,
             ).reset_index(drop=True)
             ranked["rank"] = ranked.index + 1
             rows.append(ranked)
@@ -348,7 +358,7 @@ def write_validation(recommendations: pd.DataFrame, rent_commute: pd.DataFrame) 
         "",
         "- Every workplace has 16 successful candidate commute rows.",
         "- Rent and livability inputs are unchanged across workplaces.",
-        "- Rent x Commute modes rank only each workplace's Pareto-efficient candidates.",
+        "- Rent x Commute modes rank Pareto-efficient candidates first; if a workplace has fewer than three Pareto candidates, the remaining Top-3 slots are filled from the same weighted score across all candidates.",
         "- 生活品質型 ranks all 16 candidates per workplace using the existing MVP weights.",
     ]
     VALIDATION_OUTPUT_MD.parent.mkdir(parents=True, exist_ok=True)

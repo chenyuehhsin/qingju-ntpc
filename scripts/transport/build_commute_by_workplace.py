@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import sys
 import time
 import urllib.error
@@ -42,6 +43,14 @@ METADATA_OUTPUT_PATH = OUTPUTS_DIR / "commute_by_workplace_metadata.json"
 STATION_ENDPOINTS = {
     "TRTC": f"{TDX_BASIC_BASE_URL}/Rail/Metro/Station/TRTC",
 }
+FIXED_SOURCE_ENDPOINTS = {
+    "OSM_NOMINATIM_CACHE": "data/interim/geocoding/nominatim_workplace_cache.json",
+    "TYMC": "data/interim/transport/tdx_station_data/tymc_stations.json",
+    "TRA": "data/interim/transport/tdx_station_data/tra_stations.json",
+    "NWT_BUS": "data/interim/transport/tdx_station_data/nwt_bus_station_stations.json",
+}
+NEAR_ROUTE_FALLBACK_DISTANCE_KM = 2.0
+WALKING_SPEED_KMPH = 4.8
 
 WORKPLACES = [
     {
@@ -80,6 +89,66 @@ WORKPLACES = [
         "station_uid": "TRTC-BL22",
         "slug": "nangang",
     },
+    {
+        "workplace_id": "xinban_special_district",
+        "workplace_name": "新板特區",
+        "workplace_district": "板橋",
+        "station_name": "新府路",
+        "operator_id": "OSM_NOMINATIM_CACHE",
+        "station_uid": "nominatim:新北市板橋區新府路",
+        "station_id": "",
+        "lat": 25.0138307,
+        "lon": 121.4618983,
+        "slug": "xinban_special_district",
+    },
+    {
+        "workplace_id": "xinzhuang_fuduxin",
+        "workplace_name": "新莊副都心",
+        "workplace_district": "新莊",
+        "station_name": "新莊副都心站",
+        "operator_id": "TYMC",
+        "station_uid": "TYMC-A4",
+        "station_id": "A4",
+        "lat": 25.05924,
+        "lon": 121.44561,
+        "slug": "xinzhuang_fuduxin",
+    },
+    {
+        "workplace_id": "xizhi_science_park",
+        "workplace_name": "汐止科學園區",
+        "workplace_district": "汐止",
+        "station_name": "汐科站",
+        "operator_id": "TRA",
+        "station_uid": "TRA-0970",
+        "station_id": "0970",
+        "lat": 25.06406,
+        "lon": 121.65233,
+        "slug": "xizhi_science_park",
+    },
+    {
+        "workplace_id": "zhonghe_tech_park",
+        "workplace_name": "中和科技園區",
+        "workplace_district": "中和",
+        "station_name": "橋和站",
+        "operator_id": "NWT_BUS",
+        "station_uid": "NWT72482",
+        "station_id": "72482",
+        "lat": 25.007043,
+        "lon": 121.496375,
+        "slug": "zhonghe_tech_park",
+    },
+    {
+        "workplace_id": "tucheng_industrial_park",
+        "workplace_name": "土城產業園區",
+        "workplace_district": "土城",
+        "station_name": "土城工業區",
+        "operator_id": "NWT_BUS",
+        "station_uid": "NWT10070",
+        "station_id": "10070",
+        "lat": 24.962537,
+        "lon": 121.425079,
+        "slug": "tucheng_industrial_park",
+    },
 ]
 
 
@@ -105,6 +174,22 @@ def load_station_cache() -> dict[str, list[dict[str, Any]]]:
 
 
 def workplace_station_row(station_data: dict[str, list[dict[str, Any]]], item: dict[str, str]) -> dict[str, Any]:
+    if "lat" in item and "lon" in item:
+        return {
+            "workplace_id": item["workplace_id"],
+            "workplace_name": item["workplace_name"],
+            "workplace_district": item["workplace_district"],
+            "workplace_station_name": item["station_name"],
+            "workplace_station_operator": item["operator_id"],
+            "workplace_station_uid": item["station_uid"],
+            "workplace_station_id": item.get("station_id", ""),
+            "workplace_lat": item["lat"],
+            "workplace_lon": item["lon"],
+            "workplace_source_endpoint": FIXED_SOURCE_ENDPOINTS[item["operator_id"]],
+            "workplace_source_update_time": "",
+            "workplace_tdx_update_time": "",
+            "slug": item["slug"],
+        }
     records = station_data[item["operator_id"]]
     matches = [record for record in records if str(record.get("StationUID", "")) == item["station_uid"]]
     if len(matches) != 1:
@@ -184,8 +269,50 @@ def route_cache_has_success(path: Path) -> bool:
     return parse_success_response(payload) is not None
 
 
-def access_token_if_needed(response_files: list[Path]) -> str:
-    if all(route_cache_has_success(path) for path in response_files):
+def haversine_km(origin_lat: float, origin_lon: float, destination_lat: float, destination_lon: float) -> float:
+    radius_km = 6371.0088
+    lat1 = math.radians(origin_lat)
+    lat2 = math.radians(destination_lat)
+    delta_lat = math.radians(destination_lat - origin_lat)
+    delta_lon = math.radians(destination_lon - origin_lon)
+    a = math.sin(delta_lat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(delta_lon / 2) ** 2
+    return radius_km * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def near_route_fallback_fields(candidate: dict[str, Any], workplace: dict[str, Any]) -> dict[str, Any] | None:
+    distance_km = haversine_km(
+        float(candidate["lat"]),
+        float(candidate["lon"]),
+        float(workplace["workplace_lat"]),
+        float(workplace["workplace_lon"]),
+    )
+    if distance_km > NEAR_ROUTE_FALLBACK_DISTANCE_KM:
+        return None
+    minutes = max(5.0, round(distance_km / WALKING_SPEED_KMPH * 60, 1))
+    travel_seconds = int(round(minutes * 60))
+    return {
+        "commute_minutes": minutes,
+        "transfer_count": 0,
+        "route_summary": f"Near workplace fallback: {distance_km:.1f} km walking connection used because TDX returned no usable public-transit route.",
+        "query_status": "success",
+        "error_message": "",
+        "travel_time_seconds": travel_seconds,
+    }
+
+
+def access_token_if_needed(candidates: list[dict[str, Any]], workplaces: list[dict[str, Any]]) -> str:
+    for workplace in workplaces:
+        for candidate in candidates:
+            response_file = RESPONSE_DIR / safe_response_filename(candidate_slug(candidate["candidate_name"]), workplace["slug"])
+            if route_cache_has_success(response_file):
+                continue
+            if near_route_fallback_fields(candidate, workplace):
+                continue
+            break
+        else:
+            continue
+        break
+    else:
         return ""
     client_id, client_secret = require_credentials()
     return get_access_token(client_id, client_secret)
@@ -233,8 +360,16 @@ def build_row(
         if cached_fields:
             row.update(cached_fields)
             return row, False
+        fallback_fields = near_route_fallback_fields(candidate, workplace)
+        if fallback_fields:
+            row.update(fallback_fields)
+            return row, False
 
     if not access_token:
+        fallback_fields = near_route_fallback_fields(candidate, workplace)
+        if fallback_fields:
+            row.update(fallback_fields)
+            return row, False
         row["error_message"] = "Missing TDX access token and no successful cache exists."
         return row, False
 
@@ -264,7 +399,11 @@ def build_row(
         else:
             fields = parse_success_response(response)
             if fields is None:
-                row["error_message"] = "TDX returned success but no usable transit route."
+                fallback_fields = near_route_fallback_fields(candidate, workplace)
+                if fallback_fields:
+                    row.update(fallback_fields)
+                else:
+                    row["error_message"] = "TDX returned success but no usable transit route."
             else:
                 row.update(fields)
     except urllib.error.HTTPError as exc:
@@ -285,12 +424,7 @@ def build_commute_rows(
     workplaces: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     RESPONSE_DIR.mkdir(parents=True, exist_ok=True)
-    response_files = [
-        RESPONSE_DIR / safe_response_filename(candidate_slug(candidate["candidate_name"]), workplace["slug"])
-        for workplace in workplaces
-        for candidate in candidates
-    ]
-    access_token = access_token_if_needed(response_files)
+    access_token = access_token_if_needed(candidates, workplaces)
 
     rows: list[dict[str, Any]] = []
     for workplace in workplaces:

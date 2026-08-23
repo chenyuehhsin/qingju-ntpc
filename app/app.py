@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 
 import streamlit as st
 
@@ -9,6 +10,7 @@ APP_DIR = Path(__file__).resolve().parent
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
+from custom_workplace import GEOCODING_SOURCE, build_custom_dashboard_data, geocode_address
 from components.overview import render_overview
 from data_loader import (
     MODE_COLORS,
@@ -17,10 +19,83 @@ from data_loader import (
     MODE_SOFT_COLORS,
     load_boundaries,
     load_dashboard_data,
-    load_workplaces,
 )
 from recommendation_view import render_dashboard_view
 from styles import apply_selected_radio_style, apply_styles
+
+
+NO_PRESET_LABEL = "無"
+DEFAULT_PRESET_LABEL = "港墘站｜內湖"
+
+
+def _apply_quick_preset(preset_addresses: dict[str, str]) -> None:
+    preset_label = st.session_state.get("quick_preset", NO_PRESET_LABEL)
+    if preset_label != NO_PRESET_LABEL:
+        st.session_state.workplace_address = preset_addresses[preset_label]
+
+
+def _mark_manual_address(preset_addresses: dict[str, str]) -> None:
+    address = st.session_state.get("workplace_address", "").strip()
+    if address and address not in preset_addresses.values():
+        st.session_state.quick_preset = NO_PRESET_LABEL
+
+
+def _load_custom_workplace(address: str) -> None:
+    geocode = geocode_address(address)
+    st.session_state.custom_workplace_data = build_custom_dashboard_data(address, geocode)
+    st.session_state.custom_geocode = geocode
+    st.session_state.active_workplace_address = address
+    st.session_state.active_workplace_input_address = address
+    st.session_state.active_workplace_source = GEOCODING_SOURCE
+
+
+def _load_preset_workplace(preset_label: str, preset_workplaces: dict[str, dict[str, Any]]) -> None:
+    preset = preset_workplaces[preset_label]
+    workplace_id = preset.get("workplace_id")
+    if not workplace_id:
+        raise RuntimeError(f"{preset_label} is a custom quick example and has no precomputed workplace_id.")
+    dashboard_data = load_dashboard_data(workplace_id)
+    st.session_state.custom_workplace_data = dashboard_data
+    _, _, _, destination = dashboard_data
+    st.session_state.custom_geocode = {
+        "lat": destination["destination_lat"],
+        "lon": destination["destination_lon"],
+        "source": "TDX station preset",
+    }
+    st.session_state.active_workplace_address = f"{preset_label}（快速範例）"
+    st.session_state.active_workplace_input_address = preset["address"]
+    st.session_state.active_workplace_source = "TDX station preset"
+
+
+def _load_fixed_quick_example(preset_label: str, preset_workplaces: dict[str, dict[str, Any]]) -> None:
+    preset = preset_workplaces[preset_label]
+    geocode = {
+        "lat": float(preset["lat"]),
+        "lon": float(preset["lon"]),
+        "source": str(preset["source"]),
+        "display_name": str(preset["source_name"]),
+    }
+    address = str(preset["address"])
+    st.session_state.custom_workplace_data = build_custom_dashboard_data(address, geocode)
+    st.session_state.custom_geocode = geocode
+    st.session_state.active_workplace_address = f"{preset_label}（快速範例 Beta）"
+    st.session_state.active_workplace_input_address = address
+    st.session_state.active_workplace_source = str(preset["source"])
+
+
+def _load_quick_example(preset_label: str, preset_workplaces: dict[str, dict[str, Any]]) -> None:
+    preset = preset_workplaces[preset_label]
+    if preset.get("workplace_id"):
+        _load_preset_workplace(preset_label, preset_workplaces)
+        return
+    if preset.get("lat") and preset.get("lon"):
+        _load_fixed_quick_example(preset_label, preset_workplaces)
+        return
+
+    address = str(preset["address"])
+    _load_custom_workplace(address)
+    st.session_state.active_workplace_address = f"{preset_label}（快速範例 Beta）"
+    st.session_state.active_workplace_input_address = address
 
 
 def main() -> None:
@@ -35,39 +110,157 @@ def main() -> None:
     nav_options = ["四模式總覽", *MODE_ORDER]
     current_view = st.session_state.get("main_view", "四模式總覽")
 
-    try:
-        workplaces = load_workplaces()
-    except Exception as exc:
-        st.error(f"Workplace data loading failed: {exc}")
-        st.stop()
-    workplace_labels = {
-        row["workplace_id"]: f"{row['workplace_name']}｜{row['workplace_district']}"
-        for _, row in workplaces.iterrows()
+    preset_workplaces = {
+        "港墘站｜內湖": {
+            "address": "台北市內湖區瑞光路",
+            "workplace_id": "gangqian_neihu",
+        },
+        "市政府站｜信義": {
+            "address": "台北市信義區市府路",
+            "workplace_id": "taipei_city_hall_xinyi",
+        },
+        "台北車站｜中正": {
+            "address": "台北市中正區忠孝西路一段",
+            "workplace_id": "taipei_main_zhongzheng",
+        },
+        "南港站｜南港": {
+            "address": "台北市南港區忠孝東路七段",
+            "workplace_id": "nangang_nangang",
+        },
+        "新板特區": {
+            "address": "新北市板橋區新府路",
+            "workplace_id": "xinban_special_district",
+        },
+        "新莊副都心": {
+            "address": "新北市新莊區新北大道四段188號",
+            "workplace_id": "xinzhuang_fuduxin",
+        },
+        "汐止科學園區": {
+            "address": "新北市汐止區大同路二段182號",
+            "workplace_id": "xizhi_science_park",
+        },
+        "中和科技園區": {
+            "address": "新北市中和區橋和路282號",
+            "workplace_id": "zhonghe_tech_park",
+        },
+        "土城產業園區": {
+            "address": "新北市土城區中央路四段23號",
+            "workplace_id": "tucheng_industrial_park",
+        },
     }
+    preset_addresses = {label: preset["address"] for label, preset in preset_workplaces.items()}
+    preset_options = [NO_PRESET_LABEL, *preset_addresses.keys()]
+    if "workplace_address" not in st.session_state:
+        st.session_state.workplace_address = preset_addresses[DEFAULT_PRESET_LABEL]
+    if "quick_preset" not in st.session_state:
+        st.session_state.quick_preset = DEFAULT_PRESET_LABEL
+    if "custom_workplace_data" not in st.session_state:
+        st.session_state.custom_workplace_data = None
+    if "custom_geocode" not in st.session_state:
+        st.session_state.custom_geocode = None
+    if "active_workplace_address" not in st.session_state:
+        st.session_state.active_workplace_address = None
+    if "active_workplace_input_address" not in st.session_state:
+        st.session_state.active_workplace_input_address = None
+    if "active_workplace_source" not in st.session_state:
+        st.session_state.active_workplace_source = None
+    if st.session_state.quick_preset not in preset_options:
+        st.session_state.quick_preset = NO_PRESET_LABEL
 
     header_left, header_right = st.columns([1.15, 0.85], gap="medium")
     with header_left:
         st.markdown(
             """
             <div class="qj-header-title">青聚新北｜青年生活圈推薦</div>
-            <div class="qj-subtitle">選定工作地後，我住新北哪裡比較適合？</div>
+            <div class="qj-subtitle">輸入工作地址後，我住新北哪裡比較適合？</div>
             """,
             unsafe_allow_html=True,
         )
-        st.markdown('<div class="qj-control-row">', unsafe_allow_html=True)
-        control_cols = st.columns([0.95, 0.68, 0.68, 1.45], gap="small")
-        with control_cols[0]:
-            selected_workplace_id = st.selectbox(
-                "工作地",
-                workplaces["workplace_id"].tolist(),
-                format_func=lambda value: workplace_labels[value],
-                label_visibility="visible",
+        first_row = st.columns([0.95, 0.48, 0.30, 1.35], gap="small")
+        with first_row[0]:
+            st.text_input(
+                "我的工作地點（Beta）",
+                key="workplace_address",
+                placeholder="例如：台北市內湖區瑞光路",
+                on_change=_mark_manual_address,
+                args=(preset_addresses,),
             )
-        with control_cols[1]:
-            st.selectbox("交通方式", ["大眾運輸"], disabled=True, label_visibility="visible")
-        with control_cols[2]:
-            st.selectbox("租屋型態", ["獨立套房"], disabled=True, label_visibility="visible")
-        st.markdown("</div>", unsafe_allow_html=True)
+        with first_row[1]:
+            st.selectbox(
+                "快速範例",
+                preset_options,
+                key="quick_preset",
+                on_change=_apply_quick_preset,
+                args=(preset_addresses,),
+            )
+        with first_row[2]:
+            submitted = st.button("開始推薦", use_container_width=True)
+
+        second_row = st.columns([0.44, 0.44, 2.20], gap="small")
+        with second_row[0]:
+            st.selectbox("交通方式", ["大眾運輸"], disabled=True)
+        with second_row[1]:
+            st.selectbox("租屋型態", ["獨立套房"], disabled=True)
+        note_slot = second_row[2].empty()
+
+        if st.session_state.custom_workplace_data is None:
+            try:
+                with st.spinner("載入預設快速範例：港墘站｜內湖..."):
+                    _load_preset_workplace(DEFAULT_PRESET_LABEL, preset_workplaces)
+            except Exception as exc:
+                st.session_state.custom_workplace_data = None
+                st.session_state.custom_geocode = None
+                st.session_state.active_workplace_address = None
+                st.session_state.active_workplace_input_address = None
+                st.session_state.active_workplace_source = None
+                st.error(f"預設快速範例載入失敗：{exc}")
+
+        if submitted:
+            target_address = st.session_state.workplace_address.strip()
+            if not target_address:
+                st.error("請輸入工作地址，或先選擇一個快速範例。")
+                st.stop()
+            try:
+                selected_preset = st.session_state.get("quick_preset", NO_PRESET_LABEL)
+                if selected_preset != NO_PRESET_LABEL:
+                    with st.spinner(f"載入快速範例：{selected_preset}..."):
+                        _load_quick_example(selected_preset, preset_workplaces)
+                else:
+                    with st.spinner("定位工作地址並計算 16 個生活圈通勤時間..."):
+                        _load_custom_workplace(target_address)
+            except Exception as exc:
+                st.session_state.custom_workplace_data = None
+                st.session_state.custom_geocode = None
+                st.session_state.active_workplace_address = None
+                st.session_state.active_workplace_input_address = None
+                st.session_state.active_workplace_source = None
+                st.error(f"工作地址處理失敗：{exc}")
+
+        if st.session_state.custom_geocode:
+            geocode = st.session_state.custom_geocode
+            active_address = st.session_state.active_workplace_address
+            active_input_address = st.session_state.active_workplace_input_address
+            current_address = st.session_state.workplace_address.strip()
+            pending_note = ""
+            if current_address and active_input_address and current_address != active_input_address:
+                pending_note = "<br><b>輸入地址尚未套用：</b>請按「開始推薦」更新地圖與排名。"
+            with note_slot:
+                st.markdown(
+                    f"""
+                    <div class="qj-geocode-note">
+                        目前套用工作地：{active_address}<br>
+                        已定位：{float(geocode['lat']):.6f}, {float(geocode['lon']):.6f}｜來源：{st.session_state.active_workplace_source}
+                        {pending_note}
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+        else:
+            with note_slot:
+                st.markdown(
+                    f'<div class="qj-geocode-note">請輸入工作地址後按「開始推薦」。快速範例可作為 fallback；geocoding 來源：{GEOCODING_SOURCE}。</div>',
+                    unsafe_allow_html=True,
+                )
     with header_right:
         hero_title = "推薦總覽"
         hero_copy = "比較四種偏好模式的 Top 1，快速掌握推薦生活圈差異。"
@@ -96,8 +289,12 @@ def main() -> None:
         selected_soft_color = MODE_SOFT_COLORS.get(selected_view, "#EAF6EF")
         apply_selected_radio_style(selected_color, selected_soft_color)
 
+    if st.session_state.custom_workplace_data is None:
+        st.info("請先輸入工作地址並按「開始推薦」，Dashboard 會在成功定位後更新推薦結果。")
+        st.stop()
+
     try:
-        candidates, recommendations, top3, destination = load_dashboard_data(selected_workplace_id)
+        candidates, recommendations, top3, destination = st.session_state.custom_workplace_data
         towns, cities = load_boundaries()
     except Exception as exc:
         st.error(f"Dashboard data loading failed: {exc}")
@@ -118,6 +315,7 @@ def main() -> None:
             租金為 MOI 行政區獨立套房官方 benchmark，不是即時房源價格。<br>
             租金目前是行政區尺度，不代表特定車站周邊實際租金。<br>
             通勤為 TDX MaaS 平日 08:00、代表交通節點到工作地的公共運輸時間。<br>
+            任意工作地址使用 OpenStreetMap Nominatim geocoding；地址解析結果會 local cache，避免重複查詢。<br>
             目前不是 door-to-door 通勤。<br>
             目前不包含汽車 / 機車通勤模式。<br>
             生活品質型目前以站點周邊 800m OSM POI 作為生活機能 proxy。<br>

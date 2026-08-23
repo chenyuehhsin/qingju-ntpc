@@ -29,6 +29,11 @@ WORKPLACE_ORDER = [
     "taipei_city_hall_xinyi",
     "taipei_main_zhongzheng",
     "nangang_nangang",
+    "xinban_special_district",
+    "xinzhuang_fuduxin",
+    "xizhi_science_park",
+    "zhonghe_tech_park",
+    "tucheng_industrial_park",
 ]
 MODE_COLORS = {
     "省租型": "#78B995",
