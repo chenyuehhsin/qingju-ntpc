@@ -8,11 +8,11 @@ import streamlit as st
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-PREFERENCE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "preference_recommendations.csv"
-RENT_COMMUTE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "rent_commute_candidates_expanded.csv"
+PREFERENCE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "preference_recommendations_by_workplace.csv"
+RENT_COMMUTE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "rent_commute_candidates_by_workplace.csv"
 LIVABILITY_CSV = PROJECT_ROOT / "data" / "processed" / "livability" / "livability_by_candidate.csv"
 CANDIDATE_LOCATIONS_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "candidate_locations_expanded.csv"
-COMMUTE_EXPANDED_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "commute_to_gangqian_expanded.csv"
+COMMUTE_BY_WORKPLACE_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "commute_by_workplace.csv"
 BOUNDARY_SHP = (
     PROJECT_ROOT
     / "data"
@@ -24,6 +24,12 @@ BOUNDARY_SHP = (
 )
 
 MODE_ORDER = ["省租型", "平衡型", "通勤型", "生活品質型"]
+WORKPLACE_ORDER = [
+    "gangqian_neihu",
+    "taipei_city_hall_xinyi",
+    "taipei_main_zhongzheng",
+    "nangang_nangang",
+]
 MODE_COLORS = {
     "省租型": "#78B995",
     "平衡型": "#6EA7C7",
@@ -85,19 +91,56 @@ def reason_for(mode: str, row: pd.Series) -> str:
 
 
 @st.cache_data(show_spinner=False)
-def load_dashboard_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, float | str]]:
+def load_workplaces() -> pd.DataFrame:
+    commute = pd.read_csv(COMMUTE_BY_WORKPLACE_CSV)
+    workplaces = (
+        commute[
+            [
+                "workplace_id",
+                "workplace_name",
+                "workplace_district",
+                "workplace_lat",
+                "workplace_lon",
+                "workplace_station_operator",
+                "workplace_station_uid",
+            ]
+        ]
+        .drop_duplicates()
+        .copy()
+    )
+    if len(workplaces) != len(WORKPLACE_ORDER):
+        raise RuntimeError(f"Expected {len(WORKPLACE_ORDER)} workplaces, found {len(workplaces)}.")
+    workplaces["_order"] = workplaces["workplace_id"].map({value: index for index, value in enumerate(WORKPLACE_ORDER)})
+    if workplaces["_order"].isna().any():
+        missing = workplaces[workplaces["_order"].isna()]["workplace_id"].tolist()
+        raise RuntimeError(f"Unexpected workplace ids: {missing}")
+    return workplaces.sort_values("_order").drop(columns=["_order"]).reset_index(drop=True)
+
+
+@st.cache_data(show_spinner=False)
+def load_dashboard_data(workplace_id: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, float | str]]:
     preferences = pd.read_csv(PREFERENCE_CSV)
     rent_commute = pd.read_csv(RENT_COMMUTE_CSV)
     livability = pd.read_csv(LIVABILITY_CSV)
     locations = pd.read_csv(CANDIDATE_LOCATIONS_CSV)
-    commute = pd.read_csv(COMMUTE_EXPANDED_CSV)
+
+    if workplace_id not in set(rent_commute["workplace_id"]):
+        raise RuntimeError(f"Unknown workplace_id: {workplace_id}")
+    rent_commute = rent_commute[rent_commute["workplace_id"] == workplace_id].copy()
+    preferences = preferences[preferences["workplace_id"] == workplace_id].copy()
+    if len(rent_commute) != 16:
+        raise RuntimeError(f"Expected 16 evaluated candidates for {workplace_id}, found {len(rent_commute)}.")
 
     candidates = rent_commute.merge(
         locations[["candidate_name", "lat", "lon"]],
         on="candidate_name",
         how="left",
+        suffixes=("", "_location"),
         validate="one_to_one",
     )
+    candidates["lat"] = candidates["lat"].fillna(candidates["lat_location"])
+    candidates["lon"] = candidates["lon"].fillna(candidates["lon_location"])
+    candidates = candidates.drop(columns=[column for column in ["lat_location", "lon_location"] if column in candidates])
     candidates = candidates.merge(
         livability[["candidate_name", "equal_weight_livability_index", "total_poi_count"]],
         on="candidate_name",
@@ -135,12 +178,26 @@ def load_dashboard_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dic
 
     _validate_dashboard_data(candidates, recommendations, top3)
 
-    destination_rows = commute[["destination", "destination_lat", "destination_lon"]].drop_duplicates()
+    destination_rows = rent_commute[
+        [
+            "workplace_id",
+            "workplace_name",
+            "workplace_district",
+            "workplace_lat",
+            "workplace_lon",
+        ]
+    ].drop_duplicates()
     if len(destination_rows) != 1:
-        raise RuntimeError(f"Expected one workplace destination row, found {len(destination_rows)}.")
-    destination = destination_rows.iloc[0].to_dict()
-    if destination["destination"] != "港墘站":
-        raise RuntimeError(f"Expected workplace 港墘站, found {destination['destination']}.")
+        raise RuntimeError(f"Expected one workplace row, found {len(destination_rows)}.")
+    destination_row = destination_rows.iloc[0].to_dict()
+    destination = {
+        "workplace_id": destination_row["workplace_id"],
+        "workplace_name": destination_row["workplace_name"],
+        "workplace_district": destination_row["workplace_district"],
+        "destination": destination_row["workplace_name"],
+        "destination_lat": destination_row["workplace_lat"],
+        "destination_lon": destination_row["workplace_lon"],
+    }
 
     return candidates, recommendations, top3, destination
 

@@ -29,7 +29,7 @@ def render_dashboard_view(
         map_obj = build_recommendation_map(mode, candidates, top3, destination, towns, cities)
         st_folium(map_obj, height=720, use_container_width=True, returned_objects=[])
 
-    _render_mode_summary(mode, mode_rows)
+    _render_mode_summary(mode, mode_rows, str(destination["destination"]))
     with st.expander("查看全部 16 個候選生活圈", expanded=False):
         render_all_candidates_table(mode, candidates, recommendations)
 
@@ -120,14 +120,14 @@ def _rank_label(value: float | int) -> str:
     return f"#{rank}"
 
 
-def _render_mode_summary(mode: str, mode_rows: pd.DataFrame) -> None:
+def _render_mode_summary(mode: str, mode_rows: pd.DataFrame, workplace_name: str) -> None:
     top1 = mode_rows.iloc[0]
     color = MODE_COLORS[mode]
     st.markdown(
         f"""
         <div class="qj-summary-strip" style="border-left-color: {color};">
             <b>{mode} Top 1：</b>{top1['living_area']}，月租約 {money(top1['rent'])} 元，
-            到港墘站約 {minutes(top1['commute_minutes'])}，
+            到{workplace_name}約 {minutes(top1['commute_minutes'])}，
             相較內湖租金 benchmark 每月約省 {money(top1['rent_saving_vs_neihu'])} 元。
         </div>
         """,

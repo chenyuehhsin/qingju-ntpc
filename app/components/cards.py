@@ -6,19 +6,6 @@ import streamlit as st
 from data_loader import MODE_COLORS, MODE_COPY, minutes, money, reason_for
 
 
-def render_context_chips() -> None:
-    st.markdown(
-        """
-        <div class="qj-chip-row">
-            <div class="qj-chip"><div class="qj-chip-label">工作地</div><div class="qj-chip-value">港墘站</div></div>
-            <div class="qj-chip"><div class="qj-chip-label">交通方式</div><div class="qj-chip-value">大眾運輸</div></div>
-            <div class="qj-chip"><div class="qj-chip-label">租屋型態</div><div class="qj-chip-value">獨立套房</div></div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
 def render_mode_intro(mode: str) -> None:
     color = MODE_COLORS[mode]
     st.markdown(

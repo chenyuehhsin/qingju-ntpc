@@ -44,30 +44,28 @@ def apply_styles() -> None:
             margin-top: 0.25rem;
             margin-bottom: 0.45rem;
         }
-        .qj-chip-row {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: flex-start;
-            gap: 0.58rem;
-            margin: 0.42rem 0 0.60rem 0;
+        div[data-testid="stSelectbox"] label {
+            color: #65747a;
+            font-size: 0.84rem;
+            font-weight: 760;
         }
-        .qj-chip {
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
             background: #ffffff;
-            border: 1px solid #d9e0e2;
+            border-color: #d9e0e2;
             border-radius: 10px;
-            padding: 0.58rem 0.82rem;
-            min-width: 132px;
+            min-height: 2.45rem;
+            box-shadow: 0 1px 2px rgba(36, 50, 56, 0.035);
         }
-        .qj-chip-label {
-            color: #7a878b;
-            font-size: 0.82rem;
-            line-height: 1;
-        }
-        .qj-chip-value {
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] span {
             color: var(--qj-text);
-            font-weight: 700;
-            font-size: 1.08rem;
-            line-height: 1.35;
+            font-weight: 720;
+        }
+        div[data-testid="stSelectbox"] {
+            margin-top: 0.10rem;
+        }
+        .qj-control-row + div[data-testid="stHorizontalBlock"] {
+            max-width: 680px;
+            margin-left: 0;
         }
         .qj-panel {
             background: #ffffff;
@@ -258,8 +256,11 @@ def apply_styles() -> None:
             letter-spacing: 0;
         }
         .qj-mode-hero {
-            text-align: left;
-            margin: 0 0 0.30rem -0.80rem;
+            text-align: center;
+            margin: 0 0 0.18rem -50rem;
+        }
+        .qj-mode-hero-empty {
+            min-height: 4.3rem;
         }
         .qj-mode-subtitle {
             color: #65747a;
@@ -375,8 +376,10 @@ def apply_styles() -> None:
         }
         div[data-testid="stRadio"] {
             text-align: center;
-            margin-top: -1.35rem;
-            margin-bottom: 0.15rem;
+            margin-top: 2rem;
+            margin-bottom: 0.01rem;
+            padding-right: 0;
+            transform: translateX(-25rem);
         }
         div[data-testid="stRadio"] > div {
             gap: 0.55rem;
@@ -398,8 +401,8 @@ def apply_styles() -> None:
             background: #ffffff;
             border: 1px solid #d7e0e2;
             border-radius: 999px;
-            padding: 0.68rem 1.18rem;
-            min-width: 9.6rem;
+            padding: 0.62rem 0.92rem;
+            min-width: 7.6rem;
             justify-content: center;
             box-shadow: 0 1px 2px rgba(36, 50, 56, 0.04);
         }
@@ -414,7 +417,7 @@ def apply_styles() -> None:
             font-weight: 850;
         }
         div[data-testid="stRadio"] div[role="radiogroup"] label p {
-            font-size: 0.98rem;
+            font-size: 0.94rem;
         }
         iframe {
             border-radius: 12px;

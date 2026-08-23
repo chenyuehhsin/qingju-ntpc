@@ -28,8 +28,7 @@ def build_overview_map(
         control_scale=True,
         prefer_canvas=True,
     )
-    focus_candidates = candidates[candidates["candidate_name"].isin(top3["candidate_name"])]
-    _fit_candidate_bounds(map_obj, focus_candidates, center_lat, center_lon)
+    _fit_candidate_bounds(map_obj, candidates, center_lat, center_lon)
     _add_boundary_layers(map_obj, towns, cities)
 
     top1_names = set(top3[top3["rank"] == 1]["candidate_name"])
@@ -120,10 +119,22 @@ def build_overview_map(
             ),
         ).add_to(map_obj)
 
-    _add_workplace_marker(map_obj, center_lat, center_lon)
+    for _, row in candidates.iterrows():
+        candidate_name = row["candidate_name"]
+        if candidate_name in top1_names:
+            candidate_modes = _modes_for_candidate(top3[top3["rank"] == 1], candidate_name)
+            label_color = MODE_COLORS[candidate_modes[0]]
+            _add_overview_candidate_label(map_obj, row, label_color, prominent=True)
+        elif candidate_name in top3_only_names:
+            candidate_modes = _modes_for_candidate(top3, candidate_name)
+            _add_overview_candidate_label(map_obj, row, MODE_COLORS[candidate_modes[0]], prominent=False)
+        else:
+            _add_overview_candidate_label(map_obj, row, "#8A9699", prominent=False)
+
+    _add_workplace_marker(map_obj, center_lat, center_lon, str(destination["destination"]))
     _add_city_label(map_obj, 25.095, 121.405, "新北市")
     _add_city_label(map_obj, 25.045, 121.555, "臺北市")
-    _add_overview_legend(map_obj)
+    _add_overview_legend(map_obj, str(destination["destination"]))
     return map_obj
 
 
@@ -210,11 +221,11 @@ def build_recommendation_map(
         ).add_to(map_obj)
         _add_top3_label(map_obj, row, rank, color)
 
-    _add_workplace_marker(map_obj, center_lat, center_lon)
+    _add_workplace_marker(map_obj, center_lat, center_lon, str(destination["destination"]))
 
     _add_city_label(map_obj, 25.095, 121.405, "新北市")
     _add_city_label(map_obj, 25.045, 121.555, "臺北市")
-    _add_legend(map_obj, color)
+    _add_legend(map_obj, color, str(destination["destination"]))
     return map_obj
 
 
@@ -236,6 +247,31 @@ def _add_top3_label(map_obj: folium.Map, row: pd.Series, rank: int, color: str) 
                     f'box-shadow:0 2px 7px rgba(36,50,56,0.16);">{label}</div>'
                 ),
                 icon_size=(180, 28),
+                icon_anchor=(0, 0),
+            ),
+        )
+    )
+
+
+def _add_overview_candidate_label(map_obj: folium.Map, row: pd.Series, color: str, prominent: bool) -> None:
+    label = html.escape(living_area(row["candidate_name"]))
+    font_size = 11 if prominent else 10
+    font_weight = 850 if prominent else 700
+    border_color = color if prominent else "#D3DADC"
+    background = "rgba(255,255,255,0.90)" if prominent else "rgba(255,255,255,0.72)"
+    map_obj.add_child(
+        folium.Marker(
+            location=[float(row["lat"]), float(row["lon"])],
+            icon=folium.DivIcon(
+                html=(
+                    f'<div style="transform:translate(10px,-27px);'
+                    f'display:inline-flex;align-items:center;white-space:nowrap;'
+                    f'background:{background};border:1px solid {border_color};'
+                    f'border-radius:999px;padding:3px 7px;color:#243238;'
+                    f'font-size:{font_size}px;font-weight:{font_weight};line-height:1.15;'
+                    f'box-shadow:0 1px 4px rgba(36,50,56,0.12);">{label}</div>'
+                ),
+                icon_size=(150, 24),
                 icon_anchor=(0, 0),
             ),
         )
@@ -302,18 +338,19 @@ def _add_living_area_circle(
     ).add_to(map_obj)
 
 
-def _add_workplace_marker(map_obj: folium.Map, center_lat: float, center_lon: float) -> None:
+def _add_workplace_marker(map_obj: folium.Map, center_lat: float, center_lon: float, workplace_name: str) -> None:
+    safe_name = html.escape(workplace_name)
     folium.Marker(
         location=[center_lat, center_lon],
-        tooltip="Workplace anchor: 港墘站",
-        popup="<b>Workplace anchor</b><br>港墘站",
+        tooltip=f"Workplace anchor: {safe_name}",
+        popup=f"<b>Workplace anchor</b><br>{safe_name}",
         icon=folium.DivIcon(
             html=(
                 '<div style="font-size:27px;color:#C45B65;text-shadow:0 0 2px #742C34,0 0 5px white;">'
                 '★</div>'
                 '<div style="margin-left:18px;margin-top:-28px;background:white;border:1px solid #C45B65;'
                 'border-radius:8px;padding:3px 7px;color:#742C34;font-weight:700;white-space:nowrap;">'
-                'Workplace anchor<br>港墘站</div>'
+                f'Workplace anchor<br>{safe_name}</div>'
             ),
             icon_size=(150, 48),
             icon_anchor=(12, 24),
@@ -375,7 +412,8 @@ def _add_city_label(map_obj: folium.Map, lat: float, lon: float, label: str) -> 
     ).add_to(map_obj)
 
 
-def _add_legend(map_obj: folium.Map, mode_color: str) -> None:
+def _add_legend(map_obj: folium.Map, mode_color: str, workplace_name: str) -> None:
+    safe_name = html.escape(workplace_name)
     template = Template(
         f"""
         {{% macro html(this, kwargs) %}}
@@ -396,7 +434,7 @@ def _add_legend(map_obj: folium.Map, mode_color: str) -> None:
           <div><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:{mode_color};margin-right:6px;"></span>目前模式 Top 3</div>
           <div><span style="display:inline-block;width:18px;height:10px;border-radius:50%;background:{mode_color};opacity:0.34;margin-right:6px;"></span>機車10分鐘生活圈</div>
           <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#AEB8BA;margin-right:7px;"></span>其他已評估候選</div>
-          <div><span style="color:#C45B65;font-size:16px;margin-right:4px;">★</span>工作地：港墘站</div>
+          <div><span style="color:#C45B65;font-size:16px;margin-right:4px;">★</span>工作地：{safe_name}</div>
           <div><span style="display:inline-block;width:18px;border-top:3px solid #7B8B74;margin-right:6px;"></span>新北市 / 臺北市外框</div>
         </div>
         {{% endmacro %}}
@@ -407,7 +445,8 @@ def _add_legend(map_obj: folium.Map, mode_color: str) -> None:
     map_obj.get_root().add_child(macro)
 
 
-def _add_overview_legend(map_obj: folium.Map) -> None:
+def _add_overview_legend(map_obj: folium.Map, workplace_name: str) -> None:
+    safe_name = html.escape(workplace_name)
     mode_items = "".join(
         f'<div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{MODE_COLORS[mode]};margin-right:6px;"></span>{mode} Top 1</div>'
         for mode in MODE_ORDER
@@ -433,7 +472,7 @@ def _add_overview_legend(map_obj: folium.Map) -> None:
           <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#AEB8BA;margin-right:7px;"></span>Other evaluated candidates</div>
           <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#A98BC8;border:2px solid #fff;margin-right:6px;"></span>Other Top-3 options</div>
           <div><span style="display:inline-block;width:18px;height:10px;border-radius:50%;background:#78B995;opacity:0.34;margin-right:6px;"></span>10-min scooter living area</div>
-          <div><span style="color:#C45B65;font-size:16px;margin-right:4px;">★</span>Workplace anchor</div>
+          <div><span style="color:#C45B65;font-size:16px;margin-right:4px;">★</span>工作地：{safe_name}</div>
         </div>
         {{% endmacro %}}
         """
