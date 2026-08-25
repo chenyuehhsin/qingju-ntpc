@@ -13,6 +13,7 @@ RENT_COMMUTE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "rent_c
 LIVABILITY_CSV = PROJECT_ROOT / "data" / "processed" / "livability" / "livability_by_candidate.csv"
 CANDIDATE_LOCATIONS_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "candidate_locations_expanded.csv"
 COMMUTE_BY_WORKPLACE_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "commute_by_workplace.csv"
+POLICY_LENS_CSV = PROJECT_ROOT / "data" / "processed" / "policy" / "policy_lens_v0.csv"
 BOUNDARY_SHP = (
     PROJECT_ROOT
     / "data"
@@ -255,3 +256,67 @@ def load_boundaries() -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     towns = towns[towns["COUNTYNAME"].isin(["新北市", "臺北市"])].copy()
     cities = towns.dissolve(by="COUNTYNAME", as_index=False)
     return towns, cities
+
+
+@st.cache_data(show_spinner=False)
+def load_policy_lens_data() -> pd.DataFrame:
+    policy = pd.read_csv(POLICY_LENS_CSV)
+    livability = pd.read_csv(LIVABILITY_CSV)
+
+    required_columns = {
+        "candidate_name",
+        "district",
+        "official_median_rent",
+        "official_contract_count",
+        "commute_accessibility_minutes",
+        "commute_accessibility_workplace_count",
+        "livability_index",
+        "policy_linked_record_count",
+        "total_rental_record_count",
+        "policy_linked_record_share",
+        "lat",
+        "lon",
+        "policy_quadrant",
+    }
+    missing = required_columns - set(policy.columns)
+    if missing:
+        raise RuntimeError(f"Policy Lens v0 data is missing columns: {sorted(missing)}")
+    if len(policy) != 16:
+        raise RuntimeError(f"Expected 16 policy candidates, found {len(policy)}.")
+    if policy["candidate_name"].nunique() != 16:
+        raise RuntimeError("Policy Lens v0 data includes duplicated candidate_name values.")
+
+    poi_columns = [
+        "candidate_name",
+        "food_count",
+        "shopping_count",
+        "recreation_count",
+        "culture_count",
+        "medical_count",
+        "total_poi_count",
+    ]
+    available_poi_columns = [column for column in poi_columns if column in livability.columns]
+    policy = policy.merge(
+        livability[available_poi_columns],
+        on="candidate_name",
+        how="left",
+        validate="one_to_one",
+    )
+    policy["living_area"] = policy["candidate_name"].map(living_area)
+
+    required_no_missing = [
+        "official_median_rent",
+        "official_contract_count",
+        "commute_accessibility_minutes",
+        "commute_accessibility_workplace_count",
+        "livability_index",
+        "policy_linked_record_count",
+        "total_rental_record_count",
+        "policy_linked_record_share",
+        "lat",
+        "lon",
+    ]
+    missing_values = policy[policy[required_no_missing].isna().any(axis=1)]["candidate_name"].tolist()
+    if missing_values:
+        raise RuntimeError(f"Policy Lens v0 rows have missing required values: {missing_values}")
+    return policy.reset_index(drop=True)

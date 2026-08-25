@@ -12,6 +12,7 @@ if str(APP_DIR) not in sys.path:
 
 from custom_workplace import GEOCODING_SOURCE, build_custom_dashboard_data, geocode_address
 from components.overview import render_overview
+from components.policy_lens import render_policy_lens
 from data_loader import (
     MODE_COLORS,
     MODE_COPY,
@@ -19,6 +20,7 @@ from data_loader import (
     MODE_SOFT_COLORS,
     load_boundaries,
     load_dashboard_data,
+    load_policy_lens_data,
 )
 from recommendation_view import render_dashboard_view
 from styles import apply_selected_radio_style, apply_styles
@@ -106,6 +108,25 @@ def main() -> None:
         initial_sidebar_state="collapsed",
     )
     apply_styles()
+
+    page = st.segmented_control(
+        "頁面",
+        options=["青年生活圈推薦", "青年局 Policy Lens"],
+        default=st.session_state.get("app_page", "青年生活圈推薦"),
+        key="app_page",
+        label_visibility="collapsed",
+    )
+    if page is None:
+        page = "青年生活圈推薦"
+    if page == "青年局 Policy Lens":
+        try:
+            policy = load_policy_lens_data()
+            towns, cities = load_boundaries()
+        except Exception as exc:
+            st.error(f"Policy Lens data loading failed: {exc}")
+            st.stop()
+        render_policy_lens(policy, towns, cities)
+        return
 
     nav_options = ["四模式總覽", *MODE_ORDER]
     current_view = st.session_state.get("main_view", "四模式總覽")

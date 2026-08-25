@@ -442,6 +442,141 @@ def apply_styles() -> None:
         iframe {
             border-radius: 12px;
         }
+        div[data-testid="stSegmentedControl"] {
+            margin-bottom: 0.45rem;
+        }
+        div[data-testid="stSegmentedControl"] button {
+            border-radius: 999px;
+            border-color: #d8e1e3;
+            background: rgba(255, 255, 255, 0.86);
+            color: #243238;
+            font-weight: 820;
+            min-height: 2.35rem;
+            box-shadow: 0 1px 2px rgba(36, 50, 56, 0.035);
+        }
+        div[data-testid="stSegmentedControl"] button[aria-pressed="true"] {
+            background: #EAF4FA;
+            border-color: #6EA7C7;
+            color: #243238;
+            box-shadow: 0 3px 10px rgba(36, 50, 56, 0.08);
+        }
+        .qj-policy-header {
+            margin-top: 0.35rem;
+            margin-bottom: 0.75rem;
+        }
+        .qj-policy-alert {
+            display: inline-flex;
+            align-items: center;
+            background: #fff7e8;
+            border: 1px solid #ead5ae;
+            border-radius: 999px;
+            color: #6c5632;
+            font-size: 0.92rem;
+            font-weight: 760;
+            padding: 0.45rem 0.78rem;
+            margin-top: 0.7rem;
+        }
+        .qj-policy-view-switch {
+            display: flex;
+            justify-content: center;
+            margin: 0.2rem 0 0.75rem 0;
+        }
+        .qj-policy-view-switch div[data-testid="stSegmentedControl"] {
+            text-align: center;
+        }
+        .qj-policy-view-switch div[data-testid="stSegmentedControl"] button {
+            min-width: 9.2rem;
+        }
+        .qj-policy-panel,
+        .qj-policy-detail {
+            background: #ffffff;
+            border: 1px solid var(--qj-line);
+            border-radius: 14px;
+            padding: 1rem;
+            box-shadow: 0 1px 3px rgba(36, 50, 56, 0.045);
+            margin-bottom: 0.75rem;
+        }
+        .qj-policy-eyebrow {
+            color: #65747a;
+            font-size: 0.78rem;
+            font-weight: 850;
+            margin-bottom: 0.18rem;
+        }
+        .qj-policy-panel-title {
+            color: #243238;
+            font-size: 1.36rem;
+            font-weight: 900;
+            line-height: 1.18;
+        }
+        .qj-policy-panel-copy {
+            color: #5e6d73;
+            font-size: 0.94rem;
+            line-height: 1.5;
+            margin-top: 0.42rem;
+        }
+        .qj-policy-mini-note {
+            display: inline-flex;
+            background: #eef5f5;
+            border-radius: 999px;
+            color: #52646b;
+            font-size: 0.82rem;
+            font-weight: 760;
+            padding: 0.32rem 0.56rem;
+            margin-top: 0.68rem;
+        }
+        .qj-policy-detail-title {
+            color: #243238;
+            font-size: 1.52rem;
+            font-weight: 920;
+            line-height: 1.12;
+        }
+        .qj-policy-detail-subtitle {
+            color: #65747a;
+            font-size: 0.9rem;
+            margin-top: 0.2rem;
+            margin-bottom: 0.72rem;
+        }
+        .qj-policy-metric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.56rem;
+        }
+        .qj-policy-metric-grid div {
+            background: #f8faf9;
+            border: 1px solid #edf1f2;
+            border-radius: 11px;
+            padding: 0.62rem;
+        }
+        .qj-policy-metric-grid span,
+        .qj-policy-metric-grid small {
+            display: block;
+            color: #718086;
+            font-size: 0.76rem;
+            line-height: 1.25;
+        }
+        .qj-policy-metric-grid b {
+            display: block;
+            color: #243238;
+            font-size: 1.1rem;
+            font-weight: 900;
+            margin-top: 0.08rem;
+        }
+        .qj-policy-warning {
+            background: #fff7e8;
+            border: 1px solid #ead5ae;
+            border-radius: 10px;
+            color: #8a5e22;
+            font-weight: 820;
+            font-size: 0.88rem;
+            padding: 0.48rem 0.6rem;
+            margin-top: 0.7rem;
+        }
+        .qj-policy-description {
+            color: #58676d;
+            font-size: 0.94rem;
+            line-height: 1.55;
+            margin-top: 0.82rem;
+        }
         </style>
         """,
         unsafe_allow_html=True,
