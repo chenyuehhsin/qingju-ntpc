@@ -1,0 +1,301 @@
+{
+  "jobs": {
+    "raw_rows": 3584,
+    "valid_district_rows": 3584,
+    "district_count": 29,
+    "encoding": "utf-8-sig",
+    "monthly_salary_rows": 2850,
+    "invalid_or_non_monthly_salary_rows": 734,
+    "columns": [
+      "OCCU_DESC",
+      "WK_TYPE",
+      "CJOB1_COUNT",
+      "CJOB_NAME1",
+      "CJOB2_COUNT",
+      "CJOB_NAME2",
+      "JOB_PERSON",
+      "STOP_DATE",
+      "JOB_DETAIL",
+      "CITYNAME",
+      "EXPERIENCE",
+      "WKTIME",
+      "SALARYCD",
+      "NT_L",
+      "NT_U",
+      "EDGRDESC",
+      "URL_QUERY",
+      "COMPNAME",
+      "TRANDATE",
+      "district",
+      "zipcode"
+    ],
+    "missing_values": {
+      "OCCU_DESC": 224,
+      "WK_TYPE": 0,
+      "CJOB1_COUNT": 0,
+      "CJOB_NAME1": 0,
+      "CJOB2_COUNT": 0,
+      "CJOB_NAME2": 0,
+      "JOB_PERSON": 0,
+      "STOP_DATE": 0,
+      "JOB_DETAIL": 0,
+      "CITYNAME": 0,
+      "EXPERIENCE": 0,
+      "WKTIME": 188,
+      "SALARYCD": 0,
+      "NT_L": 0,
+      "NT_U": 0,
+      "EDGRDESC": 0,
+      "URL_QUERY": 0,
+      "COMPNAME": 0,
+      "TRANDATE": 0,
+      "district": 0,
+      "zipcode": 0
+    },
+    "missing_districts": [],
+    "latest_date": "2026-08-25"
+  },
+  "housing": {
+    "raw_rows": 45932,
+    "district_count_raw": 27,
+    "clean_rows": 45670,
+    "district_count_clean": 27,
+    "excluded_non_housing_target": 137,
+    "excluded_invalid_district": 0,
+    "excluded_rent_outside_range": 125,
+    "rent_range": [
+      1000,
+      200000
+    ],
+    "rental_types": [
+      "分層出租",
+      "分租套房",
+      "分租雅房",
+      "整棟(戶)出租",
+      "獨立套房"
+    ],
+    "parking_rent_subtracted": true,
+    "encoding": "utf-8-sig",
+    "columns": [
+      "district",
+      "rps01",
+      "rps02",
+      "rps03_area",
+      "rps04",
+      "rps05",
+      "rps06",
+      "rps07_yyymmddroc",
+      "rps08",
+      "rps09",
+      "rps10_quantity",
+      "rps11",
+      "rps12",
+      "rps13",
+      "rps14_yyymmddroc",
+      "rps15_area",
+      "rps16_quantity",
+      "rps17_quantity",
+      "rps18_quantity",
+      "rps19",
+      "rps20",
+      "rps21",
+      "rps22_amountsunitdollars",
+      "rps23_amountsunitdollars",
+      "rps24",
+      "rps25_area",
+      "rps26_amountsunitdollars",
+      "rps27",
+      "rps28",
+      "rps29",
+      "rps30",
+      "rps31",
+      "rps32",
+      "rps33",
+      "rps34"
+    ],
+    "missing_values": {
+      "district": 0,
+      "rps01": 0,
+      "rps02": 0,
+      "rps03_area": 0,
+      "rps04": 45290,
+      "rps05": 45903,
+      "rps06": 45903,
+      "rps07_yyymmddroc": 0,
+      "rps08": 0,
+      "rps09": 135,
+      "rps10_quantity": 122,
+      "rps11": 0,
+      "rps12": 139,
+      "rps13": 124,
+      "rps14_yyymmddroc": 2112,
+      "rps15_area": 0,
+      "rps16_quantity": 0,
+      "rps17_quantity": 0,
+      "rps18_quantity": 0,
+      "rps19": 0,
+      "rps20": 0,
+      "rps21": 0,
+      "rps22_amountsunitdollars": 0,
+      "rps23_amountsunitdollars": 263,
+      "rps24": 41146,
+      "rps25_area": 0,
+      "rps26_amountsunitdollars": 0,
+      "rps27": 9404,
+      "rps28": 0,
+      "rps29": 2304,
+      "rps30": 137,
+      "rps31": 0,
+      "rps32": 137,
+      "rps33": 2320,
+      "rps34": 8094
+    },
+    "missing_districts": [
+      "坪林區",
+      "平溪區"
+    ],
+    "latest_date": "2026-06-10"
+  },
+  "youth": {
+    "source_rows": 1342,
+    "valid_rows": 1342,
+    "district_count": 29,
+    "periods": [
+      "113Y12M"
+    ],
+    "exact_age_range": "20–34歲",
+    "estimated_age_range": "18–35歲",
+    "estimation_method": "15–19歲取2/5，加20–34歲，再加35–39歲的1/5；假設五歲年齡帶內均勻分布",
+    "total_youth_20_34": 739426,
+    "total_estimated_youth_18_35": 863255,
+    "encoding": "utf-8-sig",
+    "columns": [
+      "INFO_TIME",
+      "CODE2",
+      "CODE1",
+      "A15A19_CNT",
+      "A20A24_CNT",
+      "A25A29_CNT",
+      "A30A34_CNT",
+      "A35A39_CNT",
+      "A40A44_CNT",
+      "A45A49_CNT",
+      "A50A54_CNT",
+      "A55A59_CNT",
+      "A60A64_CNT",
+      "A65UP_CNT",
+      "YOUTH_20_34",
+      "EST_YOUTH_18_35"
+    ],
+    "missing_values": {
+      "INFO_TIME": 0,
+      "CODE2": 0,
+      "CODE1": 1342,
+      "A15A19_CNT": 0,
+      "A20A24_CNT": 0,
+      "A25A29_CNT": 0,
+      "A30A34_CNT": 0,
+      "A35A39_CNT": 0,
+      "A40A44_CNT": 0,
+      "A45A49_CNT": 0,
+      "A50A54_CNT": 0,
+      "A55A59_CNT": 0,
+      "A60A64_CNT": 0,
+      "A65UP_CNT": 0,
+      "YOUTH_20_34": 0,
+      "EST_YOUTH_18_35": 0
+    },
+    "missing_districts": []
+  },
+  "thresholds": {
+    "median_hiring_count": 267.0,
+    "median_rent": 17500.0,
+    "diagnosis": {
+      "median_estimated_registered_youth_18_35": 20976.0,
+      "median_hiring_count": 267.0,
+      "median_rent": 17500.0
+    }
+  },
+  "classification": {
+    "就業安居平衡型": [
+      "三峽區",
+      "淡水區",
+      "八里區"
+    ],
+    "高機會高負擔型": [
+      "板橋區",
+      "三重區",
+      "中和區",
+      "新莊區",
+      "新店區",
+      "樹林區",
+      "鶯歌區",
+      "汐止區",
+      "土城區",
+      "蘆洲區",
+      "五股區",
+      "林口區"
+    ],
+    "低成本低機會型": [
+      "瑞芳區",
+      "深坑區",
+      "三芝區",
+      "石門區",
+      "雙溪區",
+      "貢寮區",
+      "金山區",
+      "萬里區",
+      "烏來區"
+    ],
+    "高負擔低機會型": [
+      "永和區",
+      "泰山區",
+      "石碇區"
+    ]
+  },
+  "diagnosis": {
+    "低成本資源待查型": [
+      "瑞芳區",
+      "深坑區",
+      "三芝區",
+      "石門區",
+      "雙溪區",
+      "貢寮區",
+      "金山區",
+      "萬里區",
+      "烏來區"
+    ],
+    "就業吸引潛力型": [
+      "八里區"
+    ],
+    "資料待補型": [
+      "坪林區",
+      "平溪區"
+    ],
+    "青年承接平衡型": [
+      "三峽區",
+      "淡水區"
+    ],
+    "青年集中雙重待查型": [
+      "永和區"
+    ],
+    "青年集中高負擔型": [
+      "板橋區",
+      "三重區",
+      "中和區",
+      "新莊區",
+      "新店區",
+      "樹林區",
+      "鶯歌區",
+      "汐止區",
+      "土城區",
+      "蘆洲區",
+      "五股區",
+      "林口區"
+    ],
+    "高負擔資源待查型": [
+      "泰山區",
+      "石碇區"
+    ]
+  }
+}
