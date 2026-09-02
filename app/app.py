@@ -111,22 +111,40 @@ def main() -> None:
     )
     apply_styles()
 
+    page_options = ["青年職涯探索", "青年安居推薦", "青年局 Policy Lens"]
+    current_page = st.session_state.get("app_page", "青年職涯探索")
+    if current_page == "Career Evidence Viewer":
+        current_page = "青年職涯探索"
+    if current_page == "青年生活圈推薦":
+        current_page = "青年安居推薦"
+    if current_page not in page_options:
+        current_page = "青年職涯探索"
+
     page = st.segmented_control(
         "頁面",
-        options=["青年生活圈推薦", "Career Evidence Viewer", "青年局 Policy Lens"],
-        default=st.session_state.get("app_page", "青年生活圈推薦"),
+        options=page_options,
+        default=current_page,
         key="app_page",
         label_visibility="collapsed",
     )
     if page is None:
-        page = "青年生活圈推薦"
-    if page == "Career Evidence Viewer":
+        page = "青年職涯探索"
+    st.markdown(
+        """
+        <div class="qj-audience-strip">
+            <span class="qj-audience-youth">青年端：職涯探索＋安居推薦</span>
+            <span class="qj-audience-policy">政策端：青年局 Policy Lens</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    if page == "青年職涯探索":
         try:
-            candidates_v35, training_v4, course_mapping = load_career_evidence_data()
+            candidates_v35, training_v4, course_mapping, taiwanjobs_raw = load_career_evidence_data()
         except Exception as exc:
             st.error(f"Career evidence data loading failed: {exc}")
             st.stop()
-        render_career_evidence_viewer(candidates_v35, training_v4, course_mapping)
+        render_career_evidence_viewer(candidates_v35, training_v4, course_mapping, taiwanjobs_raw)
         return
     if page == "青年局 Policy Lens":
         try:
@@ -137,6 +155,9 @@ def main() -> None:
             st.stop()
         render_policy_lens(policy, towns, cities)
         return
+
+    if page != "青年安居推薦":
+        page = "青年安居推薦"
 
     nav_options = ["四模式總覽", *MODE_ORDER]
     current_view = st.session_state.get("main_view", "四模式總覽")
@@ -202,7 +223,7 @@ def main() -> None:
     with header_left:
         st.markdown(
             """
-            <div class="qj-header-title">青聚新北｜青年生活圈推薦</div>
+            <div class="qj-header-title">青聚新北｜青年安居推薦</div>
             <div class="qj-subtitle">輸入工作地址後，我住新北哪裡比較適合？</div>
             """,
             unsafe_allow_html=True,

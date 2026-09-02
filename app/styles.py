@@ -269,6 +269,31 @@ def apply_styles() -> None:
             margin-top: 0.55rem;
             box-shadow: 0 1px 2px rgba(36, 50, 56, 0.04);
         }
+        .qj-audience-strip {
+            align-items: center;
+            color: #65747a;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.48rem;
+            justify-content: center;
+            margin: 0.2rem 0 0.85rem 0;
+        }
+        .qj-audience-strip span {
+            border: 1px solid #dbe6df;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 820;
+            line-height: 1;
+            padding: 0.38rem 0.66rem;
+        }
+        .qj-audience-youth {
+            background: #eef7f1;
+            color: #315f45;
+        }
+        .qj-audience-policy {
+            background: #f8faf9;
+            color: #69777d;
+        }
         .qj-section-note {
             color: #65747a;
             font-size: 0.92rem;
@@ -618,7 +643,23 @@ def apply_styles() -> None:
         .qj-career-card {
             border-top: 5px solid #78B995;
             padding: 0.95rem;
-            min-height: 428px;
+            min-height: 330px;
+        }
+        .qj-career-card-high-reuse {
+            border-top-color: #5da87d;
+        }
+        .qj-career-card-partial-reuse {
+            border-top-color: #78B995;
+        }
+        .qj-career-card-major-reskilling {
+            border-top-color: #d39b43;
+        }
+        .qj-career-intro {
+            color: #46575d;
+            font-size: 0.92rem;
+            line-height: 1.55;
+            margin-top: 0.66rem;
+            min-height: 86px;
         }
         .qj-career-badge {
             display: inline-flex;
@@ -643,10 +684,138 @@ def apply_styles() -> None:
         .qj-career-profile-grid .qj-metric {
             min-height: 68px;
         }
+        .qj-career-card-grid {
+            grid-template-columns: 1fr;
+        }
+        .qj-transition-map {
+            background: #ffffff;
+            border: 1px solid var(--qj-line);
+            border-radius: 12px;
+            box-shadow: 0 1px 2px rgba(36, 50, 56, 0.04);
+            margin: 0.8rem 0 0.9rem 0;
+            padding: 0.95rem;
+        }
+        .qj-transition-map-head {
+            align-items: center;
+            border-bottom: 1px solid #edf1f2;
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding-bottom: 0.68rem;
+        }
+        .qj-transition-source,
+        .qj-transition-target {
+            color: #243238;
+            font-size: 0.92rem;
+            font-weight: 850;
+            white-space: nowrap;
+        }
+        .qj-transition-target {
+            color: #315f45;
+            text-align: right;
+        }
+        .qj-transition-lanes {
+            display: grid;
+            gap: 0.62rem;
+            margin-top: 0.8rem;
+        }
+        .qj-transition-lane {
+            align-items: stretch;
+            display: grid;
+            grid-template-columns: 96px 52px minmax(0, 1fr);
+            gap: 0.55rem;
+        }
+        .qj-transition-origin {
+            align-items: center;
+            background: #eef7f1;
+            border: 1px solid #d7eadf;
+            border-radius: 10px;
+            color: #315f45;
+            display: flex;
+            font-size: 0.9rem;
+            font-weight: 900;
+            justify-content: center;
+            min-height: 104px;
+            padding: 0.55rem;
+            text-align: center;
+        }
+        .qj-transition-arrow {
+            align-self: center;
+            background: linear-gradient(90deg, #78B995, #b9cf88);
+            border-radius: 999px;
+            height: 4px;
+            position: relative;
+        }
+        .qj-transition-arrow::after {
+            border-bottom: 6px solid transparent;
+            border-left: 8px solid #b9cf88;
+            border-top: 6px solid transparent;
+            content: "";
+            position: absolute;
+            right: -2px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .qj-transition-arrow-long {
+            background: linear-gradient(90deg, #78B995, #d39b43);
+        }
+        .qj-transition-arrow-long::after {
+            border-left-color: #d39b43;
+        }
+        .qj-transition-node {
+            background: #fbfdfb;
+            border: 1px solid #dceae1;
+            border-top: 4px solid #78B995;
+            border-radius: 10px;
+            min-height: 104px;
+            min-width: 0;
+            padding: 0.68rem;
+        }
+        .qj-transition-node-title {
+            color: #243238;
+            font-size: 1rem;
+            font-weight: 900;
+            line-height: 1.2;
+            word-break: keep-all;
+        }
+        .qj-transition-node-intro {
+            color: #58676d;
+            font-size: 0.84rem;
+            line-height: 1.45;
+            margin-top: 0.28rem;
+            word-break: normal;
+        }
+        .qj-transition-node-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.32rem;
+            margin-top: 0.48rem;
+        }
+        .qj-transition-node-meta span {
+            background: #ffffff;
+            border: 1px solid #edf1f2;
+            border-radius: 999px;
+            color: #4c6066;
+            font-size: 0.72rem;
+            font-weight: 820;
+            line-height: 1;
+            padding: 0.28rem 0.48rem;
+        }
         .qj-career-detail-block {
             border-bottom: 1px solid #edf1f2;
             padding-bottom: 0.72rem;
             margin-bottom: 0.72rem;
+        }
+        .qj-path-conclusion {
+            background: #eef7f1;
+            border: 1px solid #d7eadf;
+            border-radius: 10px;
+            color: #315f45;
+            font-size: 0.98rem;
+            font-weight: 850;
+            line-height: 1.45;
+            margin-bottom: 0.82rem;
+            padding: 0.72rem 0.78rem;
         }
         .qj-career-detail-block:last-child {
             border-bottom: 0;
@@ -682,6 +851,64 @@ def apply_styles() -> None:
             background: #f8faf9;
             border-color: #edf1f2;
             color: #69777d;
+        }
+        .qj-job-card {
+            background: #ffffff;
+            border: 1px solid #dfe9e3;
+            border-left: 5px solid #78B995;
+            border-radius: 10px;
+            box-shadow: 0 1px 2px rgba(36, 50, 56, 0.035);
+            margin-top: 0.62rem;
+            padding: 0.72rem 0.78rem;
+        }
+        .qj-job-title {
+            color: #243238;
+            font-size: 0.98rem;
+            font-weight: 900;
+            line-height: 1.28;
+        }
+        .qj-job-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.36rem;
+            margin-top: 0.44rem;
+        }
+        .qj-job-meta span {
+            background: #f8faf9;
+            border: 1px solid #edf1f2;
+            border-radius: 999px;
+            color: #52646a;
+            font-size: 0.76rem;
+            font-weight: 780;
+            line-height: 1.15;
+            padding: 0.28rem 0.48rem;
+        }
+        .qj-job-summary {
+            color: #46575d;
+            font-size: 0.86rem;
+            line-height: 1.5;
+            margin-top: 0.5rem;
+        }
+        .qj-job-source {
+            font-size: 0.78rem;
+            font-weight: 820;
+            margin-top: 0.5rem;
+        }
+        .qj-job-source a {
+            color: #315f45;
+            text-decoration: none;
+        }
+        .qj-job-review {
+            background: #fff7e8;
+            border: 1px solid #ead5ae;
+            border-radius: 999px;
+            color: #7a5a24;
+            display: inline-flex;
+            font-size: 0.74rem;
+            font-weight: 850;
+            line-height: 1;
+            margin-top: 0.38rem;
+            padding: 0.28rem 0.5rem;
         }
         </style>
         """,

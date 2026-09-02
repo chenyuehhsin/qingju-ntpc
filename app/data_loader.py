@@ -17,6 +17,7 @@ POLICY_LENS_CSV = PROJECT_ROOT / "data" / "processed" / "policy" / "policy_lens_
 CAREER_V35_CANDIDATES_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_technology_candidates_v35.csv"
 CAREER_V4_TRAINING_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_technology_training_v4.csv"
 CAREER_TRAINING_MAPPING_CSV = PROJECT_ROOT / "data" / "processed" / "career" / "career_training_skill_mapping.csv"
+CAREER_TAIWANJOBS_RAW_CSV = PROJECT_ROOT / "data" / "raw" / "career" / "jobs" / "taiwanjobs_open_jobs_2026-09-01.csv"
 BOUNDARY_SHP = (
     PROJECT_ROOT
     / "data"
@@ -326,10 +327,15 @@ def load_policy_lens_data() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     missing_files = [
         path.relative_to(PROJECT_ROOT)
-        for path in [CAREER_V35_CANDIDATES_CSV, CAREER_V4_TRAINING_CSV, CAREER_TRAINING_MAPPING_CSV]
+        for path in [
+            CAREER_V35_CANDIDATES_CSV,
+            CAREER_V4_TRAINING_CSV,
+            CAREER_TRAINING_MAPPING_CSV,
+            CAREER_TAIWANJOBS_RAW_CSV,
+        ]
         if not path.exists()
     ]
     if missing_files:
@@ -338,6 +344,7 @@ def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
     candidates_v35 = pd.read_csv(CAREER_V35_CANDIDATES_CSV)
     training_v4 = pd.read_csv(CAREER_V4_TRAINING_CSV)
     course_mapping = pd.read_csv(CAREER_TRAINING_MAPPING_CSV)
+    taiwanjobs_raw = pd.read_csv(CAREER_TAIWANJOBS_RAW_CSV, encoding="utf-8-sig")
 
     required_v35 = {
         "target_occupation_code",
@@ -390,13 +397,27 @@ def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
         "mapping_confidence",
         "manual_review_needed",
     }
+    required_taiwanjobs = {
+        "OCCU_DESC（職務名稱）",
+        "CJOB_NAME1（職務大類別名稱）",
+        "CJOB_NAME2（職務小類別名稱）",
+        "JOB_PERSON（雇用人數）",
+        "JOB_DETAIL（工作內容）",
+        "CITYNAME（工作地點）",
+        "SALARYCD（核薪方式）",
+        "NT_L（薪資範圍下限）",
+        "NT_U（薪資範圍上限）",
+        "URL_QUERY（職缺資料URL）",
+        "COMPNAME（公司名稱）",
+    }
     for label, frame, required in [
         ("v3.5 candidates", candidates_v35, required_v35),
         ("v4 training", training_v4, required_v4),
         ("v4 course mapping", course_mapping, required_mapping),
+        ("TaiwanJobs raw jobs", taiwanjobs_raw, required_taiwanjobs),
     ]:
         missing = sorted(required - set(frame.columns))
         if missing:
             raise RuntimeError(f"Career {label} is missing required columns: {missing}")
 
-    return candidates_v35, training_v4, course_mapping
+    return candidates_v35, training_v4, course_mapping, taiwanjobs_raw
