@@ -1,0 +1,161 @@
+{
+  "run_started_at": "2026-08-31T02:51:11",
+  "run_completed_at": "2026-08-31T02:51:18",
+  "status": "success",
+  "snapshot_month": "2026-08",
+  "steps": [
+    {
+      "step": "stage_raw_sources",
+      "status": "ok"
+    },
+    {
+      "step": "C:\\Users\\Administrator\\Anaconda3\\python.exe scripts/build_youth_employment_map.py",
+      "status": "ok"
+    },
+    {
+      "step": "C:\\Users\\Administrator\\Anaconda3\\python.exe scripts/export_website_data.py",
+      "status": "ok"
+    },
+    {
+      "step": "C:\\Users\\Administrator\\Anaconda3\\python.exe scripts/validate_youth_employment_data.py",
+      "status": "ok"
+    },
+    {
+      "step": "C:\\Users\\Administrator\\Anaconda3\\python.exe scripts/create_monthly_snapshot.py --month 2026-08 --force",
+      "status": "ok"
+    },
+    {
+      "step": "C:\\Users\\Administrator\\Anaconda3\\python.exe scripts/validate_historical_data.py",
+      "status": "ok"
+    }
+  ],
+  "errors": [],
+  "warnings": [
+    "ris_village_single_age_ntpc_11507_page1.json extra field: district_code",
+    "ris_village_single_age_ntpc_11507_page1.json extra field: village",
+    "ris_village_single_age_ntpc_11507_page1.json extra field: household_no",
+    "ris_village_single_age_ntpc_11507_page1.json extra field: people_total",
+    "ris_village_single_age_ntpc_11507_page1.json extra field: people_total_m",
+    "ris_village_single_age_ntpc_11507_page1.json extra field: people_total_f",
+    "ris_village_single_age_ntpc_11507_page1.json extra field: people_age_000_m",
+    "ris_village_single_age_ntpc_11507_page1.json extra field: people_age_000_f",
+    "ris_village_single_age_ntpc_11507_page1.json extra field: people_age_001_m",
+    "ris_village_single_age_ntpc_11507_page1.json extra field: people_age_001_f",
+    "taiwanjobs_207_萬里區.xml observed field: OCCU_DESC（職務名稱）",
+    "taiwanjobs_207_萬里區.xml observed field: WK_TYPE（職務性質）",
+    "taiwanjobs_207_萬里區.xml observed field: CJOB1_COUNT（職務大類別代碼）",
+    "taiwanjobs_207_萬里區.xml observed field: CJOB_NAME1（職務大類別名稱）",
+    "taiwanjobs_207_萬里區.xml observed field: CJOB2_COUNT（職務小類別代碼）",
+    "taiwanjobs_207_萬里區.xml observed field: CJOB_NAME2（職務小類別名稱）",
+    "taiwanjobs_207_萬里區.xml observed field: JOB_PERSON（雇用人數）",
+    "taiwanjobs_207_萬里區.xml observed field: STOP_DATE（應徵截止日期）",
+    "taiwanjobs_208_金山區.xml observed field: OCCU_DESC（職務名稱）",
+    "taiwanjobs_208_金山區.xml observed field: WK_TYPE（職務性質）"
+  ],
+  "preflight": {
+    "target_snapshot": "2026-08",
+    "latest_existing_snapshot": "2026-08",
+    "available_periods": [
+      "2026-08"
+    ],
+    "previous_available_period": null,
+    "period_gap_months": null,
+    "district_count": 29,
+    "output_paths": {
+      "staging": "data\\staging\\2026-08",
+      "history": "data\\history\\2026-08",
+      "raw_snapshot": "data\\raw_snapshots\\2026-08",
+      "pipeline_report": "reports\\pipeline_runs\\2026-08.json"
+    },
+    "sources": {
+      "population": {
+        "reference_month": "2026-07",
+        "freshness": {
+          "status": "Fresh",
+          "lag_months": 1
+        },
+        "row_count": 1039,
+        "planned_files": [
+          "data\\raw\\ris_village_single_age_ntpc_11507_page1.json"
+        ]
+      },
+      "jobs": {
+        "jobs_snapshot_as_of": "2026-08-30T00:45:24",
+        "download_snapshot_month": "2026-08",
+        "freshness": {
+          "status": "Fresh",
+          "lag_months": 0
+        },
+        "row_count": 6011,
+        "planned_files": [
+          "data\\raw\\taiwanjobs\\taiwanjobs_207_萬里區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_208_金山區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_220_板橋區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_221_汐止區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_222_深坑區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_223_石碇區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_224_瑞芳區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_226_平溪區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_227_雙溪區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_228_貢寮區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_231_新店區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_232_坪林區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_233_烏來區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_234_永和區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_235_中和區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_236_土城區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_237_三峽區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_238_樹林區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_239_鶯歌區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_241_三重區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_242_新莊區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_243_泰山區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_244_林口區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_247_蘆洲區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_248_五股區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_249_八里區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_251_淡水區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_252_三芝區.xml",
+          "data\\raw\\taiwanjobs\\taiwanjobs_253_石門區.xml",
+          "data\\raw\\dgpa_public_sector_jobs.xml"
+        ]
+      }
+    },
+    "will_produce_mom": false,
+    "would_create_snapshot": true,
+    "source_unavailable": false,
+    "errors": [],
+    "warnings": [
+      "ris_village_single_age_ntpc_11507_page1.json extra field: district_code",
+      "ris_village_single_age_ntpc_11507_page1.json extra field: village",
+      "ris_village_single_age_ntpc_11507_page1.json extra field: household_no",
+      "ris_village_single_age_ntpc_11507_page1.json extra field: people_total",
+      "ris_village_single_age_ntpc_11507_page1.json extra field: people_total_m",
+      "ris_village_single_age_ntpc_11507_page1.json extra field: people_total_f",
+      "ris_village_single_age_ntpc_11507_page1.json extra field: people_age_000_m",
+      "ris_village_single_age_ntpc_11507_page1.json extra field: people_age_000_f",
+      "ris_village_single_age_ntpc_11507_page1.json extra field: people_age_001_m",
+      "ris_village_single_age_ntpc_11507_page1.json extra field: people_age_001_f",
+      "taiwanjobs_207_萬里區.xml observed field: OCCU_DESC（職務名稱）",
+      "taiwanjobs_207_萬里區.xml observed field: WK_TYPE（職務性質）",
+      "taiwanjobs_207_萬里區.xml observed field: CJOB1_COUNT（職務大類別代碼）",
+      "taiwanjobs_207_萬里區.xml observed field: CJOB_NAME1（職務大類別名稱）",
+      "taiwanjobs_207_萬里區.xml observed field: CJOB2_COUNT（職務小類別代碼）",
+      "taiwanjobs_207_萬里區.xml observed field: CJOB_NAME2（職務小類別名稱）",
+      "taiwanjobs_207_萬里區.xml observed field: JOB_PERSON（雇用人數）",
+      "taiwanjobs_207_萬里區.xml observed field: STOP_DATE（應徵截止日期）",
+      "taiwanjobs_208_金山區.xml observed field: OCCU_DESC（職務名稱）",
+      "taiwanjobs_208_金山區.xml observed field: WK_TYPE（職務性質）"
+    ],
+    "forecast_readiness_after_run": {
+      "period_count": 1,
+      "level": "insufficient",
+      "label": "尚不足",
+      "note": "此分類只代表資料量準備度，不是預測品質保證。"
+    }
+  },
+  "raw_snapshot": "data\\raw_snapshots\\2026-08",
+  "snapshot_created": true,
+  "previous_period": null,
+  "MoM_available": false
+}

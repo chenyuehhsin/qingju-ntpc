@@ -1,0 +1,266 @@
+{
+  "updated_at": "2026-08-30T00:45:24",
+  "sources": [
+    {
+      "district": "板橋區",
+      "zipno": "220",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=220&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_220_板橋區.xml",
+      "downloaded_at": "2026-08-30T00:45:15",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "三重區",
+      "zipno": "241",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=241&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_241_三重區.xml",
+      "downloaded_at": "2026-08-30T00:45:16",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "中和區",
+      "zipno": "235",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=235&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_235_中和區.xml",
+      "downloaded_at": "2026-08-30T00:45:16",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "永和區",
+      "zipno": "234",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=234&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_234_永和區.xml",
+      "downloaded_at": "2026-08-30T00:45:16",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "新莊區",
+      "zipno": "242",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=242&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_242_新莊區.xml",
+      "downloaded_at": "2026-08-30T00:45:17",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "新店區",
+      "zipno": "231",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=231&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_231_新店區.xml",
+      "downloaded_at": "2026-08-30T00:45:17",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "樹林區",
+      "zipno": "238",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=238&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_238_樹林區.xml",
+      "downloaded_at": "2026-08-30T00:45:18",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "鶯歌區",
+      "zipno": "239",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=239&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_239_鶯歌區.xml",
+      "downloaded_at": "2026-08-30T00:45:18",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "三峽區",
+      "zipno": "237",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=237&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_237_三峽區.xml",
+      "downloaded_at": "2026-08-30T00:45:18",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "淡水區",
+      "zipno": "251",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=251&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_251_淡水區.xml",
+      "downloaded_at": "2026-08-30T00:45:18",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "汐止區",
+      "zipno": "221",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=221&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_221_汐止區.xml",
+      "downloaded_at": "2026-08-30T00:45:19",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "瑞芳區",
+      "zipno": "224",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=224&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_224_瑞芳區.xml",
+      "downloaded_at": "2026-08-30T00:45:20",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "土城區",
+      "zipno": "236",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=236&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_236_土城區.xml",
+      "downloaded_at": "2026-08-30T00:45:21",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "蘆洲區",
+      "zipno": "247",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=247&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_247_蘆洲區.xml",
+      "downloaded_at": "2026-08-30T00:45:21",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "五股區",
+      "zipno": "248",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=248&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_248_五股區.xml",
+      "downloaded_at": "2026-08-30T00:45:21",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "泰山區",
+      "zipno": "243",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=243&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_243_泰山區.xml",
+      "downloaded_at": "2026-08-30T00:45:21",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "林口區",
+      "zipno": "244",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=244&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_244_林口區.xml",
+      "downloaded_at": "2026-08-30T00:45:22",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "深坑區",
+      "zipno": "222",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=222&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_222_深坑區.xml",
+      "downloaded_at": "2026-08-30T00:45:22",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "石碇區",
+      "zipno": "223",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=223&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_223_石碇區.xml",
+      "downloaded_at": "2026-08-30T00:45:22",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "坪林區",
+      "zipno": "232",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=232&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_232_坪林區.xml",
+      "downloaded_at": "2026-08-30T00:45:22",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "三芝區",
+      "zipno": "252",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=252&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_252_三芝區.xml",
+      "downloaded_at": "2026-08-30T00:45:23",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "石門區",
+      "zipno": "253",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=253&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_253_石門區.xml",
+      "downloaded_at": "2026-08-30T00:45:23",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "八里區",
+      "zipno": "249",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=249&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_249_八里區.xml",
+      "downloaded_at": "2026-08-30T00:45:23",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "平溪區",
+      "zipno": "226",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=226&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_226_平溪區.xml",
+      "downloaded_at": "2026-08-30T00:45:23",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "雙溪區",
+      "zipno": "227",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=227&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_227_雙溪區.xml",
+      "downloaded_at": "2026-08-30T00:45:23",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "貢寮區",
+      "zipno": "228",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=228&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_228_貢寮區.xml",
+      "downloaded_at": "2026-08-30T00:45:24",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "金山區",
+      "zipno": "208",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=208&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_208_金山區.xml",
+      "downloaded_at": "2026-08-30T00:45:24",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "萬里區",
+      "zipno": "207",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=207&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_207_萬里區.xml",
+      "downloaded_at": "2026-08-30T00:45:24",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    },
+    {
+      "district": "烏來區",
+      "zipno": "233",
+      "url": "https://free.taiwanjobs.gov.tw/webservice_taipei/Webservice.ashx?zipno=233&count=1000",
+      "local_path": "data\\raw\\taiwanjobs\\taiwanjobs_233_烏來區.xml",
+      "downloaded_at": "2026-08-30T00:45:24",
+      "source": "勞動部勞動力發展署台灣就業通網站職缺清單 OpenData API",
+      "limit": "API 每次查詢最多 1000 筆；本腳本以新北市各行政區 3 碼郵遞區號分區下載。"
+    }
+  ]
+}

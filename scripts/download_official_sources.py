@@ -1,0 +1,132 @@
+from __future__ import annotations
+
+import argparse
+from dataclasses import asdict, dataclass
+from datetime import datetime
+import json
+from pathlib import Path
+from urllib.request import urlretrieve
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+RAW_DIR = PROJECT_ROOT / "data" / "raw"
+MANIFEST_PATH = RAW_DIR / "source_manifest.json"
+
+
+@dataclass(frozen=True)
+class Source:
+    filename: str
+    url: str
+    publisher: str
+    dataset: str
+    format: str
+    purpose: str
+    limitation: str | None = None
+
+
+SOURCES = [
+    Source(
+        filename="ntpc_population_age_5year.csv",
+        url="https://data.ntpc.gov.tw/api/datasets/8308ab58-62d1-424e-8314-24b65b7ab492/csv/file",
+        publisher="新北市政府主計處",
+        dataset="現住人口之年齡分配",
+        format="CSV",
+        purpose="新北市行政區 5 歲年齡組人口盤點與資料可用性比對",
+        limitation="只有 5 歲年齡組，無法精確計算 18–35 歲青年人口。",
+    ),
+    Source(
+        filename="moi_population_single_age_query_113.csv",
+        url="https://statis.moi.gov.tw/micst/webMain.aspx?sys=220&kind=21&type=1&funid=c0110203&cycle=41&outmode=12&utf=1&compmode=0&outkind=3&fldspc=0,103,&codspc0=0,2,3,2,6,1,9,1,12,1,15,16,&codlst1=111&rdm=rjxondNm&ym=11300&ymt=11312",
+        publisher="內政部統計處",
+        dataset="人口數單一年齡組─按性別、區域別分",
+        format="CSV",
+        purpose="單一年齡人口欄位格式參考",
+        limitation="目前下載參數只取得縣市層級，未包含新北市 29 行政區。",
+    ),
+    Source(
+        filename="moi_population_single_age_by_area.csv",
+        url="https://opdadm.moi.gov.tw/api/v1/no-auth/resource/api/dataset/444B4051-AD04-4874-9CFF-CD8D12EA2D0A/resource/A4C4FC3A-8C07-4928-8D20-AAA129194312/download",
+        publisher="內政部統計處",
+        dataset="人口數單一年齡組─按性別、區域別分",
+        format="CSV",
+        purpose="政府資料開放平臺資源檔案備查",
+        limitation="目前資源檔未包含新北市 29 行政區明細。",
+    ),
+    Source(
+        filename="ris_village_single_age_ntpc_11507_page1.json",
+        url="https://www.ris.gov.tw/rs-opendata/api/v1/datastore/ODRP014/11507?COUNTY=%E6%96%B0%E5%8C%97%E5%B8%82",
+        publisher="內政部戶政司",
+        dataset="村里戶數、單一年齡人口（新增區域代碼）",
+        format="JSON",
+        purpose="以村里單一年齡人口彙整新北市 29 行政區 18–35 歲青年人口",
+        limitation="資料期間為民國 115 年 7 月；以戶政司 API 回傳的新北市村里資料彙總。",
+    ),
+    Source(
+        filename="dgpa_public_sector_jobs.xml",
+        url="https://web3.dgpa.gov.tw/WANT03FRONT/AP/WANTF00003.aspx?GETJOB=Y",
+        publisher="行政院人事行政總處",
+        dataset="行政院人事行政總處事求人機關徵才資料",
+        format="XML",
+        purpose="以工作地址歸戶到新北市行政區，計算公部門職缺刊登筆數與需求人數",
+        limitation="只涵蓋公部門事求人職缺，不代表民間整體就業市場；資料未提供薪資欄位。",
+    ),
+    Source(
+        filename="ntpc_admin_area_map_links.csv",
+        url="https://data.ntpc.gov.tw/api/datasets/214634ca-3c71-4fc8-8f46-faffe97f23ff/csv/file",
+        publisher="新北市政府民政局",
+        dataset="新北市行政區域圖",
+        format="CSV",
+        purpose="記錄新北市政府民政局公開的行政區域圖下載頁面",
+        limitation="CSV 只提供下載連結，不含邊界幾何。",
+    ),
+    Source(
+        filename="new_taipei_districts.geojson",
+        url="https://sewer.ntpc.gov.tw/arcgis/rest/services/Sewer/Basemap/MapServer/18/query?where=1%3D1&outFields=*&outSR=4326&f=geojson",
+        publisher="新北市政府",
+        dataset="新北市政府行政區 ArcGIS 圖層",
+        format="GeoJSON",
+        purpose="Dashboard choropleth 使用的 29 行政區邊界",
+        limitation="由新北市政府 ArcGIS 圖層轉出 GeoJSON，座標系統指定 WGS84。",
+    ),
+]
+
+
+def write_manifest(downloaded: dict[str, str]) -> None:
+    payload = {
+        "updated_at": datetime.now().isoformat(timespec="seconds"),
+        "sources": [
+            {
+                **asdict(source),
+                "local_path": str((RAW_DIR / source.filename).relative_to(PROJECT_ROOT)),
+                "download_status": downloaded.get(source.filename, "skipped_existing"),
+            }
+            for source in SOURCES
+        ],
+    }
+    MANIFEST_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Download official raw data without overwriting by default.")
+    parser.add_argument("--force", action="store_true", help="Overwrite existing raw files.")
+    args = parser.parse_args()
+
+    RAW_DIR.mkdir(parents=True, exist_ok=True)
+    downloaded: dict[str, str] = {}
+    for source in SOURCES:
+        target = RAW_DIR / source.filename
+        if target.exists() and not args.force:
+            print(f"SKIP existing: {target}")
+            downloaded[source.filename] = "skipped_existing"
+            continue
+        print(f"DOWNLOAD: {source.dataset} -> {target}")
+        urlretrieve(source.url, target)
+        downloaded[source.filename] = "downloaded"
+
+    write_manifest(downloaded)
+    print(f"Wrote {MANIFEST_PATH}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

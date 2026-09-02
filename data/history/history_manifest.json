@@ -1,0 +1,14 @@
+{
+  "available_periods": [
+    "2026-08"
+  ],
+  "period_count": 1,
+  "latest_period": "2026-08",
+  "forecast_readiness": {
+    "period_count": 1,
+    "level": "insufficient",
+    "label": "尚不足",
+    "note": "此分類只代表資料量準備度，不是預測品質保證。"
+  },
+  "updated_at": "2026-08-31T02:57:28"
+}

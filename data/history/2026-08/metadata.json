@@ -1,0 +1,23 @@
+{
+  "snapshot_month": "2026-08",
+  "snapshot_created_at": "2026-08-31T02:57:28",
+  "source_date": {
+    "population_source_month": "2026-07",
+    "population_reference_month": "2026-07",
+    "population_downloaded_at": null,
+    "job_updated_month_min": "2019-08",
+    "job_updated_month_max": "2026-08",
+    "job_deadline_month_min": "2026-08",
+    "job_deadline_month_max": "2036-12",
+    "jobs_reference_date": "2026-08-29",
+    "jobs_snapshot_as_of": "2026-08-30T00:45:24",
+    "jobs_downloaded_at": "2026-08-30T00:45:24",
+    "taiwanjobs_downloaded_at_min": "2026-08-30T00:45:15",
+    "taiwanjobs_downloaded_at_max": "2026-08-30T00:45:24",
+    "note": "processed_at is excluded from source_date inference."
+  },
+  "pipeline_version": "trend_snapshot_v1",
+  "district_count": 29,
+  "category_rows": 459,
+  "note": "This snapshot was created from validated processed data. Raw data was not modified."
+}

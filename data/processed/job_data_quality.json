@@ -1,0 +1,177 @@
+{
+  "job_count": 3835,
+  "field_coverage": {
+    "category": {
+      "non_null_count": 3835,
+      "coverage_percentage": 100
+    },
+    "salary_min": {
+      "non_null_count": 3270,
+      "coverage_percentage": 85.3
+    },
+    "salary_max": {
+      "non_null_count": 2485,
+      "coverage_percentage": 64.8
+    },
+    "work_type": {
+      "non_null_count": 3538,
+      "coverage_percentage": 92.3
+    },
+    "company": {
+      "non_null_count": 3835,
+      "coverage_percentage": 100
+    },
+    "openings": {
+      "non_null_count": 3835,
+      "coverage_percentage": 100
+    }
+  },
+  "work_type_values": [
+    {
+      "value": "全職",
+      "count": 3361
+    },
+    {
+      "value": "兼職",
+      "count": 177
+    }
+  ],
+  "category_values": [
+    {
+      "value": "技術／維修／操作",
+      "count": 592
+    },
+    {
+      "value": "醫療／美容／保健",
+      "count": 504
+    },
+    {
+      "value": "品管／製造／環衛",
+      "count": 338
+    },
+    {
+      "value": "旅遊／餐飲／休閒",
+      "count": 325
+    },
+    {
+      "value": "物流／運輸／資材",
+      "count": 271
+    },
+    {
+      "value": "清潔／家事／托育(保母)",
+      "count": 228
+    },
+    {
+      "value": "業務／貿易／銷售",
+      "count": 210
+    },
+    {
+      "value": "經營／行政／總務",
+      "count": 176
+    },
+    {
+      "value": "營建／製圖／施作",
+      "count": 141
+    },
+    {
+      "value": "客服／門市",
+      "count": 137
+    },
+    {
+      "value": "工程／研發／生技",
+      "count": 130
+    },
+    {
+      "value": "保全／軍警消",
+      "count": 96
+    },
+    {
+      "value": "財務／金融／保險",
+      "count": 94
+    },
+    {
+      "value": "一般人員",
+      "count": 82
+    },
+    {
+      "value": "約僱人員",
+      "count": 79
+    },
+    {
+      "value": "其他人員",
+      "count": 68
+    },
+    {
+      "value": "其他職類",
+      "count": 63
+    },
+    {
+      "value": "教育／學術／研究",
+      "count": 62
+    },
+    {
+      "value": "行銷／企劃／專案",
+      "count": 59
+    },
+    {
+      "value": "資訊／軟體／系統",
+      "count": 33
+    },
+    {
+      "value": "聘用人員",
+      "count": 33
+    },
+    {
+      "value": "農林漁牧相關",
+      "count": 31
+    },
+    {
+      "value": "廣告／公關／設計",
+      "count": 22
+    },
+    {
+      "value": "人資／法務／智財",
+      "count": 16
+    },
+    {
+      "value": "工友",
+      "count": 13
+    },
+    {
+      "value": "駕駛",
+      "count": 8
+    },
+    {
+      "value": "教育人員",
+      "count": 8
+    },
+    {
+      "value": "傳播／娛樂／藝術",
+      "count": 5
+    },
+    {
+      "value": "新聞／出版／印刷",
+      "count": 5
+    },
+    {
+      "value": "技工",
+      "count": 2
+    },
+    {
+      "value": "審計人員",
+      "count": 1
+    },
+    {
+      "value": "人事人員",
+      "count": 1
+    },
+    {
+      "value": "主計人員",
+      "count": 1
+    },
+    {
+      "value": "代理教師",
+      "count": 1
+    }
+  ]
+}
