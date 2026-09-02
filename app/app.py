@@ -11,6 +11,7 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from custom_workplace import GEOCODING_SOURCE, build_custom_dashboard_data, geocode_address
+from components.career_evidence_viewer import render_career_evidence_viewer
 from components.overview import render_overview
 from components.policy_lens import render_policy_lens
 from data_loader import (
@@ -19,6 +20,7 @@ from data_loader import (
     MODE_ORDER,
     MODE_SOFT_COLORS,
     load_boundaries,
+    load_career_evidence_data,
     load_dashboard_data,
     load_policy_lens_data,
 )
@@ -111,13 +113,21 @@ def main() -> None:
 
     page = st.segmented_control(
         "頁面",
-        options=["青年生活圈推薦", "青年局 Policy Lens"],
+        options=["青年生活圈推薦", "Career Evidence Viewer", "青年局 Policy Lens"],
         default=st.session_state.get("app_page", "青年生活圈推薦"),
         key="app_page",
         label_visibility="collapsed",
     )
     if page is None:
         page = "青年生活圈推薦"
+    if page == "Career Evidence Viewer":
+        try:
+            candidates_v35, training_v4, course_mapping = load_career_evidence_data()
+        except Exception as exc:
+            st.error(f"Career evidence data loading failed: {exc}")
+            st.stop()
+        render_career_evidence_viewer(candidates_v35, training_v4, course_mapping)
+        return
     if page == "青年局 Policy Lens":
         try:
             policy = load_policy_lens_data()

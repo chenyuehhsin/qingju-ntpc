@@ -207,6 +207,13 @@ def apply_styles() -> None:
             font-weight: 800;
             margin-top: 0.12rem;
         }
+        .qj-card-title-sub {
+            color: #6b797f;
+            font-size: 0.82rem;
+            font-weight: 720;
+            line-height: 1.25;
+            margin-top: 0.14rem;
+        }
         .qj-station {
             color: var(--qj-muted);
             font-size: 0.84rem;
@@ -576,6 +583,105 @@ def apply_styles() -> None:
             font-size: 0.94rem;
             line-height: 1.55;
             margin-top: 0.82rem;
+        }
+        .qj-career-header {
+            margin-top: 0.3rem;
+            margin-bottom: 0.7rem;
+        }
+        .qj-career-preset,
+        .qj-career-empty,
+        .qj-career-card {
+            background: #ffffff;
+            border: 1px solid var(--qj-line);
+            border-radius: 12px;
+            box-shadow: 0 1px 2px rgba(36, 50, 56, 0.04);
+        }
+        .qj-career-preset {
+            border-left: 5px solid #78B995;
+            padding: 0.88rem 1rem;
+            min-height: 86px;
+        }
+        .qj-career-preset-value {
+            color: #243238;
+            font-size: 1.18rem;
+            font-weight: 900;
+            line-height: 1.18;
+            margin-top: 0.18rem;
+        }
+        .qj-career-empty {
+            color: #65747a;
+            font-size: 0.98rem;
+            line-height: 1.55;
+            padding: 1rem;
+            margin-top: 0.85rem;
+        }
+        .qj-career-card {
+            border-top: 5px solid #78B995;
+            padding: 0.95rem;
+            min-height: 428px;
+        }
+        .qj-career-badge {
+            display: inline-flex;
+            align-items: center;
+            background: #fff7e8;
+            border: 1px solid #ead5ae;
+            border-radius: 999px;
+            color: #7a5a24;
+            font-size: 0.78rem;
+            font-weight: 850;
+            padding: 0.24rem 0.52rem;
+            margin: 0.45rem 0 0.2rem 0;
+        }
+        .qj-career-card-grid,
+        .qj-career-profile-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.48rem;
+            margin-top: 0.7rem;
+        }
+        .qj-career-card-grid .qj-metric,
+        .qj-career-profile-grid .qj-metric {
+            min-height: 68px;
+        }
+        .qj-career-detail-block {
+            border-bottom: 1px solid #edf1f2;
+            padding-bottom: 0.72rem;
+            margin-bottom: 0.72rem;
+        }
+        .qj-career-detail-block:last-child {
+            border-bottom: 0;
+            padding-bottom: 0;
+            margin-bottom: 0;
+        }
+        .qj-career-detail-text {
+            color: #334249;
+            font-size: 0.92rem;
+            line-height: 1.5;
+            margin-top: 0.18rem;
+        }
+        .qj-skill-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.38rem;
+            margin-top: 0.35rem;
+        }
+        .qj-skill-chip,
+        .qj-skill-more {
+            display: inline-flex;
+            align-items: center;
+            background: #eef7f1;
+            border: 1px solid #d7eadf;
+            border-radius: 999px;
+            color: #315f45;
+            font-size: 0.82rem;
+            font-weight: 800;
+            line-height: 1.2;
+            padding: 0.28rem 0.56rem;
+        }
+        .qj-skill-more {
+            background: #f8faf9;
+            border-color: #edf1f2;
+            color: #69777d;
         }
         </style>
         """,

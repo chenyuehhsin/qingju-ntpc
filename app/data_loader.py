@@ -14,6 +14,9 @@ LIVABILITY_CSV = PROJECT_ROOT / "data" / "processed" / "livability" / "livabilit
 CANDIDATE_LOCATIONS_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "candidate_locations_expanded.csv"
 COMMUTE_BY_WORKPLACE_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "commute_by_workplace.csv"
 POLICY_LENS_CSV = PROJECT_ROOT / "data" / "processed" / "policy" / "policy_lens_v0.csv"
+CAREER_V35_CANDIDATES_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_technology_candidates_v35.csv"
+CAREER_V4_TRAINING_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_technology_training_v4.csv"
+CAREER_TRAINING_MAPPING_CSV = PROJECT_ROOT / "data" / "processed" / "career" / "career_training_skill_mapping.csv"
 BOUNDARY_SHP = (
     PROJECT_ROOT
     / "data"
@@ -320,3 +323,80 @@ def load_policy_lens_data() -> pd.DataFrame:
     if missing_values:
         raise RuntimeError(f"Policy Lens v0 rows have missing required values: {missing_values}")
     return policy.reset_index(drop=True)
+
+
+@st.cache_data(show_spinner=False)
+def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    missing_files = [
+        path.relative_to(PROJECT_ROOT)
+        for path in [CAREER_V35_CANDIDATES_CSV, CAREER_V4_TRAINING_CSV, CAREER_TRAINING_MAPPING_CSV]
+        if not path.exists()
+    ]
+    if missing_files:
+        raise FileNotFoundError(f"Missing career evidence output files: {missing_files}")
+
+    candidates_v35 = pd.read_csv(CAREER_V35_CANDIDATES_CSV)
+    training_v4 = pd.read_csv(CAREER_V4_TRAINING_CSV)
+    course_mapping = pd.read_csv(CAREER_TRAINING_MAPPING_CSV)
+
+    required_v35 = {
+        "target_occupation_code",
+        "target_occupation_name",
+        "transition_span",
+        "feasibility_level",
+        "market_validation",
+        "mapping_confidence",
+        "manual_review_needed",
+        "matched_job_count",
+        "total_demand_persons",
+        "salary_lower_median",
+        "salary_upper_median",
+        "salary_basis",
+        "shared_top_skills",
+        "missing_skills",
+        "target_skill_gap",
+        "transferable_skill_coverage",
+    }
+    required_v4 = {
+        "target_occupation_code",
+        "target_occupation_name",
+        "training_coverage_ratio",
+        "gap_skill_training_coverage_ratio",
+        "number_of_missing_skills",
+        "number_of_gap_skills",
+        "number_of_trainable_skills_found",
+        "total_training_hours",
+        "estimated_direct_course_cost",
+        "learning_burden_level",
+        "partially_covered_skills",
+        "missing_skills",
+        "learning_plan_phase_1_foundational_skills",
+        "learning_plan_phase_2_domain_technical_skills",
+        "learning_plan_phase_3_portfolio_job_preparation",
+        "scenario_6m_training_coverage_ratio",
+        "scenario_6m_feasibility_estimate",
+    }
+    required_mapping = {
+        "target_occupation_code",
+        "skill_name",
+        "skill_gap_status",
+        "course_code",
+        "course_name",
+        "training_provider",
+        "location",
+        "training_hours",
+        "fee_per_person",
+        "mapping_score",
+        "mapping_confidence",
+        "manual_review_needed",
+    }
+    for label, frame, required in [
+        ("v3.5 candidates", candidates_v35, required_v35),
+        ("v4 training", training_v4, required_v4),
+        ("v4 course mapping", course_mapping, required_mapping),
+    ]:
+        missing = sorted(required - set(frame.columns))
+        if missing:
+            raise RuntimeError(f"Career {label} is missing required columns: {missing}")
+
+    return candidates_v35, training_v4, course_mapping
