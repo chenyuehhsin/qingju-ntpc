@@ -16,6 +16,7 @@ COMMUTE_BY_WORKPLACE_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "
 POLICY_LENS_CSV = PROJECT_ROOT / "data" / "processed" / "policy" / "policy_lens_v0.csv"
 CAREER_V35_CANDIDATES_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_technology_candidates_v35.csv"
 CAREER_V4_TRAINING_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_technology_training_v4.csv"
+CAREER_BEAUTY_PHASE5_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_beauty_candidates_phase5.csv"
 CAREER_TRAINING_MAPPING_CSV = PROJECT_ROOT / "data" / "processed" / "career" / "career_training_skill_mapping.csv"
 CAREER_TAIWANJOBS_RAW_CSV = PROJECT_ROOT / "data" / "raw" / "career" / "jobs" / "taiwanjobs_open_jobs_2026-09-01.csv"
 BOUNDARY_SHP = (
@@ -327,12 +328,13 @@ def load_policy_lens_data() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     missing_files = [
         path.relative_to(PROJECT_ROOT)
         for path in [
             CAREER_V35_CANDIDATES_CSV,
             CAREER_V4_TRAINING_CSV,
+            CAREER_BEAUTY_PHASE5_CSV,
             CAREER_TRAINING_MAPPING_CSV,
             CAREER_TAIWANJOBS_RAW_CSV,
         ]
@@ -343,6 +345,7 @@ def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
 
     candidates_v35 = pd.read_csv(CAREER_V35_CANDIDATES_CSV)
     training_v4 = pd.read_csv(CAREER_V4_TRAINING_CSV)
+    beauty_phase5 = pd.read_csv(CAREER_BEAUTY_PHASE5_CSV)
     course_mapping = pd.read_csv(CAREER_TRAINING_MAPPING_CSV)
     taiwanjobs_raw = pd.read_csv(CAREER_TAIWANJOBS_RAW_CSV, encoding="utf-8-sig")
 
@@ -410,9 +413,39 @@ def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
         "URL_QUERY（職缺資料URL）",
         "COMPNAME（公司名稱）",
     }
+    required_beauty = {
+        "target_occupation_code",
+        "target_occupation_name",
+        "target_domain_primary_signal",
+        "transition_span",
+        "feasibility_level",
+        "skill_similarity",
+        "transferable_skill_coverage",
+        "target_skill_gap",
+        "education_barrier",
+        "credential_barrier",
+        "taiwan_market_evidence",
+        "taiwanjobs_high_relevance_job_count",
+        "taiwanjobs_medium_relevance_job_count",
+        "total_demand_persons_high",
+        "salary_lower_median_high",
+        "salary_upper_median_high",
+        "training_availability",
+        "training_course_count",
+        "total_training_hours",
+        "estimated_direct_course_cost",
+        "learning_burden",
+        "already_covered_skills",
+        "partially_covered_skills",
+        "missing_skills",
+        "matched_training_courses",
+        "high_relevance_job_examples",
+        "medium_relevance_job_examples",
+    }
     for label, frame, required in [
         ("v3.5 candidates", candidates_v35, required_v35),
         ("v4 training", training_v4, required_v4),
+        ("Phase 5 beauty candidates", beauty_phase5, required_beauty),
         ("v4 course mapping", course_mapping, required_mapping),
         ("TaiwanJobs raw jobs", taiwanjobs_raw, required_taiwanjobs),
     ]:
@@ -420,4 +453,4 @@ def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
         if missing:
             raise RuntimeError(f"Career {label} is missing required columns: {missing}")
 
-    return candidates_v35, training_v4, course_mapping, taiwanjobs_raw
+    return candidates_v35, training_v4, course_mapping, taiwanjobs_raw, beauty_phase5

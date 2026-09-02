@@ -11,27 +11,78 @@ import streamlit as st
 DEMO_SOURCE = "Registered Nurses"
 DEMO_TARGET_DOMAIN = "Technology / AI"
 DEMO_HORIZON = "6 months"
-REPRESENTATIVE_PATHS = [
+TARGET_DOMAIN_OPTIONS = ["科技 / AI", "美容 / 醫美 / 個人照護"]
+DOMAIN_OUTPUT_LABELS = {
+    "科技 / AI": "Technology / AI",
+    "美容 / 醫美 / 個人照護": "Beauty / Aesthetic / Personal Care",
+}
+TECH_REPRESENTATIVE_PATHS = [
     "Clinical Research Coordinators",
     "Clinical Data Managers",
     "Health Informatics Specialists",
     "Data Scientists",
 ]
+BEAUTY_REPRESENTATIVE_PATHS = [
+    "First-Line Supervisors of Personal Service Workers",
+    "Skincare Specialists",
+    "Hairdressers, Hairstylists, and Cosmetologists",
+    "Manicurists and Pedicurists",
+]
+BEAUTY_FULL_PATH_ORDER = [
+    "First-Line Supervisors of Personal Service Workers",
+    "Skincare Specialists",
+    "Massage Therapists",
+    "Hairdressers, Hairstylists, and Cosmetologists",
+    "Barbers",
+    "Shampooers",
+    "Manicurists and Pedicurists",
+    "Makeup Artists, Theatrical and Performance",
+    "Retail Salespersons",
+    "Door-to-Door Sales Workers, News and Street Vendors, and Related Workers",
+    "Spa Managers",
+    "Dermatologists",
+]
 PATH_NOTES = {
     "Data Scientists": "大幅重新學習對照組",
     "Health Informatics Specialists": "課程覆蓋缺口",
+    "First-Line Supervisors of Personal Service Workers": "市場證據不足",
+    "Manicurists and Pedicurists": "大幅重新學習路徑",
 }
 PATH_INTROS = {
     "Clinical Research Coordinators": "把護理現場經驗延伸到臨床研究流程、受試者溝通與資料紀錄協調。",
     "Clinical Data Managers": "把臨床理解轉成資料整理、品質控管與研究資料管理能力。",
     "Health Informatics Specialists": "結合護理知識與資訊系統，協助醫療流程數位化與系統導入。",
     "Data Scientists": "轉向以程式、數學與資料分析為核心的科技職涯，作為大幅重新學習對照組。",
+    "First-Line Supervisors of Personal Service Workers": "把護理現場的照護、溝通與服務流程經驗，轉向美容或個人服務現場管理。",
+    "Skincare Specialists": "把皮膚、照護與衛教溝通背景，延伸到護膚、醫美諮詢或美體服務。",
+    "Massage Therapists": "把身體評估、照護溝通與服務經驗，轉向芳療、舒壓與身體照護服務。",
+    "Hairdressers, Hairstylists, and Cosmetologists": "轉向美髮與美容服務技術，市場職缺較明確，但需要重新學習手作技術。",
+    "Barbers": "轉向剪髮與造型服務，公開職缺較明確，但核心技術需要重新訓練。",
+    "Shampooers": "從入門美髮助理或洗護服務切入，門檻較低但屬於重新學習。",
+    "Manicurists and Pedicurists": "轉向美甲與手足保養，課程供給明確，但目前公開職缺證據不足。",
+    "Makeup Artists, Theatrical and Performance": "轉向彩妝與整體造型，課程供給可見，但公開職缺證據不足。",
+    "Retail Salespersons": "轉向美容、保養品或醫美服務銷售，可能沿用溝通與信任建立能力，但職稱 mapping 仍需確認。",
+    "Door-to-Door Sales Workers, News and Street Vendors, and Related Workers": "對應 O*NET 的 beauty consultant alias，較像美容產品或服務顧問，需要台灣職稱人工確認。",
+    "Spa Managers": "轉向 spa 或美容服務營運管理，管理技能缺口較明顯，台灣職缺 mapping 仍不足。",
+    "Dermatologists": "與皮膚醫療高度相關，但屬醫師職涯，教育與證照門檻過高，主要作為高門檻對照。",
 }
 PATH_CONCLUSIONS = {
     "Clinical Research Coordinators": "你不需要完全從零開始，但需要先確認台灣臨床研究入口職缺與職稱。",
     "Clinical Data Managers": "需要補強資料管理與分析能力，目前公開職缺多屬待確認候選。",
     "Health Informatics Specialists": "能利用護理現場知識，但台灣醫療資訊職稱 mapping 仍不完整。",
     "Data Scientists": "屬於大幅重新學習的跨域路徑，需要補強資料與科技能力。",
+    "First-Line Supervisors of Personal Service Workers": "可沿用服務與現場協調能力，但目前公開職缺不足以確認市場規模。",
+    "Skincare Specialists": "能利用護理的皮膚照護與客戶信任基礎，但仍需補美容/護膚實作技能。",
+    "Massage Therapists": "照護溝通與身體知識可部分沿用，但按摩/芳療技術仍需訓練。",
+    "Hairdressers, Hairstylists, and Cosmetologists": "這不是從護理自然延伸的路徑，但市場職缺與課程都可追溯，適合作為 major-reskilling path。",
+    "Barbers": "與護理技能相似度不應作為排除理由；若使用者明確想跨入美髮，可用課程與職缺再驗證。",
+    "Shampooers": "可作為低門檻切入美容服務現場的重新學習路徑。",
+    "Manicurists and Pedicurists": "課程供給明確，但目前公開職缺證據不足，不代表市場不存在。",
+    "Makeup Artists, Theatrical and Performance": "屬於大幅重新學習，課程供給可見，但職缺證據仍弱。",
+    "Retail Salespersons": "可能沿用諮詢與銷售溝通能力，但目前只有待確認職缺，不能納入主要市場統計。",
+    "Door-to-Door Sales Workers, News and Street Vendors, and Related Workers": "O*NET 有 beauty consultant alias，但台灣職稱對應不穩，需要人工 review。",
+    "Spa Managers": "管理與服務流程可部分沿用，但目前公開市場證據不足。",
+    "Dermatologists": "雖然臨床知識重疊高，但短期轉換不合理，應因醫師教育/證照門檻排除。",
 }
 OCCUPATION_ZH = {
     "Registered Nurses": "護理師",
@@ -39,6 +90,18 @@ OCCUPATION_ZH = {
     "Clinical Data Managers": "臨床資料管理",
     "Health Informatics Specialists": "醫療資訊相關職涯",
     "Data Scientists": "資料科學家",
+    "First-Line Supervisors of Personal Service Workers": "美容／個人服務現場管理",
+    "Skincare Specialists": "護膚／醫美諮詢相關職涯",
+    "Massage Therapists": "芳療／按摩照護服務",
+    "Hairdressers, Hairstylists, and Cosmetologists": "美髮與美容服務",
+    "Barbers": "剪髮與造型服務",
+    "Shampooers": "美髮助理／洗護服務",
+    "Manicurists and Pedicurists": "美甲與手足保養",
+    "Makeup Artists, Theatrical and Performance": "彩妝與整體造型",
+    "Retail Salespersons": "美容產品／服務銷售",
+    "Door-to-Door Sales Workers, News and Street Vendors, and Related Workers": "美容產品／服務顧問",
+    "Spa Managers": "SPA／美容服務營運管理",
+    "Dermatologists": "皮膚科醫師",
 }
 SKILL_ZH = {
     "Active Learning": "主動學習",
@@ -75,6 +138,8 @@ VALUE_ZH = {
     "Adjacent candidate": "鄰近候選路徑",
     "Bridge candidate": "橋接候選路徑",
     "Infeasible / high-barrier": "高門檻或暫不適合",
+    "Major-reskilling path": "大幅重新學習路徑",
+    "Insufficient public evidence": "公開資料不足",
     "Strong": "強",
     "Moderate": "中等",
     "Weak": "弱",
@@ -186,6 +251,18 @@ LOCALIZED_JOB_ALIASES = {
         "PowerBI",
         "Tableau",
     ],
+    "First-Line Supervisors of Personal Service Workers": ["美容主管", "美容店長", "SPA主管", "芳療主管", "美容服務管理"],
+    "Skincare Specialists": ["護膚", "美容師", "美容諮詢師", "醫美諮詢", "美體", "芳療師"],
+    "Massage Therapists": ["按摩", "芳療師", "經絡", "推拿", "舒壓", "SPA"],
+    "Hairdressers, Hairstylists, and Cosmetologists": ["美髮", "髮型設計師", "美髮助理", "美髮培訓生", "剪髮", "燙染"],
+    "Barbers": ["剪髮", "理髮", "美髮", "髮型設計師"],
+    "Shampooers": ["美髮助理", "洗髮", "洗護", "美髮培訓生"],
+    "Manicurists and Pedicurists": ["美甲", "指甲", "凝膠", "手部保養"],
+    "Makeup Artists, Theatrical and Performance": ["彩妝", "化妝", "整體造型", "新秘"],
+    "Retail Salespersons": ["美容諮詢師", "醫美", "保養品", "化妝品", "彩妝", "藥妝"],
+    "Door-to-Door Sales Workers, News and Street Vendors, and Related Workers": ["美容顧問", "美容諮詢師", "保養品", "化妝品", "醫美"],
+    "Spa Managers": ["SPA", "芳療", "美容主管", "美容店長", "水療中心"],
+    "Dermatologists": ["皮膚科醫師", "皮膚科", "醫美醫師"],
 }
 
 
@@ -194,26 +271,31 @@ def render_career_evidence_viewer(
     training_v4: pd.DataFrame,
     course_mapping: pd.DataFrame,
     taiwanjobs_raw: pd.DataFrame,
+    beauty_phase5: pd.DataFrame,
 ) -> None:
-    evidence = _representative_paths(candidates_v35, training_v4)
-
     _html(
-        """
+        f"""
         <div class="qj-career-header">
             <div class="qj-header-title">青年職涯探索</div>
-            <div class="qj-subtitle">護理師 → 科技 / AI 領域的可追溯證據檢視</div>
+            <div class="qj-subtitle">護理師 → {escape(_current_domain_label())} 的職涯可能性探索</div>
         </div>
         """
     )
 
     if "career_view_layer" not in st.session_state:
         st.session_state.career_view_layer = "discovery"
+    if "career_target_domain" not in st.session_state:
+        st.session_state.career_target_domain = TARGET_DOMAIN_OPTIONS[0]
 
     if st.session_state.career_view_layer == "evidence" and st.session_state.get("career_selected_path"):
+        domain_label = _current_domain_label()
+        evidence = _representative_paths(candidates_v35, training_v4, beauty_phase5, domain_label)
         _render_selected_evidence(evidence, course_mapping, taiwanjobs_raw, str(st.session_state.career_selected_path))
         return
 
-    _render_discovery_map(evidence, taiwanjobs_raw)
+    domain_label = _render_explore_section()
+    evidence = _representative_paths(candidates_v35, training_v4, beauty_phase5, domain_label)
+    _render_discovery_map(evidence, taiwanjobs_raw, domain_label)
 
 
 def _render_selected_evidence(
@@ -222,13 +304,16 @@ def _render_selected_evidence(
     taiwanjobs_raw: pd.DataFrame,
     selected_name: str,
 ) -> None:
-    if selected_name not in REPRESENTATIVE_PATHS:
-        selected_name = REPRESENTATIVE_PATHS[0]
+    if selected_name not in set(evidence["target_occupation_name"].astype(str)):
+        selected_name = str(evidence.iloc[0]["target_occupation_name"])
 
     selected = evidence.loc[evidence["target_occupation_name"].eq(selected_name)].iloc[0]
-    selected_mapping = course_mapping.loc[
-        course_mapping["target_occupation_code"].astype(str).eq(str(selected["target_occupation_code"]))
-    ].copy()
+    if _is_beauty_row(selected):
+        selected_mapping = course_mapping.iloc[0:0].copy()
+    else:
+        selected_mapping = course_mapping.loc[
+            course_mapping["target_occupation_code"].astype(str).eq(str(selected["target_occupation_code"]))
+        ].copy()
     if st.button("← 回到職涯探索", key="career_back_to_discovery"):
         st.session_state.career_view_layer = "discovery"
         st.session_state.career_selected_path = None
@@ -245,8 +330,7 @@ def _render_selected_evidence(
     _render_detail(selected, selected_mapping, taiwanjobs_raw)
 
 
-def _render_discovery_map(evidence: pd.DataFrame, taiwanjobs_raw: pd.DataFrame) -> None:
-    _render_explore_section()
+def _render_discovery_map(evidence: pd.DataFrame, taiwanjobs_raw: pd.DataFrame, domain_label: str) -> None:
     if st.button("探索可能路徑", use_container_width=False, key="career_explore_button"):
         st.session_state.career_view_layer = "discovery"
         st.session_state.career_selected_path = None
@@ -262,21 +346,15 @@ def _render_discovery_map(evidence: pd.DataFrame, taiwanjobs_raw: pd.DataFrame) 
 
 
 def _transition_map_html(evidence: pd.DataFrame) -> str:
-    rows = {str(row["target_occupation_name"]): row for _, row in evidence.iterrows()}
     lanes = "".join(
-        _transition_lane_html(rows[name])
-        for name in [
-            "Clinical Research Coordinators",
-            "Clinical Data Managers",
-            "Health Informatics Specialists",
-            "Data Scientists",
-        ]
+        _transition_lane_html(row)
+        for _, row in evidence.iterrows()
     )
     return (
         '<div class="qj-transition-map">'
         '<div class="qj-transition-map-head">'
         '<div class="qj-transition-source">現在：護理師</div>'
-        '<div class="qj-transition-target">探索方向：科技 / AI</div>'
+        f'<div class="qj-transition-target">探索方向：{escape(_current_domain_label())}</div>'
         "</div>"
         '<div class="qj-transition-lanes">'
         f"{lanes}"
@@ -285,7 +363,18 @@ def _transition_map_html(evidence: pd.DataFrame) -> str:
     )
 
 
-def _representative_paths(candidates_v35: pd.DataFrame, training_v4: pd.DataFrame) -> pd.DataFrame:
+def _representative_paths(
+    candidates_v35: pd.DataFrame,
+    training_v4: pd.DataFrame,
+    beauty_phase5: pd.DataFrame,
+    domain_label: str,
+) -> pd.DataFrame:
+    if domain_label == "美容 / 醫美 / 個人照護":
+        return _beauty_representative_paths(beauty_phase5)
+    return _technology_representative_paths(candidates_v35, training_v4)
+
+
+def _technology_representative_paths(candidates_v35: pd.DataFrame, training_v4: pd.DataFrame) -> pd.DataFrame:
     merged = training_v4.merge(
         candidates_v35,
         on=["target_occupation_code", "target_occupation_name"],
@@ -293,21 +382,63 @@ def _representative_paths(candidates_v35: pd.DataFrame, training_v4: pd.DataFram
         suffixes=("_v4", "_v35"),
         validate="one_to_one",
     )
-    available = merged.loc[merged["target_occupation_name"].isin(REPRESENTATIVE_PATHS)].copy()
-    missing = [name for name in REPRESENTATIVE_PATHS if name not in set(available["target_occupation_name"])]
+    merged["_evidence_source"] = "technology_v35_v4"
+    available = merged.loc[merged["target_occupation_name"].isin(TECH_REPRESENTATIVE_PATHS)].copy()
+    missing = [name for name in TECH_REPRESENTATIVE_PATHS if name not in set(available["target_occupation_name"])]
     if missing:
         raise RuntimeError(f"Missing representative career paths in v3.5/v4 outputs: {missing}")
     available["_order"] = available["target_occupation_name"].map(
-        {name: index for index, name in enumerate(REPRESENTATIVE_PATHS)}
+        {name: index for index, name in enumerate(TECH_REPRESENTATIVE_PATHS)}
     )
     return available.sort_values("_order").drop(columns=["_order"]).reset_index(drop=True)
 
 
-def _render_explore_section() -> None:
+def _beauty_representative_paths(beauty_phase5: pd.DataFrame) -> pd.DataFrame:
+    available = beauty_phase5.loc[beauty_phase5["target_occupation_name"].isin(BEAUTY_REPRESENTATIVE_PATHS)].copy()
+    missing = [name for name in BEAUTY_REPRESENTATIVE_PATHS if name not in set(available["target_occupation_name"])]
+    if missing:
+        raise RuntimeError(f"Missing representative beauty paths in Phase 5 output: {missing}")
+    available["_order"] = available["target_occupation_name"].map(
+        {name: index for index, name in enumerate(BEAUTY_REPRESENTATIVE_PATHS)}
+    )
+    available["_evidence_source"] = "beauty_phase5"
+    available["transition_span_v4"] = available["transition_span"]
+    available["learning_burden_level"] = available["learning_burden"]
+    available["market_validation_v4"] = available["taiwan_market_evidence"]
+    available["training_coverage_ratio"] = available["training_coverage_ratio_missing_skills"]
+    available["gap_skill_training_coverage_ratio"] = available["training_coverage_ratio_missing_skills"]
+    available["number_of_gap_skills"] = available["number_of_missing_skills"]
+    available["number_of_trainable_skills_found"] = available["number_of_trainable_missing_skills_found"]
+    available["matched_course_count"] = available["training_course_count"]
+    available["missing_skills_v4"] = available["missing_skills"]
+    available["shared_top_skills"] = available["already_covered_skills"]
+    available["scenario_6m_feasibility_estimate"] = "Phase 5 未輸出 6 個月時間窗估計"
+    available["possible_income_interruption"] = "unknown"
+    available["mapping_method"] = available["job_mapping_method"]
+    available["mapping_confidence"] = "Phase 5 job-level relevance"
+    available["mapping_score"] = ""
+    available["matched_titles"] = available["job_mapping_positive_aliases"]
+    available["manual_review_needed"] = available["job_mapping_review_reason"].fillna("").ne("").map({True: "yes", False: "no"})
+    return available.sort_values("_order").drop(columns=["_order"]).reset_index(drop=True)
+
+
+def _render_explore_section() -> str:
+    selected = st.selectbox(
+        "目標領域",
+        TARGET_DOMAIN_OPTIONS,
+        index=TARGET_DOMAIN_OPTIONS.index(_current_domain_label()),
+        key="career_target_domain_selector",
+    )
+    if selected != st.session_state.get("career_target_domain"):
+        st.session_state.career_target_domain = selected
+        st.session_state.career_view_layer = "discovery"
+        st.session_state.career_selected_path = None
+        st.rerun()
+
     cols = st.columns([1, 1, 1], gap="medium")
     values = [
         ("目前背景", _occupation_display_text(DEMO_SOURCE)),
-        ("目標領域", "科技 / AI"),
+        ("目標領域", selected),
         ("學習時間窗", "6 個月"),
     ]
     for col, (label, value) in zip(cols, values):
@@ -321,8 +452,9 @@ def _render_explore_section() -> None:
                 """
             )
     _html(
-        '<div class="qj-note">目前是固定展示情境，只支援護理師 → 科技 / AI 的證據檢視。</div>'
+        '<div class="qj-note">目前是固定展示情境，只支援護理師作為目前背景；目標領域可在科技 / AI 與美容 / 醫美 / 個人照護之間切換。</div>'
     )
+    return selected
 
 
 def _render_path_cards(evidence: pd.DataFrame, taiwanjobs_raw: pd.DataFrame) -> None:
@@ -341,8 +473,8 @@ def _render_path_cards(evidence: pd.DataFrame, taiwanjobs_raw: pd.DataFrame) -> 
                     {badge}
                     <div class="qj-career-intro">{escape(PATH_INTROS.get(occupation_name, ""))}</div>
                     <div class="qj-career-card-grid">
-                        {_metric_html("原有能力沿用程度", row["transition_span_v4"])}
-                        {_metric_html("學習負擔", row["learning_burden_level"])}
+                        {_metric_html("原有能力沿用程度", _row_transition_span(row))}
+                        {_metric_html("學習負擔", _row_learning_burden(row))}
                         {_metric_html("台灣市場訊號", _market_signal_label(row, taiwanjobs_raw), translate_value=False)}
                     </div>
                 </div>
@@ -362,7 +494,7 @@ def _render_detail(row: pd.Series, course_mapping: pd.DataFrame, taiwanjobs_raw:
             f"""
             <div class="qj-panel">
                 <div class="qj-path-conclusion">{escape(_path_conclusion(row))}</div>
-                {_detail_block("可利用的護理背景", _skill_chip_list(row.get("shared_top_skills", "")))}
+                {_detail_block("可利用的護理背景", _skill_chip_list(_row_shared_skills(row)))}
                 {_detail_block("路徑定位", _path_reason(row))}
             </div>
             """
@@ -373,8 +505,8 @@ def _render_detail(row: pd.Series, course_mapping: pd.DataFrame, taiwanjobs_raw:
             f"""
             <div class="qj-panel">
                 <div class="qj-career-profile-grid">
-                    {_metric_html("能力延續", row.get("transition_span_v4", ""))}
-                    {_metric_html("學習負擔", row.get("learning_burden_level", ""))}
+                    {_metric_html("能力延續", _row_transition_span(row))}
+                    {_metric_html("學習負擔", _row_learning_burden(row))}
                 </div>
                 {_detail_block("部分已具備技能", _skill_chip_list(row.get("partially_covered_skills", "")))}
             </div>
@@ -385,7 +517,7 @@ def _render_detail(row: pd.Series, course_mapping: pd.DataFrame, taiwanjobs_raw:
         _html(
             f"""
             <div class="qj-panel">
-                {_detail_block("缺口技能", _skill_chip_list(row.get("missing_skills_v4", "")))}
+                {_detail_block("缺口技能", _skill_chip_list(_row_missing_skills(row)))}
             </div>
             """
         )
@@ -395,7 +527,7 @@ def _render_detail(row: pd.Series, course_mapping: pd.DataFrame, taiwanjobs_raw:
             f"""
             <div class="qj-panel">
                 <div class="qj-career-profile-grid">
-                    {_metric_html("整體負擔", row.get("learning_burden_level", ""))}
+                    {_metric_html("整體負擔", _row_learning_burden(row))}
                     {_metric_html("收入中斷估計", row.get("possible_income_interruption", "unknown"))}
                 </div>
             </div>
@@ -438,7 +570,7 @@ def _render_detail(row: pd.Series, course_mapping: pd.DataFrame, taiwanjobs_raw:
         )
     _render_onet_evidence_expander(row, course_mapping)
     _render_market_evidence_expander(row)
-    _render_course_table_expander(course_mapping)
+    _render_course_table_expander(row, course_mapping)
     _render_method_limitations_expander()
 
 
@@ -494,8 +626,27 @@ def _render_course_table(course_mapping: pd.DataFrame) -> None:
     )
 
 
-def _render_course_table_expander(course_mapping: pd.DataFrame) -> None:
+def _render_course_table_expander(row: pd.Series, course_mapping: pd.DataFrame) -> None:
     with st.expander("查看資料依據：完整培訓課程表", expanded=False):
+        if _is_beauty_row(row):
+            courses = _parse_phase5_courses(row.get("matched_training_courses", ""))
+            st.caption("Beauty Phase 5 output 只有 candidate-level course summary，沒有輸出完整 course→skill mapping table。")
+            if courses:
+                st.dataframe(
+                    pd.DataFrame(courses),
+                    hide_index=True,
+                    use_container_width=True,
+                    height=260,
+                    column_config={
+                        "course_name": st.column_config.TextColumn("課程名稱", width="large"),
+                        "training_hours": st.column_config.TextColumn("時數", width="small"),
+                        "fee": st.column_config.TextColumn("費用", width="medium"),
+                        "mapping_confidence": st.column_config.TextColumn("映射可信度", width="small"),
+                    },
+                )
+            else:
+                st.info("Phase 5 output 沒有可顯示的課程 summary。")
+            return
         _render_course_table(course_mapping)
 
 
@@ -518,9 +669,9 @@ def _render_onet_evidence_expander(row: pd.Series, course_mapping: pd.DataFrame)
     with st.expander("查看資料依據：O*NET 技能與缺口", expanded=False):
         st.caption("原始英文名稱與 IM/gap 數值直接來自既有 v3.5 / v4 outputs；此處只做 UI 呈現。")
         raw_rows = (
-            _raw_skill_rows(row.get("shared_top_skills", ""), "可轉移 / 共享技能")
+            _raw_skill_rows(_row_shared_skills(row), "可轉移 / 共享技能")
             + _raw_skill_rows(row.get("partially_covered_skills", ""), "部分已具備技能")
-            + _raw_skill_rows(row.get("missing_skills_v4", ""), "仍需補強技能")
+            + _raw_skill_rows(_row_missing_skills(row), "仍需補強技能")
         )
         if raw_rows:
             raw_display = pd.DataFrame(raw_rows)
@@ -589,12 +740,17 @@ def _render_onet_evidence_expander(row: pd.Series, course_mapping: pd.DataFrame)
 
 def _render_market_evidence_expander(row: pd.Series) -> None:
     with st.expander("查看資料依據：TaiwanJobs 職稱映射", expanded=False):
-        st.caption("v3.5 職稱映射可信度、mapping score 與 matched titles 直接來自既有 output；v3.6 中文 alias 只用於 TaiwanJobs job-level localization search。")
+        caption = (
+            "Phase 5 job-level relevance、alias 與 examples 直接來自 nursing_to_beauty_candidates_phase5.csv。"
+            if _is_beauty_row(row)
+            else "v3.5 職稱映射可信度、mapping score 與 matched titles 直接來自既有 output；v3.6 中文 alias 只用於 TaiwanJobs job-level localization search。"
+        )
+        st.caption(caption)
         _html(
             f"""
             <div class="qj-panel">
                 <div class="qj-career-profile-grid">
-                    {_metric_html("職稱映射可信度", row.get("taiwanjobs_mapping_confidence", ""))}
+                    {_metric_html("職稱映射可信度", row.get("taiwanjobs_mapping_confidence", row.get("mapping_confidence", "")))}
                     {_metric_html("人工確認", _manual_review(row))}
                     {_metric_html("映射方法", row.get("mapping_method", ""), translate_value=False)}
                     {_metric_html("映射分數", _decimal(row.get("mapping_score")), translate_value=False)}
@@ -607,6 +763,10 @@ def _render_market_evidence_expander(row: pd.Series) -> None:
 
 
 def _render_market_job_preview(row: pd.Series, taiwanjobs_raw: pd.DataFrame) -> None:
+    if _is_beauty_row(row):
+        _render_phase5_beauty_job_preview(row)
+        return
+
     matched_jobs = _matched_taiwanjobs(row, taiwanjobs_raw)
     if matched_jobs.empty:
         st.info("目前公開資料尚不足以確認台灣市場規模，不代表此職涯不存在。")
@@ -671,6 +831,120 @@ def _render_market_job_preview(row: pd.Series, taiwanjobs_raw: pd.DataFrame) -> 
         )
 
 
+def _render_phase5_beauty_job_preview(row: pd.Series) -> None:
+    high_jobs = _parse_phase5_job_examples(row.get("high_relevance_job_examples", ""))
+    medium_jobs = _parse_phase5_job_examples(row.get("medium_relevance_job_examples", ""))
+    for job in high_jobs:
+        job["relevance"] = "高相關"
+    for job in medium_jobs:
+        job["relevance"] = "待確認"
+    if not high_jobs:
+        st.info("目前公開資料尚不足以確認台灣市場規模，不代表此職涯不存在。")
+    else:
+        st.markdown("##### 高相關職缺範例")
+        for job in high_jobs[:5]:
+            _html(_phase5_job_card_html(job))
+
+    if medium_jobs:
+        with st.expander("查看待確認候選", expanded=False):
+            for job in medium_jobs[:5]:
+                _html(_phase5_job_card_html(job, pending=True))
+
+    if high_jobs or medium_jobs:
+        with st.expander("查看全部對應職缺", expanded=False):
+            display = pd.DataFrame(high_jobs + medium_jobs)
+            if not display.empty:
+                st.dataframe(
+                    display,
+                    hide_index=True,
+                    use_container_width=True,
+                    height=260,
+                    column_config={
+                        "job_title": st.column_config.TextColumn("職缺名稱", width="large"),
+                        "company": st.column_config.TextColumn("公司／機構", width="medium"),
+                        "location": st.column_config.TextColumn("工作地點", width="small"),
+                        "salary": st.column_config.TextColumn("薪資資訊", width="medium"),
+                        "summary": st.column_config.TextColumn("工作內容摘要", width="large"),
+                        "source_url": st.column_config.LinkColumn("原始職缺連結"),
+                        "relevance": st.column_config.TextColumn("相關性", width="small"),
+                    },
+                )
+    else:
+        with st.expander("查看全部對應職缺", expanded=False):
+            st.info("Phase 5 output 沒有可顯示的高相關或待確認職缺 examples。")
+
+
+def _parse_phase5_job_examples(value: object) -> list[dict[str, str]]:
+    text = _clean(value)
+    if not text:
+        return []
+    jobs = []
+    for item in [part.strip() for part in text.split(" || ") if part.strip()]:
+        parts = item.split(" | ", 5)
+        if len(parts) < 6:
+            continue
+        jobs.append(
+            {
+                "job_title": parts[0],
+                "company": parts[1],
+                "location": parts[2],
+                "salary": parts[3],
+                "summary": parts[4],
+                "source_url": parts[5],
+                "relevance": "高相關" if "high_relevance" not in text else "高相關",
+            }
+        )
+    return jobs
+
+
+def _phase5_job_card_html(job: dict[str, str], pending: bool = False) -> str:
+    review_badge = '<div class="qj-job-review">待人工確認</div>' if pending else ""
+    source_url = _clean(job.get("source_url", ""))
+    link = f'<a href="{escape(source_url)}" target="_blank" rel="noopener noreferrer">原始職缺來源</a>' if source_url else "原始職缺來源：未提供"
+    return (
+        '<div class="qj-job-card">'
+        f'<div class="qj-job-title">{escape(_clean(job.get("job_title", "")))}</div>'
+        f"{review_badge}"
+        '<div class="qj-job-meta">'
+        f'<span>{escape(_clean(job.get("company", "")))}</span>'
+        f'<span>{escape(_clean(job.get("location", "")))}</span>'
+        f'<span>{escape(_clean(job.get("salary", "")))}</span>'
+        "</div>"
+        f'<div class="qj-job-summary">{escape(_clean(job.get("summary", "")))}</div>'
+        f'<div class="qj-job-source">{link}</div>'
+        "</div>"
+    )
+
+
+def _parse_phase5_courses(value: object) -> list[dict[str, str]]:
+    text = _clean(value)
+    if not text:
+        return []
+    courses = []
+    pattern = re.compile(r"^(?P<name>.+?) \((?P<hours>[^,]+), (?P<fee>[^,]+), (?P<confidence>[^)]+)\)$")
+    for item in [part.strip() for part in text.split(";") if part.strip()]:
+        match = pattern.match(item)
+        if match:
+            courses.append(
+                {
+                    "course_name": match.group("name"),
+                    "training_hours": match.group("hours"),
+                    "fee": match.group("fee"),
+                    "mapping_confidence": _translate_value(match.group("confidence")),
+                }
+            )
+        else:
+            courses.append(
+                {
+                    "course_name": item,
+                    "training_hours": "未知",
+                    "fee": "未知",
+                    "mapping_confidence": "未知",
+                }
+            )
+    return courses
+
+
 def _html(markup: str) -> None:
     st.markdown(dedent(markup).strip(), unsafe_allow_html=True)
 
@@ -699,22 +973,22 @@ def _map_node_html(row: pd.Series) -> str:
         f'<div class="qj-transition-node-intro">{escape(PATH_INTROS.get(occupation_name, ""))}</div>'
         '<div class="qj-transition-node-meta">'
         f'<span>跨度：{escape(_span_level(row))}</span>'
-        f'<span>沿用：{escape(_translate_value(row.get("transition_span_v4")))}</span>'
-        f'<span>負擔：{escape(_translate_value(row.get("learning_burden_level")))}</span>'
+        f'<span>沿用：{escape(_translate_value(_row_transition_span(row)))}</span>'
+        f'<span>負擔：{escape(_translate_value(_row_learning_burden(row)))}</span>'
         "</div>"
         "</div>"
     )
 
 
 def _arrow_class(row: pd.Series) -> str:
-    span = _clean(row.get("transition_span_v4", ""))
+    span = _row_transition_span(row)
     if span == "Major reskilling":
         return "qj-transition-arrow-long"
     return ""
 
 
 def _span_level(row: pd.Series) -> str:
-    span = _clean(row.get("transition_span_v4", ""))
+    span = _row_transition_span(row)
     if span == "High skill reuse":
         return "低"
     if span == "Major reskilling":
@@ -723,7 +997,7 @@ def _span_level(row: pd.Series) -> str:
 
 
 def _span_class(row: pd.Series) -> str:
-    span = _clean(row.get("transition_span_v4", ""))
+    span = _row_transition_span(row)
     if span == "High skill reuse":
         return "qj-career-card-high-reuse"
     if span == "Major reskilling":
@@ -750,6 +1024,35 @@ def _occupation_zh(occupation_name: str) -> str:
     return OCCUPATION_ZH.get(occupation_name, occupation_name)
 
 
+def _current_domain_label() -> str:
+    value = st.session_state.get("career_target_domain", TARGET_DOMAIN_OPTIONS[0])
+    return value if value in TARGET_DOMAIN_OPTIONS else TARGET_DOMAIN_OPTIONS[0]
+
+
+def _is_beauty_row(row: pd.Series) -> bool:
+    return _clean(row.get("_evidence_source", "")) == "beauty_phase5"
+
+
+def _row_transition_span(row: pd.Series) -> str:
+    return _clean(row.get("transition_span_v4", row.get("transition_span", "")))
+
+
+def _row_learning_burden(row: pd.Series) -> str:
+    return _clean(row.get("learning_burden_level", row.get("learning_burden", "")))
+
+
+def _row_market_validation(row: pd.Series) -> str:
+    return _clean(row.get("market_validation_v4", row.get("taiwan_market_evidence", row.get("market_validation", ""))))
+
+
+def _row_missing_skills(row: pd.Series) -> object:
+    return row.get("missing_skills_v4", row.get("missing_skills", ""))
+
+
+def _row_shared_skills(row: pd.Series) -> object:
+    return row.get("shared_top_skills", row.get("already_covered_skills", ""))
+
+
 def _metric_html(label: str, value: object, translate_value: bool = True) -> str:
     display_value = _translate_value(value) if translate_value else _clean(value)
     return (
@@ -769,7 +1072,7 @@ def _plain_text_html(value: object) -> str:
 
 def _path_reason(row: pd.Series) -> str:
     parts = [
-        f"此路徑目前被標示為「{_translate_value(row.get('transition_span_v4'))}」。"
+        f"此路徑目前被標示為「{_translate_value(_row_transition_span(row))}」。"
     ]
     if _clean(row.get("target_occupation_name")) == "Data Scientists":
         parts.append("這張卡主要作為大幅重新學習的對照組。")
@@ -794,7 +1097,7 @@ def _market_signal_label(
         return "可能有市場，待確認"
     if verified_count == 0:
         return "市場證據不足"
-    return _translate_value(row.get("market_validation_v4", row.get("market_validation", "")))
+    return _translate_value(_row_market_validation(row))
 
 
 def _localized_alias_text(target_occupation: str) -> str:
@@ -850,6 +1153,20 @@ def _prioritized_job_preview(matched_jobs: pd.DataFrame) -> pd.DataFrame:
 
 
 def _job_market_stats(row: pd.Series, taiwanjobs_raw: pd.DataFrame) -> dict[str, object]:
+    if _is_beauty_row(row):
+        lower = _clean(row.get("salary_lower_median_high", ""))
+        upper = _clean(row.get("salary_upper_median_high", ""))
+        salary = "未知"
+        if lower and upper:
+            salary = f"NT$ {_salary_amount(lower)} - {_salary_amount(upper)}"
+        elif lower:
+            salary = f"NT$ {_salary_amount(lower)} 以上"
+        return {
+            "verified_job_count": int(float(row.get("taiwanjobs_high_relevance_job_count", 0) or 0)),
+            "pending_job_count": int(float(row.get("taiwanjobs_medium_relevance_job_count", 0) or 0)),
+            "verified_demand_persons": int(float(row.get("total_demand_persons_high", 0) or 0)),
+            "salary": salary,
+        }
     matched_jobs = _matched_taiwanjobs(row, taiwanjobs_raw)
     if matched_jobs.empty:
         return {
@@ -1052,6 +1369,11 @@ def _detail_block(label: str, value_html: str) -> str:
 def _coverage_label(row: pd.Series) -> str:
     missing_count = int(float(row.get("number_of_missing_skills", 0) or 0))
     trainable_missing = int(float(row.get("number_of_trainable_missing_skills_found", 0) or 0))
+    if _is_beauty_row(row):
+        course_count = int(float(row.get("training_course_count", 0) or 0))
+        if missing_count == 0:
+            return f"Phase 5 找到 {course_count} 門對應課程；O*NET 未列主要缺口"
+        return f"Phase 5 找到 {course_count} 門對應課程；{trainable_missing}/{missing_count} 個缺口有課程"
     if missing_count == 0:
         gap_count = int(float(row.get("number_of_gap_skills", 0) or 0))
         trainable_gap = int(float(row.get("number_of_trainable_skills_found", 0) or 0))
@@ -1170,31 +1492,31 @@ def _translate_more_item(item: str) -> str:
 
 
 def _percent(value: object) -> str:
-    if pd.isna(value):
+    if pd.isna(value) or _clean(value) == "":
         return "未知"
     return f"{float(value) * 100:.0f}%"
 
 
 def _money(value: object) -> str:
-    if pd.isna(value):
+    if pd.isna(value) or _clean(value) == "":
         return "未知"
     return f"NT$ {float(value):,.0f}"
 
 
 def _hours(value: object) -> str:
-    if pd.isna(value):
+    if pd.isna(value) or _clean(value) == "":
         return "未知"
     return f"{float(value):.0f} h"
 
 
 def _number(value: object) -> str:
-    if pd.isna(value):
+    if pd.isna(value) or _clean(value) == "":
         return "未知"
     return f"{float(value):,.0f}"
 
 
 def _decimal(value: object) -> str:
-    if pd.isna(value):
+    if pd.isna(value) or _clean(value) == "":
         return "未知"
     return f"{float(value):.3f}"
 
