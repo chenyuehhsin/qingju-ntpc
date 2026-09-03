@@ -73,6 +73,7 @@ def render_policy_lens(
     cities: gpd.GeoDataFrame,
     career_policy: pd.DataFrame | None = None,
     career_policy_md: str = "",
+    career_ladder: pd.DataFrame | None = None,
 ) -> None:
     st.markdown(
         """
@@ -90,7 +91,7 @@ def render_policy_lens(
         if career_policy is None:
             st.warning("尚未載入 Career Policy Lens Phase 7 輸出。")
         else:
-            render_career_policy_observations(career_policy, career_policy_md)
+            render_career_policy_observations(career_policy, career_policy_md, career_ladder)
     with housing_tab:
         render_housing_policy_lens(policy, towns, cities)
 
@@ -162,7 +163,11 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
         render_policy_method_notes()
 
 
-def render_career_policy_observations(career_policy: pd.DataFrame, career_policy_md: str) -> None:
+def render_career_policy_observations(
+    career_policy: pd.DataFrame,
+    career_policy_md: str,
+    career_ladder: pd.DataFrame | None = None,
+) -> None:
     context = career_policy.iloc[0]
     ntpc_population = int(float(context["ntpc_population_18_35"]))
     transition_pct = float(context["mol_transition_intention_percent"])
@@ -236,6 +241,8 @@ def render_career_policy_observations(career_policy: pd.DataFrame, career_policy
         f"目前偵測到明顯 Training Gap {training_gap_count}。"
     )
 
+    render_career_learning_ladder(career_ladder)
+
     st.markdown("### 常見 Skill Gap")
     skill_gap = _common_skill_gaps(career_policy).head(8)
     if skill_gap.empty:
@@ -278,8 +285,6 @@ def render_career_policy_observations(career_policy: pd.DataFrame, career_policy
             "number_of_missing_skills",
             "potential_training_coverage_ratio",
             "matched_course_count",
-            "total_training_hours",
-            "estimated_direct_course_cost",
             "training_gap_status",
             "learning_burden",
         ]
@@ -287,8 +292,10 @@ def render_career_policy_observations(career_policy: pd.DataFrame, career_policy
     training_display["potential_training_coverage_ratio"] = training_display[
         "potential_training_coverage_ratio"
     ].map(_format_ratio)
-    training_display["estimated_direct_course_cost"] = training_display["estimated_direct_course_cost"].map(_format_money)
     with st.expander("查看潛在課程覆蓋 / Training Gap 明細", expanded=False):
+        st.caption(
+            "潛在課程覆蓋只表示缺口技能是否找到可能相關課程。此表不顯示候選課程集合的累計時數或累計費用。"
+        )
         st.dataframe(
             training_display,
             hide_index=True,
@@ -297,10 +304,8 @@ def render_career_policy_observations(career_policy: pd.DataFrame, career_policy
                 "target_domain": st.column_config.TextColumn("探索領域", width="medium"),
                 "target_occupation_name": st.column_config.TextColumn("職涯路徑", width="large"),
                 "number_of_missing_skills": st.column_config.NumberColumn("缺口技能數"),
-                "potential_training_coverage_ratio": st.column_config.TextColumn("潛在課程覆蓋"),
+                "potential_training_coverage_ratio": st.column_config.TextColumn("缺口技能找到可能相關課程比例"),
                 "matched_course_count": st.column_config.NumberColumn("對應課程數"),
-                "total_training_hours": st.column_config.NumberColumn("課程時數"),
-                "estimated_direct_course_cost": st.column_config.TextColumn("直接課程費用"),
                 "training_gap_status": st.column_config.TextColumn("Training Gap 狀態"),
                 "learning_burden": st.column_config.TextColumn("學習負擔"),
             },
@@ -330,10 +335,315 @@ def render_career_policy_observations(career_policy: pd.DataFrame, career_policy
             - Exact / Partial / Proxy 標籤保留在青年統計與市場證據解讀中。
             - unresolved NTPC employment / unemployment metadata 不作強政策結論。
             - High=0 顯示「公開市場證據不足」，不解讀為市場不存在。
-            - training coverage 在此頁一律稱為「潛在課程覆蓋」。
+            - potential training coverage 只表示缺口技能是否找到可能相關課程；不代表課程深度足夠、完整 curriculum 或技能已補足。
+            - matched courses 是候選課程集合，不等於完整轉職 curriculum。
+            - 只有能證明課程屬於 sequential learning pathway 時，才允許顯示累計時數 / 累計費用；目前 Phase 8 一律未建立 sequential pathway evidence。
             - 不產生轉職成功率、ranking、career score 或政策補助金額。
             """
         )
+
+
+def render_career_learning_ladder(career_ladder: pd.DataFrame | None) -> None:
+    st.markdown("### 青年轉職學習階梯")
+    st.caption(
+        "把 Skill Gap、Market evidence 與 Training evidence 轉成可檢視的政策介入路徑；"
+        "matched courses 是候選課程集合，不是完整轉職 curriculum；本頁顯示單門課程 median/range，不顯示累計轉職成本。"
+    )
+    if career_ladder is None or career_ladder.empty:
+        st.info("尚未載入 Career Learning Ladder Phase 8 輸出。")
+        return
+
+    representative_names = [
+        "Health Informatics Specialists",
+        "Clinical Data Managers",
+        "Data Scientists",
+        "Hairdressers, Hairstylists, and Cosmetologists",
+        "Skincare Specialists",
+    ]
+    representative = career_ladder[career_ladder["target_occupation_name"].isin(representative_names)].copy()
+    if representative.empty:
+        representative = career_ladder.head(5).copy()
+    representative["_order"] = representative["target_occupation_name"].map(
+        {name: index for index, name in enumerate(representative_names)}
+    )
+    representative = representative.sort_values("_order", na_position="last").drop(columns=["_order"]).head(5)
+
+    for _, row in representative.iterrows():
+        _render_learning_ladder_card(row)
+
+    with st.expander("查看完整 8 條 path 與 technical fields", expanded=False):
+        technical = career_ladder[
+            [
+                "target_domain",
+                "target_occupation_name",
+                "transition_span",
+                "policy_intervention_types",
+                "market_evidence_status",
+                "high_relevance_job_count",
+                "medium_relevance_job_count",
+                "potential_training_coverage_ratio",
+                "matched_course_candidate_count",
+                "single_course_hours_median",
+                "single_course_hours_min",
+                "single_course_hours_max",
+                "single_course_fee_median",
+                "single_course_fee_min",
+                "single_course_fee_max",
+                "sequential_learning_pathway_evidence",
+                "cumulative_hours_cost_display_allowed",
+                "training_evidence_potential_course_found",
+                "training_evidence_course_depth",
+                "training_evidence_complete_pathway",
+                "learning_burden",
+                "training_gap_status",
+                "phase7_data_limitations",
+                "conservative_note",
+            ]
+        ].copy()
+        technical["target_occupation_name"] = technical["target_occupation_name"].map(
+            lambda value: f"{_occupation_zh(value)}｜{value}"
+        )
+        technical["potential_training_coverage_ratio"] = technical["potential_training_coverage_ratio"].map(_format_ratio)
+        for column in ["single_course_fee_median", "single_course_fee_min", "single_course_fee_max"]:
+            technical[column] = technical[column].map(_format_money)
+        st.dataframe(
+            technical,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "target_domain": st.column_config.TextColumn("探索領域", width="medium"),
+                "target_occupation_name": st.column_config.TextColumn("職涯路徑", width="large"),
+                "transition_span": st.column_config.TextColumn("轉換跨度"),
+                "policy_intervention_types": st.column_config.TextColumn("政策介入類型", width="large"),
+                "market_evidence_status": st.column_config.TextColumn("市場證據狀態", width="large"),
+                "high_relevance_job_count": st.column_config.NumberColumn("高相關職缺"),
+                "medium_relevance_job_count": st.column_config.NumberColumn("待確認職缺"),
+                "potential_training_coverage_ratio": st.column_config.TextColumn("缺口技能找到可能相關課程比例"),
+                "matched_course_candidate_count": st.column_config.NumberColumn("候選課程數"),
+                "single_course_hours_median": st.column_config.NumberColumn("單門課時數 median"),
+                "single_course_hours_min": st.column_config.NumberColumn("單門課時數 min"),
+                "single_course_hours_max": st.column_config.NumberColumn("單門課時數 max"),
+                "single_course_fee_median": st.column_config.TextColumn("單門課費用 median"),
+                "single_course_fee_min": st.column_config.TextColumn("單門課費用 min"),
+                "single_course_fee_max": st.column_config.TextColumn("單門課費用 max"),
+                "sequential_learning_pathway_evidence": st.column_config.TextColumn("sequential pathway evidence"),
+                "cumulative_hours_cost_display_allowed": st.column_config.TextColumn("允許顯示累計"),
+                "training_evidence_potential_course_found": st.column_config.TextColumn("potential course found"),
+                "training_evidence_course_depth": st.column_config.TextColumn("course depth"),
+                "training_evidence_complete_pathway": st.column_config.TextColumn("complete pathway"),
+                "learning_burden": st.column_config.TextColumn("學習負擔"),
+                "training_gap_status": st.column_config.TextColumn("Training Gap 狀態"),
+                "phase7_data_limitations": st.column_config.TextColumn("資料限制", width="large"),
+                "conservative_note": st.column_config.TextColumn("保守解讀", width="large"),
+            },
+        )
+
+
+def _render_learning_ladder_card(row: pd.Series) -> None:
+    title = str(row["target_occupation_name"])
+    market_status = str(row.get("market_evidence_status", "Unknown"))
+    market_needs_validation = _needs_market_validation(row)
+    with st.container(border=True):
+        heading_cols = st.columns([1.5, 1.0, 1.0], gap="medium")
+        with heading_cols[0]:
+            st.markdown(f"**{_occupation_zh(title)}**")
+            st.caption(title)
+        with heading_cols[1]:
+            st.markdown("**可考慮的政策介入類型**")
+            st.caption(_intervention_zh(str(row.get("policy_intervention_types", ""))))
+        with heading_cols[2]:
+            st.markdown("**市場證據狀態**")
+            if market_needs_validation:
+                st.warning("先補市場驗證")
+            else:
+                st.success("已有高相關市場證據")
+            st.caption(_market_status_zh(market_status))
+
+        step_cols = st.columns(5, gap="small")
+        steps = [
+            ("探索方向", row.get("exploration_direction")),
+            ("基礎能力補強", row.get("foundation_skill_boost")),
+            ("學習里程碑", row.get("learning_milestone_or_validation")),
+            ("進階訓練", row.get("advanced_training")),
+            ("市場職缺銜接", row.get("market_job_linkage")),
+        ]
+        for index, (label, value) in enumerate(steps):
+            with step_cols[index]:
+                st.markdown(f"**{label}**")
+                st.caption(_compact_ladder_text(value))
+
+        metric_cols = st.columns(4, gap="medium")
+        with metric_cols[0]:
+            st.metric("候選課程數", _format_count(row.get("matched_course_candidate_count")))
+        with metric_cols[1]:
+            st.metric("單門課程時數", _format_single_course_hours(row))
+        with metric_cols[2]:
+            st.metric("單門課程費用", _format_single_course_fee(row))
+        with metric_cols[3]:
+            st.metric("學習負擔", _learning_burden_zh(row.get("learning_burden")))
+
+        st.caption("候選課程未證明為 sequential learning pathway；因此不顯示累計時數 / 累計費用，也不把它解讀為轉職所需總成本。")
+
+        evidence_cols = st.columns(3, gap="medium")
+        with evidence_cols[0]:
+            st.caption(f"Training evidence：{_training_evidence_zh(row.get('training_evidence_potential_course_found'))}")
+        with evidence_cols[1]:
+            st.caption(f"課程深度：{_training_evidence_zh(row.get('training_evidence_course_depth'))}")
+        with evidence_cols[2]:
+            st.caption(f"完整路徑：{_training_evidence_zh(row.get('training_evidence_complete_pathway'))}")
+
+        st.markdown("**證據理由（Evidence reason）**")
+        for reason in _reason_lines(row.get("policy_intervention_evidence_reasons")):
+            st.caption(f"- {_reason_zh(reason)}")
+
+
+def _occupation_zh(title: object) -> str:
+    translations = {
+        "Clinical Research Coordinators": "臨床研究協調員",
+        "Health Informatics Specialists": "醫療資訊相關職涯",
+        "Clinical Data Managers": "臨床資料管理",
+        "Data Scientists": "資料科學家",
+        "Hairdressers, Hairstylists, and Cosmetologists": "美容美髮與美容服務",
+        "Skincare Specialists": "護膚美容服務",
+        "Spa Managers": "美容服務管理",
+        "Makeup Artists, Theatrical and Performance": "彩妝造型",
+    }
+    return translations.get(str(title), str(title))
+
+
+def _intervention_zh(value: str) -> str:
+    translations = {
+        "Public learning": "公共學習資源",
+        "Training guidance": "訓練導引",
+        "Subsidy candidate": "費用負擔檢視",
+        "Cohort / partnership candidate": "專班 / 產業合作候選",
+        "Market validation needed": "需先補市場驗證",
+    }
+    parts = [part.strip() for part in str(value).split(";") if part.strip()]
+    return "、".join(translations.get(part, part) for part in parts) if parts else "未標示"
+
+
+def _market_status_zh(value: str) -> str:
+    if "High-relevance TaiwanJobs evidence" in value:
+        return "既有輸出包含高相關 TaiwanJobs 職缺證據"
+    if "Aggregate market evidence only" in value:
+        return "目前只有 aggregate market evidence，缺 job-level 高相關驗證"
+    if "公開市場證據不足" in value:
+        return "公開市場證據不足，不代表職涯不存在"
+    return value or "Unknown"
+
+
+def _needs_market_validation(row: pd.Series) -> bool:
+    high = pd.to_numeric(pd.Series([row.get("high_relevance_job_count")]), errors="coerce").iloc[0]
+    if pd.isna(high):
+        return True
+    return float(high) <= 0
+
+
+def _compact_ladder_text(value: object) -> str:
+    text = str(value).strip() if not pd.isna(value) else ""
+    if text.lower() == "nan":
+        return "目前資料不足"
+    return text if text else "目前資料不足"
+
+
+def _format_hours(value: object) -> str:
+    numeric = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
+    if pd.isna(numeric):
+        return "未提供"
+    return f"{numeric:.0f} 小時"
+
+
+def _format_count(value: object) -> str:
+    numeric = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
+    if pd.isna(numeric):
+        return "未提供"
+    return f"{numeric:.0f}"
+
+
+def _format_single_course_hours(row: pd.Series) -> str:
+    return _format_median_range(
+        row.get("single_course_hours_median"),
+        row.get("single_course_hours_min"),
+        row.get("single_course_hours_max"),
+        "小時",
+    )
+
+
+def _format_single_course_fee(row: pd.Series) -> str:
+    return _format_median_range(
+        row.get("single_course_fee_median"),
+        row.get("single_course_fee_min"),
+        row.get("single_course_fee_max"),
+        "NT$",
+    )
+
+
+def _format_median_range(median: object, low: object, high: object, unit: str) -> str:
+    median_num = pd.to_numeric(pd.Series([median]), errors="coerce").iloc[0]
+    low_num = pd.to_numeric(pd.Series([low]), errors="coerce").iloc[0]
+    high_num = pd.to_numeric(pd.Series([high]), errors="coerce").iloc[0]
+    if pd.isna(median_num) or pd.isna(low_num) or pd.isna(high_num):
+        return "未知"
+    if unit == "NT$":
+        return f"NT$ {median_num:,.0f}（{low_num:,.0f}-{high_num:,.0f}）"
+    return f"{median_num:,.0f} {unit}（{low_num:,.0f}-{high_num:,.0f}）"
+
+
+def _format_cost_metric(value: object) -> str:
+    numeric = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
+    if pd.isna(numeric):
+        return "未提供"
+    return f"NT$ {numeric:,.0f}"
+
+
+def _training_evidence_zh(value: object) -> str:
+    translations = {
+        "potential course found": "找到可能相關課程",
+        "no matched course found": "目前未找到明確對應課程",
+        "course depth unknown": "課程深度未知",
+        "complete pathway unknown": "完整轉職課程路徑未知",
+    }
+    return translations.get(str(value).strip(), str(value))
+
+
+def _learning_burden_zh(value: object) -> str:
+    translations = {"low": "低", "medium": "中", "high": "高"}
+    return translations.get(str(value).strip().lower(), str(value))
+
+
+def _reason_lines(value: object) -> list[str]:
+    text = str(value).strip() if not pd.isna(value) else ""
+    if not text:
+        return ["目前沒有可顯示的 evidence reason。"]
+    return [part.strip() for part in text.split(" | ") if part.strip()]
+
+
+def _reason_zh(reason: str) -> str:
+    text = reason
+    text = text.replace("Missing skills include standardizable foundations:", "缺口技能包含適合標準化教材的基礎能力：")
+    text = text.replace("Matched course evidence exists", "已有對應課程證據")
+    text = re.sub(
+        r"\((\d+) courses\), while MOL proxy shows ([\d.]+)% of non-participants did not know where training was available\.",
+        r"（\1 門課）；MOL 代理指標顯示未參訓者中有 \2% 不知道去哪裡找訓練課程。",
+        text,
+    )
+    text = re.sub(
+        r"Matched course candidate set includes at least one higher-burden single course \(single-course hours (.+?); single-course fee (.+?)\); MOL proxy fee barrier is ([\d.]+)% among non-participants\.",
+        r"候選課程集合中至少有一門課呈現較高時數或費用負擔（單門課時數 \1；單門課費用 \2）；MOL 代理指標顯示未參訓者中有 \3% 主因為費用太高。",
+        text,
+    )
+    text = text.replace("Candidate courses are not summed because no sequential learning pathway is established.", "因目前未建立 sequential learning pathway evidence，不加總候選課程時數或費用。")
+    text = re.sub(
+        r"Market has High-relevance evidence \((\d+) jobs\) and skill gap is explicit, but potential training coverage is only ([\d.]+)\.",
+        r"市場已有高相關職缺證據（\1 筆），且 skill gap 明確，但潛在課程覆蓋只有 \2。",
+        text,
+    )
+    text = text.replace("Existing output has aggregate market evidence only; job-level High-relevance evidence is unavailable.", "既有輸出目前只有 aggregate market evidence，尚無 job-level 高相關職缺證據。")
+    text = text.replace("High=0 in existing TaiwanJobs evidence; treat as public market evidence insufficient, not market absence.", "既有 TaiwanJobs evidence 的 High=0，應解讀為公開市場證據不足，不是市場不存在。")
+    text = text.replace("No subsidy amount is proposed.", "不設定補助金額。")
+    text = text.replace("Skill gap and course-supply gap are visible, but market validation must come first because High-relevance job evidence is unavailable or zero.", "已有 skill gap 與課程供給缺口訊號，但高相關職缺證據不足時，應先補市場驗證。")
+    return text
 
 
 def _num(series: pd.Series) -> pd.Series:

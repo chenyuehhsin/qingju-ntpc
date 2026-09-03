@@ -16,6 +16,7 @@ COMMUTE_BY_WORKPLACE_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "
 POLICY_LENS_CSV = PROJECT_ROOT / "data" / "processed" / "policy" / "policy_lens_v0.csv"
 CAREER_POLICY_LENS_PHASE7_CSV = PROJECT_ROOT / "outputs" / "career" / "career_policy_lens_phase7.csv"
 CAREER_POLICY_LENS_PHASE7_MD = PROJECT_ROOT / "outputs" / "career" / "career_policy_lens_phase7.md"
+CAREER_LEARNING_LADDER_PHASE8_CSV = PROJECT_ROOT / "outputs" / "career" / "career_learning_ladder_phase8.csv"
 CAREER_V35_CANDIDATES_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_technology_candidates_v35.csv"
 CAREER_V4_TRAINING_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_technology_training_v4.csv"
 CAREER_BEAUTY_PHASE5_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_beauty_candidates_phase5.csv"
@@ -374,6 +375,56 @@ def load_career_policy_lens_phase7() -> tuple[pd.DataFrame, str]:
     if missing:
         raise RuntimeError(f"Career Policy Lens Phase 7 data is missing columns: {missing}")
     return career_policy.reset_index(drop=True), career_policy_md
+
+
+@st.cache_data(show_spinner=False)
+def load_career_learning_ladder_phase8() -> pd.DataFrame:
+    if not CAREER_LEARNING_LADDER_PHASE8_CSV.exists():
+        raise FileNotFoundError(
+            f"Missing Career Learning Ladder Phase 8 file: {CAREER_LEARNING_LADDER_PHASE8_CSV.relative_to(PROJECT_ROOT)}"
+        )
+
+    ladder = pd.read_csv(CAREER_LEARNING_LADDER_PHASE8_CSV)
+    required_columns = {
+        "target_domain",
+        "target_occupation_name",
+        "transition_span",
+        "market_evidence_status",
+        "high_relevance_job_count",
+        "medium_relevance_job_count",
+        "potential_training_coverage_ratio",
+        "total_training_hours",
+        "estimated_direct_course_cost",
+        "currently_found_related_course_hours",
+        "currently_found_related_course_cost_ntd",
+        "matched_course_candidate_count",
+        "single_course_hours_median",
+        "single_course_hours_min",
+        "single_course_hours_max",
+        "single_course_fee_median",
+        "single_course_fee_min",
+        "single_course_fee_max",
+        "sequential_learning_pathway_evidence",
+        "cumulative_hours_cost_display_allowed",
+        "cumulative_hours_cost_display_note",
+        "training_evidence_potential_course_found",
+        "training_evidence_course_depth",
+        "training_evidence_complete_pathway",
+        "learning_burden",
+        "exploration_direction",
+        "foundation_skill_boost",
+        "learning_milestone_or_validation",
+        "advanced_training",
+        "market_job_linkage",
+        "policy_intervention_types",
+        "policy_intervention_evidence_reasons",
+        "conservative_note",
+        "phase7_data_limitations",
+    }
+    missing = sorted(required_columns - set(ladder.columns))
+    if missing:
+        raise RuntimeError(f"Career Learning Ladder Phase 8 data is missing columns: {missing}")
+    return ladder.reset_index(drop=True)
 
 
 @st.cache_data(show_spinner=False)

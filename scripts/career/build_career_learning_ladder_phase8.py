@@ -8,6 +8,7 @@ data, v1-v4 career evidence, Career Discovery, or Phase 7 calculations.
 from __future__ import annotations
 
 import math
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -15,6 +16,7 @@ import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PHASE7_CSV = PROJECT_ROOT / "outputs" / "career" / "career_policy_lens_phase7.csv"
+COURSE_MAPPING_CSV = PROJECT_ROOT / "data" / "processed" / "career" / "career_training_skill_mapping.csv"
 
 OUTPUT_CSV = PROJECT_ROOT / "outputs" / "career" / "career_learning_ladder_phase8.csv"
 OUTPUT_MD = PROJECT_ROOT / "outputs" / "career" / "career_learning_ladder_phase8.md"
@@ -73,6 +75,12 @@ def read_phase7() -> pd.DataFrame:
     return df
 
 
+def read_course_mapping() -> pd.DataFrame:
+    if not COURSE_MAPPING_CSV.exists():
+        return pd.DataFrame()
+    return pd.read_csv(COURSE_MAPPING_CSV)
+
+
 def clean(value: object) -> str:
     if value is None:
         return ""
@@ -114,6 +122,91 @@ def zh_skill_list(skills: list[str]) -> str:
     if not display_skills:
         return "無明確 missing skill；仍需檢查 partially covered skills 與市場銜接"
     return "、".join(SKILL_ZH.get(skill, skill) for skill in display_skills)
+
+
+def course_stats(row: pd.Series, course_mapping: pd.DataFrame) -> dict[str, object]:
+    matched_text = clean(row.get("matched_courses"))
+    declared_count = int(num(row.get("matched_course_count")))
+    records: list[dict[str, object]] = []
+
+    if matched_text and matched_text != "none" and not course_mapping.empty and "course_code" in course_mapping.columns:
+        codes = []
+        for part in matched_text.split(";"):
+            match = re.match(r"\s*([A-Za-z0-9_-]+)\s+", part.strip())
+            if match:
+                codes.append(match.group(1))
+        if codes:
+            course_rows = course_mapping[course_mapping["course_code"].astype(str).isin(codes)].copy()
+            if not course_rows.empty:
+                course_rows = course_rows.drop_duplicates("course_code")
+                for _, course in course_rows.iterrows():
+                    records.append(
+                        {
+                            "course_code": clean(course.get("course_code")),
+                            "course_name": clean(course.get("course_name")),
+                            "training_hours": num(course.get("training_hours"), default=math.nan),
+                            "fee_per_person": num(course.get("fee_per_person"), default=math.nan),
+                        }
+                    )
+
+    if not records and matched_text and matched_text != "none":
+        for match in re.finditer(r"([^;]+?)\s*\(([\d.]+)h,\s*([\d,.]+)\s*TWD", matched_text):
+            records.append(
+                {
+                    "course_code": "",
+                    "course_name": match.group(1).strip(),
+                    "training_hours": float(match.group(2)),
+                    "fee_per_person": float(match.group(3).replace(",", "")),
+                }
+            )
+
+    hours = pd.to_numeric(pd.Series([record["training_hours"] for record in records]), errors="coerce").dropna()
+    fees = pd.to_numeric(pd.Series([record["fee_per_person"] for record in records]), errors="coerce").dropna()
+    count = len(records) if records else declared_count
+
+    def stat(series: pd.Series, fn: str) -> float:
+        if series.empty:
+            return math.nan
+        if fn == "median":
+            return round(float(series.median()), 1)
+        if fn == "min":
+            return round(float(series.min()), 1)
+        if fn == "max":
+            return round(float(series.max()), 1)
+        raise ValueError(fn)
+
+    if not records and declared_count > 0:
+        source = "matched course count only; course-level hours/fee unavailable"
+    elif records:
+        source = "course-level stats from existing matched course candidates"
+    else:
+        source = "no matched course evidence"
+
+    return {
+        "matched_course_candidate_count": count,
+        "single_course_hours_median": stat(hours, "median"),
+        "single_course_hours_min": stat(hours, "min"),
+        "single_course_hours_max": stat(hours, "max"),
+        "single_course_fee_median": stat(fees, "median"),
+        "single_course_fee_min": stat(fees, "min"),
+        "single_course_fee_max": stat(fees, "max"),
+        "course_stats_source": source,
+        "sequential_learning_pathway_evidence": "not established",
+        "cumulative_hours_cost_display_allowed": "no",
+        "cumulative_hours_cost_display_note": "matched courses are a candidate set; no evidence proves they form a required sequential learning pathway",
+    }
+
+
+def format_range(median: object, low: object, high: object, unit: str = "") -> str:
+    median_num = num(median, default=math.nan)
+    low_num = num(low, default=math.nan)
+    high_num = num(high, default=math.nan)
+    if math.isnan(median_num) or math.isnan(low_num) or math.isnan(high_num):
+        return "未知"
+    if unit == "NT$":
+        return f"median NT$ {median_num:,.0f}；range NT$ {low_num:,.0f}-{high_num:,.0f}"
+    suffix = f" {unit}" if unit else ""
+    return f"median {median_num:,.0f}{suffix}；range {low_num:,.0f}-{high_num:,.0f}{suffix}"
 
 
 def select_representative_paths(phase7: pd.DataFrame) -> pd.DataFrame:
@@ -175,16 +268,31 @@ def build_milestone(row: pd.Series) -> str:
     return "能力驗證：保留課程完成、作品或工作任務案例，作為下一步銜接依據。"
 
 
-def build_advanced_training(row: pd.Series) -> str:
+def build_advanced_training(row: pd.Series, stats: dict[str, object]) -> str:
     courses = clean(row.get("matched_courses"))
-    course_count = int(num(row.get("matched_course_count")))
-    hours = num(row.get("total_training_hours"))
-    cost = num(row.get("estimated_direct_course_cost"))
+    course_count = int(num(stats.get("matched_course_candidate_count")))
     if course_count == 0 or not courses or courses == "none":
-        return "目前沒有明確 matched course；不應把 training coverage 解讀為技能已補足。"
+        return (
+            "目前沒有明確 matched course；不能判定是否有完整課程路徑。"
+            "Potential training coverage 不代表課程深度足夠或技能已補足。"
+        )
+    hours_text = format_range(
+        stats.get("single_course_hours_median"),
+        stats.get("single_course_hours_min"),
+        stats.get("single_course_hours_max"),
+        "小時",
+    )
+    fee_text = format_range(
+        stats.get("single_course_fee_median"),
+        stats.get("single_course_fee_min"),
+        stats.get("single_course_fee_max"),
+        "NT$",
+    )
     return (
-        f"進階訓練：沿用既有 matched courses，現有證據顯示 {course_count} 門課、"
-        f"{hours:.0f} 小時、直接課程費用約 NT$ {cost:,.0f}。這只是潛在課程覆蓋。"
+        f"進階訓練：目前找到 {course_count} 門候選課程。單門課程時數 {hours_text}；"
+        f"單門課程費用 {fee_text}。這些 matched courses 是候選課程集合，"
+        "不是完整轉職 curriculum；目前沒有證據顯示它們構成 sequential learning pathway，"
+        "因此不顯示累計時數或累計費用。"
     )
 
 
@@ -200,7 +308,7 @@ def build_market_linkage(row: pd.Series) -> str:
     return f"市場職缺銜接：{status}。既有 output 尚無 job-level High relevance count，需先做市場驗證。"
 
 
-def intervention_flags(row: pd.Series) -> dict[str, str]:
+def intervention_flags(row: pd.Series, stats: dict[str, object]) -> dict[str, str]:
     missing = split_list(row.get("missing_skills_preview"))
     public_hits = [skill for skill in missing if skill in PUBLIC_LEARNING_SKILLS]
     course_count = int(num(row.get("matched_course_count")))
@@ -208,6 +316,8 @@ def intervention_flags(row: pd.Series) -> dict[str, str]:
     coverage = num(row.get("potential_training_coverage_ratio"), default=0)
     hours = num(row.get("total_training_hours"))
     cost = num(row.get("estimated_direct_course_cost"))
+    single_course_hours_max = num(stats.get("single_course_hours_max"), default=0)
+    single_course_fee_max = num(stats.get("single_course_fee_max"), default=0)
     learning_burden = clean(row.get("learning_burden")).lower()
     training_gap = clean(row.get("training_gap_status"))
     no_course_info = num(row.get("mol_no_course_info_percent"))
@@ -226,10 +336,22 @@ def intervention_flags(row: pd.Series) -> dict[str, str]:
             f"Matched course evidence exists ({course_count} courses), while MOL proxy shows {no_course_info:.1f}% of non-participants did not know where training was available."
         )
 
-    if course_count > 0 and (cost >= 50000 or hours >= 200):
+    if course_count > 0 and (single_course_fee_max >= 18000 or single_course_hours_max >= 80):
         flags.append("Subsidy candidate")
+        fee_text = format_range(
+            stats.get("single_course_fee_median"),
+            stats.get("single_course_fee_min"),
+            stats.get("single_course_fee_max"),
+            "NT$",
+        )
+        hours_text = format_range(
+            stats.get("single_course_hours_median"),
+            stats.get("single_course_hours_min"),
+            stats.get("single_course_hours_max"),
+            "hours",
+        )
         reasons.append(
-            f"Existing training evidence implies substantial direct burden ({hours:.0f} hours, NT$ {cost:,.0f}); MOL proxy fee barrier is {fee_barrier:.1f}% among non-participants. No subsidy amount is proposed."
+            f"Matched course candidate set includes at least one higher-burden single course (single-course hours {hours_text}; single-course fee {fee_text}); MOL proxy fee barrier is {fee_barrier:.1f}% among non-participants. No subsidy amount is proposed. Candidate courses are not summed because no sequential learning pathway is established."
         )
 
     if high > 0 and missing and (coverage < 0.75 or training_gap == "Training gap"):
@@ -263,11 +385,26 @@ def intervention_flags(row: pd.Series) -> dict[str, str]:
     }
 
 
-def build_ladders(phase7: pd.DataFrame) -> pd.DataFrame:
+def build_training_evidence_fields(row: pd.Series) -> dict[str, str]:
+    course_count = int(num(row.get("matched_course_count")))
+    if course_count > 0:
+        potential_course = "potential course found"
+    else:
+        potential_course = "no matched course found"
+    return {
+        "training_evidence_potential_course_found": potential_course,
+        "training_evidence_course_depth": "course depth unknown",
+        "training_evidence_complete_pathway": "complete pathway unknown",
+    }
+
+
+def build_ladders(phase7: pd.DataFrame, course_mapping: pd.DataFrame) -> pd.DataFrame:
     selected = select_representative_paths(phase7)
     rows = []
     for _, row in selected.iterrows():
-        interventions = intervention_flags(row)
+        stats = course_stats(row, course_mapping)
+        interventions = intervention_flags(row, stats)
+        training_evidence = build_training_evidence_fields(row)
         missing = split_list(row.get("missing_skills_preview"))
         output = {
             "source_occupation": clean(row.get("source_occupation")),
@@ -285,16 +422,22 @@ def build_ladders(phase7: pd.DataFrame) -> pd.DataFrame:
             "matched_course_count": row.get("matched_course_count"),
             "total_training_hours": row.get("total_training_hours"),
             "estimated_direct_course_cost": row.get("estimated_direct_course_cost"),
+            "currently_found_related_course_hours": row.get("total_training_hours"),
+            "currently_found_related_course_cost_ntd": row.get("estimated_direct_course_cost"),
+            **stats,
+            "training_evidence_potential_course_found": training_evidence["training_evidence_potential_course_found"],
+            "training_evidence_course_depth": training_evidence["training_evidence_course_depth"],
+            "training_evidence_complete_pathway": training_evidence["training_evidence_complete_pathway"],
             "training_gap_status": clean(row.get("training_gap_status")),
             "learning_burden": clean(row.get("learning_burden")),
             "exploration_direction": build_exploration_direction(row),
             "foundation_skill_boost": build_foundation_step(row),
             "learning_milestone_or_validation": build_milestone(row),
-            "advanced_training": build_advanced_training(row),
+            "advanced_training": build_advanced_training(row, stats),
             "market_job_linkage": build_market_linkage(row),
             "policy_intervention_types": interventions["policy_intervention_types"],
             "policy_intervention_evidence_reasons": interventions["policy_intervention_evidence_reasons"],
-            "conservative_note": "No success probability, no single career score, no subsidy amount; potential training coverage is not skill acquisition.",
+            "conservative_note": "No success probability, no single career score, no subsidy amount; matched courses are not a complete transition curriculum; hours/cost are not total transition time/cost; potential training coverage only indicates possible related-course matches for gap skills.",
             "phase7_data_limitations": clean(row.get("data_limitations")),
         }
         rows.append(output)
@@ -330,6 +473,7 @@ def write_method() -> None:
         "## Inputs",
         "",
         "- `outputs/career/career_policy_lens_phase7.csv` as the structured source for skill gap, market evidence, training evidence, MOL proxy signals, and Phase 7 data limitations.",
+        "- `data/processed/career/career_training_skill_mapping.csv` for course-level hours and fee fields when Phase 7 matched course codes can be traced to course candidates.",
         "- `outputs/career/career_policy_lens_phase7.md` remains the human-readable upstream summary, but the Phase 8 script does not parse narrative text.",
         "",
         "## Representative Path Selection",
@@ -361,9 +505,21 @@ def write_method() -> None:
         "|---|---|---|",
         "| Public learning | Missing skills include standardizable foundations such as Programming, Computers and Electronics, Mathematics, Sales and Marketing, Persuasion, Design, or Communications and Media. | Suitable for public digital materials, not proof of transition success. |",
         "| Training guidance | Existing matched course evidence is available. | Uses MOL 15-29 Proxy finding that some non-participants do not know where courses are available. |",
-        "| Subsidy candidate | Existing course evidence implies substantial burden: at least 200 hours or NT$50,000 direct course cost. | This only flags cost-burden review; it does not set subsidy amount. |",
+        "| Subsidy candidate | The matched-course candidate set includes at least one higher-burden single course: single-course fee at least NT$18,000 or single-course hours at least 80. | This only flags cost-burden review; it does not set subsidy amount, total transition cost, total transition time, or imply all candidate courses must be taken. |",
         "| Cohort / partnership candidate | High-relevance market evidence exists and skill gap is explicit while potential course coverage is weak; or a training gap is visible but market validation must precede scale-up. | Does not claim a cohort or partnership would be effective. |",
         "| Market validation needed | High-relevance job evidence is zero or unavailable. | High=0 means public market evidence is insufficient, not market absence. |",
+        "",
+        "## Training Evidence Semantics",
+        "",
+        "- Matched courses are not a complete transition curriculum.",
+        "- Currently found related-course hours / cost do not represent total time or total cost required to complete a career transition.",
+        "- Potential training coverage only means a gap skill has a possible related-course match in current public training data.",
+        "- Potential training coverage does not prove course depth is sufficient and does not mean the skill has been acquired.",
+        "- Training evidence is separated into: potential course found, course depth unknown, and complete pathway unknown.",
+        "- Candidate course hours and fees are summarized as single-course median and range.",
+        "- Cumulative course hours or cumulative course fees must not be displayed unless there is evidence that the courses form a sequential learning pathway.",
+        "- Phase 8 currently sets sequential-learning-pathway evidence to `not established` for all selected paths.",
+        "- Major-reskilling paths such as Data Scientists must remain major-reskilling comparators even when potential training coverage is 100%.",
         "",
         "## Interpretation Rules",
         "",
@@ -371,7 +527,7 @@ def write_method() -> None:
         "- Do not calculate a single career score.",
         "- Do not infer policy effectiveness.",
         "- Do not propose subsidy amounts.",
-        "- Do not treat potential training coverage as skill acquisition.",
+        "- Do not treat potential training coverage as course depth, a complete curriculum, or skill acquisition.",
         "- Be conservative when market evidence is insufficient.",
     ]
     METHOD_MD.write_text("\n".join(lines), encoding="utf-8")
@@ -400,6 +556,27 @@ def write_summary(ladders: pd.DataFrame) -> None:
     subsidy_or_partnership = ladders[
         ladders["policy_intervention_types"].str.contains("Subsidy candidate|Cohort / partnership candidate", na=False)
     ].copy()
+    subsidy_or_partnership_display = subsidy_or_partnership[
+        [
+            "target_occupation_name",
+            "policy_intervention_types",
+            "matched_course_candidate_count",
+            "single_course_hours_median",
+            "single_course_hours_min",
+            "single_course_hours_max",
+            "single_course_fee_median",
+            "single_course_fee_min",
+            "single_course_fee_max",
+            "sequential_learning_pathway_evidence",
+            "training_evidence_potential_course_found",
+            "training_evidence_course_depth",
+            "training_evidence_complete_pathway",
+            "training_gap_status",
+            "market_evidence_status",
+            "policy_intervention_evidence_reasons",
+        ]
+    ].copy()
+    subsidy_or_partnership_display["phase7_training_gap_status_raw"] = subsidy_or_partnership_display.pop("training_gap_status")
     evidence_insufficient = ladders[
         ladders["policy_intervention_types"].str.contains("Market validation needed", na=False)
     ].copy()
@@ -411,8 +588,17 @@ def write_summary(ladders: pd.DataFrame) -> None:
             "policy_intervention_types",
             "market_evidence_status",
             "potential_training_coverage_ratio",
-            "total_training_hours",
-            "estimated_direct_course_cost",
+            "matched_course_candidate_count",
+            "single_course_hours_median",
+            "single_course_hours_min",
+            "single_course_hours_max",
+            "single_course_fee_median",
+            "single_course_fee_min",
+            "single_course_fee_max",
+            "sequential_learning_pathway_evidence",
+            "training_evidence_potential_course_found",
+            "training_evidence_course_depth",
+            "training_evidence_complete_pathway",
             "learning_burden",
         ]
     ].copy()
@@ -422,7 +608,9 @@ def write_summary(ladders: pd.DataFrame) -> None:
         "",
         f"Generated: {OBSERVATION_DATE}",
         "",
-        "This output translates Phase 7 evidence into explainable learning ladders and policy-intervention candidates. It does not create success probability, ranking, subsidy amount, or policy effectiveness claims.",
+        "This output translates Phase 7 evidence into explainable learning ladders and policy-intervention candidates. It does not create success probability, ranking, subsidy amount, total transition time/cost, cumulative course burden, or policy effectiveness claims.",
+        "",
+        "Matched courses are possible related-course candidates only. They are not a complete transition curriculum. Because no selected path has evidence that courses form a sequential learning pathway, Phase 8 summarizes single-course hours and fees by median/range and does not display cumulative hours/cost as transition requirements.",
         "",
         "## 1. Representative Learning Ladders",
         "",
@@ -456,21 +644,9 @@ def write_summary(ladders: pd.DataFrame) -> None:
         "",
         "## 3. Paths That May Need Subsidy / Cohort / Industry Partnership Review",
         "",
-        "The following are candidates for further review because existing evidence shows substantial hours/cost, visible training gap, or possible need for structured support. No subsidy amount or intervention effectiveness is inferred.",
+        "The following are candidates for further review because existing matched-course evidence shows single-course burden signals, visible training gap, or possible need for structured support. These are not total transition requirements. No subsidy amount or intervention effectiveness is inferred.",
         "",
-        markdown_table(
-            subsidy_or_partnership[
-                [
-                    "target_occupation_name",
-                    "policy_intervention_types",
-                    "total_training_hours",
-                    "estimated_direct_course_cost",
-                    "training_gap_status",
-                    "market_evidence_status",
-                    "policy_intervention_evidence_reasons",
-                ]
-            ]
-        ),
+        markdown_table(subsidy_or_partnership_display),
         "",
         "## 4. Evidence-Insufficient Paths",
         "",
@@ -499,7 +675,10 @@ def write_summary(ladders: pd.DataFrame) -> None:
         "- No raw data was modified.",
         "- No v1-v4 or Phase 7 calculation was changed.",
         "- No success probability, ranking, final score, subsidy amount, or policy prescription is produced.",
-        "- Potential training coverage is not skill acquisition.",
+        "- Matched courses are candidate course sets, not a complete transition curriculum.",
+        "- Course hours / fees are shown as single-course median and range unless a sequential pathway is established.",
+        "- No selected Phase 8 path currently has sequential pathway evidence.",
+        "- Potential training coverage only means gap skills have possible related-course matches; it is not course depth, curriculum completeness, or skill acquisition.",
         "- Market evidence insufficiency is not market absence.",
     ]
     OUTPUT_MD.write_text("\n".join(lines), encoding="utf-8")
@@ -507,7 +686,8 @@ def write_summary(ladders: pd.DataFrame) -> None:
 
 def main() -> None:
     phase7 = read_phase7()
-    ladders = build_ladders(phase7)
+    course_mapping = read_course_mapping()
+    ladders = build_ladders(phase7, course_mapping)
     OUTPUT_CSV.parent.mkdir(parents=True, exist_ok=True)
     METHOD_MD.parent.mkdir(parents=True, exist_ok=True)
     ladders.to_csv(OUTPUT_CSV, index=False, encoding="utf-8-sig")
