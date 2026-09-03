@@ -496,6 +496,21 @@ def apply_styles() -> None:
             margin-top: 0.35rem;
             margin-bottom: 0.75rem;
         }
+        .qj-policy-section-head {
+            margin: 0.55rem 0 1rem 0;
+        }
+        .qj-policy-section-title {
+            color: #243238;
+            font-size: 1.42rem;
+            font-weight: 920;
+            line-height: 1.15;
+        }
+        .qj-policy-section-copy {
+            color: #5e6d73;
+            font-size: 0.98rem;
+            line-height: 1.5;
+            margin-top: 0.32rem;
+        }
         .qj-policy-alert {
             display: inline-flex;
             align-items: center;
@@ -608,6 +623,36 @@ def apply_styles() -> None:
             font-size: 0.94rem;
             line-height: 1.55;
             margin-top: 0.82rem;
+        }
+        .qj-career-policy-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.72rem;
+            margin: 0.4rem 0 0.85rem 0;
+        }
+        .qj-career-policy-card {
+            background: #ffffff;
+            border: 1px solid var(--qj-line);
+            border-left: 5px solid #78B995;
+            border-radius: 12px;
+            padding: 0.86rem 0.9rem;
+            box-shadow: 0 1px 2px rgba(36, 50, 56, 0.04);
+            min-height: 112px;
+        }
+        .qj-career-policy-card span,
+        .qj-career-policy-card small {
+            display: block;
+            color: #65747a;
+            font-size: 0.82rem;
+            line-height: 1.32;
+        }
+        .qj-career-policy-card b {
+            display: block;
+            color: #243238;
+            font-size: 1.6rem;
+            font-weight: 920;
+            line-height: 1.05;
+            margin: 0.24rem 0;
         }
         .qj-career-header {
             margin-top: 0.3rem;

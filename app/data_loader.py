@@ -14,6 +14,8 @@ LIVABILITY_CSV = PROJECT_ROOT / "data" / "processed" / "livability" / "livabilit
 CANDIDATE_LOCATIONS_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "candidate_locations_expanded.csv"
 COMMUTE_BY_WORKPLACE_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "commute_by_workplace.csv"
 POLICY_LENS_CSV = PROJECT_ROOT / "data" / "processed" / "policy" / "policy_lens_v0.csv"
+CAREER_POLICY_LENS_PHASE7_CSV = PROJECT_ROOT / "outputs" / "career" / "career_policy_lens_phase7.csv"
+CAREER_POLICY_LENS_PHASE7_MD = PROJECT_ROOT / "outputs" / "career" / "career_policy_lens_phase7.md"
 CAREER_V35_CANDIDATES_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_technology_candidates_v35.csv"
 CAREER_V4_TRAINING_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_technology_training_v4.csv"
 CAREER_BEAUTY_PHASE5_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_beauty_candidates_phase5.csv"
@@ -325,6 +327,53 @@ def load_policy_lens_data() -> pd.DataFrame:
     if missing_values:
         raise RuntimeError(f"Policy Lens v0 rows have missing required values: {missing_values}")
     return policy.reset_index(drop=True)
+
+
+@st.cache_data(show_spinner=False)
+def load_career_policy_lens_phase7() -> tuple[pd.DataFrame, str]:
+    missing_files = [
+        path.relative_to(PROJECT_ROOT)
+        for path in [CAREER_POLICY_LENS_PHASE7_CSV, CAREER_POLICY_LENS_PHASE7_MD]
+        if not path.exists()
+    ]
+    if missing_files:
+        raise FileNotFoundError(f"Missing Career Policy Lens Phase 7 files: {missing_files}")
+
+    career_policy = pd.read_csv(CAREER_POLICY_LENS_PHASE7_CSV)
+    career_policy_md = CAREER_POLICY_LENS_PHASE7_MD.read_text(encoding="utf-8")
+    required_columns = {
+        "target_domain",
+        "target_occupation_name",
+        "transition_span",
+        "feasibility_level",
+        "market_evidence_status",
+        "high_relevance_job_count",
+        "medium_relevance_job_count",
+        "number_of_missing_skills",
+        "missing_skills_preview",
+        "potential_training_coverage_ratio",
+        "matched_course_count",
+        "total_training_hours",
+        "estimated_direct_course_cost",
+        "training_gap_status",
+        "learning_burden",
+        "ntpc_population_18_35",
+        "ntpc_population_period",
+        "ntpc_population_age_scope",
+        "ntpc_population_age_harmonization",
+        "mol_transition_intention_percent",
+        "mol_transition_age_harmonization",
+        "mol_training_participation_percent",
+        "mol_training_age_harmonization",
+        "mol_no_course_info_percent",
+        "mol_no_course_info_denominator",
+        "mol_fee_barrier_percent",
+        "mol_fee_barrier_denominator",
+    }
+    missing = sorted(required_columns - set(career_policy.columns))
+    if missing:
+        raise RuntimeError(f"Career Policy Lens Phase 7 data is missing columns: {missing}")
+    return career_policy.reset_index(drop=True), career_policy_md
 
 
 @st.cache_data(show_spinner=False)

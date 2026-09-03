@@ -21,6 +21,7 @@ from data_loader import (
     MODE_SOFT_COLORS,
     load_boundaries,
     load_career_evidence_data,
+    load_career_policy_lens_phase7,
     load_dashboard_data,
     load_policy_lens_data,
 )
@@ -129,15 +130,6 @@ def main() -> None:
     )
     if page is None:
         page = "青年職涯探索"
-    st.markdown(
-        """
-        <div class="qj-audience-strip">
-            <span class="qj-audience-youth">青年端：職涯探索＋安居推薦</span>
-            <span class="qj-audience-policy">政策端：青年局 Policy Lens</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
     if page == "青年職涯探索":
         try:
             candidates_v35, training_v4, course_mapping, taiwanjobs_raw, beauty_phase5 = load_career_evidence_data()
@@ -149,11 +141,12 @@ def main() -> None:
     if page == "青年局 Policy Lens":
         try:
             policy = load_policy_lens_data()
+            career_policy, career_policy_md = load_career_policy_lens_phase7()
             towns, cities = load_boundaries()
         except Exception as exc:
             st.error(f"Policy Lens data loading failed: {exc}")
             st.stop()
-        render_policy_lens(policy, towns, cities)
+        render_policy_lens(policy, towns, cities, career_policy, career_policy_md)
         return
 
     if page != "青年安居推薦":
