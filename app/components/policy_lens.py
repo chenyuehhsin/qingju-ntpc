@@ -213,50 +213,64 @@ def render_career_policy_observations(career_policy: pd.DataFrame, career_policy
         "教育與部分勞動資料的 Partial / unresolved 標籤保留在 Phase 6 QA，本頁不作強政策結論。"
     )
 
+    st.markdown("### 有資料支持的政策觀察")
+    observations = _extract_policy_observations(career_policy_md)
+    for observation in observations[:5]:
+        st.markdown(f"- {observation}")
+
     st.markdown("### 轉職與培訓訊號")
     signal_cols = st.columns(3)
     feasible_count = int(career_policy["career_opportunity_status"].eq("structurally feasible").sum())
     high_market_count = int(_num(career_policy["high_relevance_job_count"]).gt(0).sum())
     training_gap_count = int(career_policy["training_gap_status"].eq("Training gap").sum())
     with signal_cols[0]:
-        st.metric("結構上可行路徑", f"{feasible_count} / {len(career_policy)}")
+        st.metric("可進一步探索路徑", f"{feasible_count} / {len(career_policy)}")
+        st.caption("不代表轉職成功率")
     with signal_cols[1]:
-        st.metric("有高相關 TaiwanJobs 證據", f"{high_market_count}")
+        st.metric("具高相關市場證據", f"{high_market_count} / {len(career_policy)}")
     with signal_cols[2]:
-        st.metric("明顯 Training Gap", f"{training_gap_count}")
+        st.metric("目前偵測到明顯 Training Gap", f"{training_gap_count}")
+    st.caption(
+        f"摘要：可進一步探索路徑 {feasible_count}/{len(career_policy)}，不代表轉職成功率；"
+        f"具高相關市場證據 {high_market_count}/{len(career_policy)}；"
+        f"目前偵測到明顯 Training Gap {training_gap_count}。"
+    )
 
     st.markdown("### 常見 Skill Gap")
     skill_gap = _common_skill_gaps(career_policy).head(8)
     if skill_gap.empty:
         st.info("目前 Phase 7 output 沒有可整理的 missing skill。")
     else:
+        skill_gap_display = skill_gap.copy()
+        skill_gap_display.insert(0, "skill_zh", skill_gap_display["skill"].map(_skill_zh))
+        top_skill_text = "、".join(skill_gap_display["skill_zh"].head(5).tolist())
+        st.caption(f"第一層中文摘要：{top_skill_text}")
         st.dataframe(
-            skill_gap,
+            skill_gap_display[["skill_zh", "path_count"]],
             hide_index=True,
             use_container_width=True,
             column_config={
-                "skill": st.column_config.TextColumn("缺口技能", width="large"),
+                "skill_zh": st.column_config.TextColumn("缺口技能", width="large"),
                 "path_count": st.column_config.NumberColumn("出現路徑數"),
             },
         )
 
-    st.markdown("### Market evidence")
     market_display = _market_summary(career_policy)
-    st.dataframe(
-        market_display,
-        hide_index=True,
-        use_container_width=True,
-        column_config={
-            "target_domain": st.column_config.TextColumn("探索領域", width="medium"),
-            "target_occupation_name": st.column_config.TextColumn("職涯路徑", width="large"),
-            "market_evidence_status": st.column_config.TextColumn("市場證據狀態", width="large"),
-            "high_relevance_job_count": st.column_config.NumberColumn("高相關職缺"),
-            "medium_relevance_job_count": st.column_config.NumberColumn("待確認職缺"),
-            "high_relevance_demand_persons": st.column_config.NumberColumn("高相關需求人數"),
-        },
-    )
+    with st.expander("查看 Market evidence 明細", expanded=False):
+        st.dataframe(
+            market_display,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "target_domain": st.column_config.TextColumn("探索領域", width="medium"),
+                "target_occupation_name": st.column_config.TextColumn("職涯路徑", width="large"),
+                "market_evidence_status": st.column_config.TextColumn("市場證據狀態", width="large"),
+                "high_relevance_job_count": st.column_config.NumberColumn("高相關職缺"),
+                "medium_relevance_job_count": st.column_config.NumberColumn("待確認職缺"),
+                "high_relevance_demand_persons": st.column_config.NumberColumn("高相關需求人數"),
+            },
+        )
 
-    st.markdown("### 潛在課程覆蓋 / Training Gap")
     training_display = career_policy[
         [
             "target_domain",
@@ -274,29 +288,36 @@ def render_career_policy_observations(career_policy: pd.DataFrame, career_policy
         "potential_training_coverage_ratio"
     ].map(_format_ratio)
     training_display["estimated_direct_course_cost"] = training_display["estimated_direct_course_cost"].map(_format_money)
-    st.dataframe(
-        training_display,
-        hide_index=True,
-        use_container_width=True,
-        column_config={
-            "target_domain": st.column_config.TextColumn("探索領域", width="medium"),
-            "target_occupation_name": st.column_config.TextColumn("職涯路徑", width="large"),
-            "number_of_missing_skills": st.column_config.NumberColumn("缺口技能數"),
-            "potential_training_coverage_ratio": st.column_config.TextColumn("潛在課程覆蓋"),
-            "matched_course_count": st.column_config.NumberColumn("對應課程數"),
-            "total_training_hours": st.column_config.NumberColumn("課程時數"),
-            "estimated_direct_course_cost": st.column_config.TextColumn("直接課程費用"),
-            "training_gap_status": st.column_config.TextColumn("Training Gap 狀態"),
-            "learning_burden": st.column_config.TextColumn("學習負擔"),
-        },
-    )
-
-    st.markdown("### 有資料支持的政策觀察")
-    observations = _extract_policy_observations(career_policy_md)
-    for observation in observations[:5]:
-        st.markdown(f"- {observation}")
+    with st.expander("查看潛在課程覆蓋 / Training Gap 明細", expanded=False):
+        st.dataframe(
+            training_display,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "target_domain": st.column_config.TextColumn("探索領域", width="medium"),
+                "target_occupation_name": st.column_config.TextColumn("職涯路徑", width="large"),
+                "number_of_missing_skills": st.column_config.NumberColumn("缺口技能數"),
+                "potential_training_coverage_ratio": st.column_config.TextColumn("潛在課程覆蓋"),
+                "matched_course_count": st.column_config.NumberColumn("對應課程數"),
+                "total_training_hours": st.column_config.NumberColumn("課程時數"),
+                "estimated_direct_course_cost": st.column_config.TextColumn("直接課程費用"),
+                "training_gap_status": st.column_config.TextColumn("Training Gap 狀態"),
+                "learning_burden": st.column_config.TextColumn("學習負擔"),
+            },
+        )
 
     with st.expander("查看方法與資料限制", expanded=False):
+        if not skill_gap.empty:
+            st.markdown("**O*NET 原始 Skill Gap 名稱**")
+            st.dataframe(
+                skill_gap,
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "skill": st.column_config.TextColumn("O*NET skill", width="large"),
+                    "path_count": st.column_config.NumberColumn("path count"),
+                },
+            )
         st.markdown(
             """
             **讀取檔案**
@@ -344,6 +365,24 @@ def _common_skill_gaps(career_policy: pd.DataFrame) -> pd.DataFrame:
     if not rows:
         return pd.DataFrame(columns=["skill", "path_count"])
     return pd.DataFrame(rows).sort_values(["path_count", "skill"], ascending=[False, True]).reset_index(drop=True)
+
+
+def _skill_zh(skill: str) -> str:
+    translations = {
+        "Programming": "程式設計",
+        "Computers and Electronics": "電腦與電子",
+        "Mathematics": "數學",
+        "Sales and Marketing": "銷售與行銷",
+        "Personnel and Human Resources": "人事與人力資源",
+        "Design": "設計",
+        "Management of Personnel Resources": "人力資源管理",
+        "Persuasion": "說服溝通",
+        "Engineering and Technology": "工程與科技",
+        "Fine Arts": "美術與藝術",
+        "Management of Financial Resources": "財務資源管理",
+        "Economics and Accounting": "經濟與會計",
+    }
+    return translations.get(str(skill), str(skill))
 
 
 def _market_summary(career_policy: pd.DataFrame) -> pd.DataFrame:
