@@ -367,7 +367,7 @@ def main() -> None:
             目前不包含汽車 / 機車通勤模式。<br>
             生活品質型目前以站點周邊 800m OSM POI 作為生活機能 proxy。<br>
             推薦權重為 MVP preference settings，不代表客觀最佳居住選擇。<br>
-            地圖上的生活圈圓圈為機車約 10 分鐘、約 3km 的產品視覺示意，不是推薦模型輸入。
+            總覽地圖呈現工作地、Top 3 推薦 800m halo 與弱化候選點；行政區租金背景可在圖層控制開啟。Detail map 的 800m 圓形步行生活圈是 OSM POI proxy 的資料範圍，不是實際步行路網可達範圍。
             </div>
             """,
             unsafe_allow_html=True,

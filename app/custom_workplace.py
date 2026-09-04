@@ -475,8 +475,18 @@ def build_custom_dashboard_data(address: str, geocode: dict[str, Any]) -> tuple[
     )
 
     livability = pd.read_csv(LIVABILITY_CSV)
+    livability_columns = [
+        "candidate_name",
+        "equal_weight_livability_index",
+        "total_poi_count",
+        "food_count",
+        "shopping_count",
+        "medical_count",
+        "recreation_count",
+        "culture_count",
+    ]
     candidates = rent_commute.merge(
-        livability[["candidate_name", "equal_weight_livability_index", "total_poi_count"]],
+        livability[[column for column in livability_columns if column in livability.columns]],
         on="candidate_name",
         how="left",
         validate="one_to_one",
@@ -486,7 +496,20 @@ def build_custom_dashboard_data(address: str, geocode: dict[str, Any]) -> tuple[
     candidates["living_area"] = candidates["candidate_name"].map(living_area)
 
     recommendations = recommendations.merge(
-        candidates[["candidate_name", "living_area", "livability_index", "total_poi_count", "route_summary"]],
+        candidates[
+            [
+                "candidate_name",
+                "living_area",
+                "livability_index",
+                "total_poi_count",
+                *[
+                    column
+                    for column in livability_columns
+                    if column.endswith("_count") and column != "total_poi_count" and column in candidates.columns
+                ],
+                "route_summary",
+            ]
+        ],
         on="candidate_name",
         how="left",
         validate="many_to_one",
@@ -495,7 +518,17 @@ def build_custom_dashboard_data(address: str, geocode: dict[str, Any]) -> tuple[
     recommendations["livability_index"] = recommendations["livability_index"].fillna(
         recommendations["livability_index_from_candidates"]
     )
-    recommendations = recommendations.drop(columns=["livability_index_from_candidates"])
+    for column in ["total_poi_count", "food_count", "shopping_count", "medical_count", "recreation_count", "culture_count"]:
+        from_candidates = f"{column}_from_candidates"
+        if from_candidates not in recommendations.columns:
+            continue
+        if column in recommendations.columns:
+            recommendations[column] = recommendations[column].fillna(recommendations[from_candidates])
+        else:
+            recommendations[column] = recommendations[from_candidates]
+    recommendations = recommendations.drop(
+        columns=[column for column in recommendations.columns if column.endswith("_from_candidates")]
+    )
     top3 = recommendations[recommendations["rank"] <= 3].copy()
     destination = {
         "workplace_id": workplace_id,

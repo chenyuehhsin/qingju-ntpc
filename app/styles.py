@@ -422,6 +422,67 @@ def apply_styles() -> None:
             min-height: 1.05rem;
             margin-top: 0.2rem;
         }
+        .qj-life-detail-card {
+            background: #ffffff;
+            border: 1px solid var(--qj-line);
+            border-left: 5px solid #78B995;
+            border-radius: 12px;
+            box-shadow: 0 1px 2px rgba(36, 50, 56, 0.04);
+            padding: 0.95rem;
+        }
+        .qj-life-detail-eyebrow {
+            color: #65747a;
+            font-size: 0.78rem;
+            font-weight: 850;
+            margin-bottom: 0.18rem;
+        }
+        .qj-life-detail-title {
+            color: var(--qj-text);
+            font-size: 1.48rem;
+            font-weight: 920;
+            line-height: 1.14;
+            margin-bottom: 0.15rem;
+        }
+        .qj-life-metric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.48rem;
+            margin-top: 0.72rem;
+        }
+        .qj-life-metric-grid div {
+            background: #f8faf9;
+            border: 1px solid #edf1f2;
+            border-radius: 10px;
+            padding: 0.52rem;
+        }
+        .qj-life-metric-grid span,
+        .qj-life-metric-grid small {
+            display: block;
+            color: #718086;
+            font-size: 0.72rem;
+            line-height: 1.24;
+        }
+        .qj-life-metric-grid b {
+            color: var(--qj-text);
+            display: block;
+            font-size: 1.02rem;
+            font-weight: 900;
+            line-height: 1.16;
+            margin-top: 0.08rem;
+        }
+        .qj-life-summary {
+            color: #334249;
+            font-size: 0.94rem;
+            font-weight: 780;
+            line-height: 1.48;
+            margin-top: 0.78rem;
+        }
+        .qj-life-poi-note {
+            color: #69777d;
+            font-size: 0.78rem;
+            line-height: 1.42;
+            margin-top: 0.58rem;
+        }
         div[data-testid="stRadio"] label {
             font-weight: 760;
             cursor: pointer;

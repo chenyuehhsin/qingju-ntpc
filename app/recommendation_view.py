@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import html
+
 import pandas as pd
 import streamlit as st
 from streamlit_folium import st_folium
 
 from components.cards import render_recommendation_cards
-from components.map_view import build_recommendation_map
-from data_loader import MODE_COLORS, minutes, money
+from components.map_view import build_detail_map, build_recommendation_map
+from data_loader import MODE_COLORS, life_summary, load_representative_pois, minutes, money
 
 
 def render_dashboard_view(
@@ -19,15 +21,30 @@ def render_dashboard_view(
     cities,
 ) -> None:
     mode_rows = top3[top3["preference_mode"] == mode].sort_values("rank").copy()
+    selected_candidate = _selected_top3_candidate(mode, mode_rows)
+    selected_row = mode_rows[mode_rows["candidate_name"] == selected_candidate].iloc[0]
 
     left, right = st.columns([0.92, 2.78], gap="medium")
     with left:
         st.markdown("### Top 3 推薦")
         render_recommendation_cards(mode, mode_rows)
+        st.markdown("### 查看生活圈")
+        selected_candidate = st.segmented_control(
+            "選擇 Top 3 生活圈",
+            options=mode_rows["candidate_name"].tolist(),
+            format_func=lambda candidate_name: _top3_option_label(mode_rows, str(candidate_name)),
+            key=f"housing_detail_candidate_{mode}",
+            label_visibility="collapsed",
+        )
+        if selected_candidate is None:
+            selected_candidate = str(mode_rows.iloc[0]["candidate_name"])
+        selected_row = mode_rows[mode_rows["candidate_name"] == selected_candidate].iloc[0]
     with right:
-        st.markdown("### 推薦生活圈地圖")
+        st.markdown("### 推薦總覽地圖")
         map_obj = build_recommendation_map(mode, candidates, top3, destination, towns, cities)
-        st_folium(map_obj, height=720, use_container_width=True, returned_objects=[])
+        st_folium(map_obj, height=470, use_container_width=True, returned_objects=[])
+
+    _render_detail_section(mode, selected_row, destination, towns, cities)
 
     _render_mode_summary(mode, mode_rows, str(destination["destination"]))
     with st.expander("查看全部 16 個候選生活圈", expanded=False):
@@ -133,3 +150,77 @@ def _render_mode_summary(mode: str, mode_rows: pd.DataFrame, workplace_name: str
         """,
         unsafe_allow_html=True,
     )
+
+
+def _selected_top3_candidate(mode: str, mode_rows: pd.DataFrame) -> str:
+    key = f"housing_detail_candidate_{mode}"
+    candidate_names = mode_rows["candidate_name"].astype(str).tolist()
+    if st.session_state.get(key) not in candidate_names:
+        st.session_state[key] = candidate_names[0]
+    return str(st.session_state[key])
+
+
+def _top3_option_label(mode_rows: pd.DataFrame, candidate_name: str) -> str:
+    row = mode_rows[mode_rows["candidate_name"] == candidate_name].iloc[0]
+    return f"Top {int(row['rank'])} {row['living_area']}"
+
+
+def _render_detail_section(
+    mode: str,
+    selected_row: pd.Series,
+    destination: dict[str, float | str],
+    towns,
+    cities,
+) -> None:
+    st.markdown("### Detail map｜800m 步行生活圈")
+    pois = load_representative_pois(str(selected_row["candidate_name"]))
+    detail_left, detail_right = st.columns([0.96, 2.74], gap="medium")
+    with detail_left:
+        _render_life_summary_card(mode, selected_row, pois)
+    with detail_right:
+        detail_map = build_detail_map(selected_row, pois, destination, towns, cities, mode)
+        st_folium(detail_map, height=520, use_container_width=True, returned_objects=[])
+
+
+def _render_life_summary_card(mode: str, row: pd.Series, pois: pd.DataFrame) -> None:
+    color = MODE_COLORS[mode]
+    food = _count(row, "food_count")
+    shopping = _count(row, "shopping_count")
+    medical = _count(row, "medical_count")
+    recreation = _count(row, "recreation_count")
+    culture = _count(row, "culture_count")
+    poi_note = _representative_poi_note(pois)
+    st.markdown(
+        f"""
+        <div class="qj-life-detail-card" style="border-left-color: {color};">
+            <div class="qj-life-detail-eyebrow">Selected Top {int(row['rank'])}</div>
+            <div class="qj-life-detail-title">{html.escape(str(row['living_area']))}</div>
+            <div class="qj-station">{html.escape(str(row['candidate_name']))}｜{html.escape(str(row['district']))}</div>
+            <div class="qj-life-metric-grid">
+                <div><span>月租</span><b>{money(row['rent'])}</b><small>NTD/month</small></div>
+                <div><span>通勤</span><b>{minutes(row['commute_minutes'])}</b><small>public transit</small></div>
+                <div><span>food</span><b>{food}</b><small>OSM 800m</small></div>
+                <div><span>shopping</span><b>{shopping}</b><small>OSM 800m</small></div>
+                <div><span>medical</span><b>{medical}</b><small>OSM 800m</small></div>
+                <div><span>recreation</span><b>{recreation}</b><small>OSM 800m</small></div>
+                <div><span>culture</span><b>{culture}</b><small>OSM 800m</small></div>
+            </div>
+            <div class="qj-life-summary">{html.escape(life_summary(row))}</div>
+            <div class="qj-life-poi-note">{html.escape(poi_note)}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _count(row: pd.Series, column: str) -> int | str:
+    if column not in row.index or pd.isna(row[column]):
+        return "NA"
+    return int(row[column])
+
+
+def _representative_poi_note(pois: pd.DataFrame) -> str:
+    if pois.empty:
+        return "代表 POI：目前沒有可用的 raw OSM cache 點位，只顯示交通節點。"
+    labels = pois["category_label"].dropna().astype(str).drop_duplicates().tolist()
+    return f"代表 POI：每類最多顯示 2 個；目前顯示 {'、'.join(labels)}。"

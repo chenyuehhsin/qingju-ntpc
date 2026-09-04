@@ -766,7 +766,7 @@ def build_policy_map(
     map_obj = folium.Map(
         location=[25.04, 121.50],
         zoom_start=10,
-        tiles="CartoDB positron",
+        tiles="OpenStreetMap",
         control_scale=True,
         prefer_canvas=True,
     )

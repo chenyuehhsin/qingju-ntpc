@@ -19,7 +19,7 @@ def render_overview(
 
     st.markdown("## 四模式推薦總覽")
     st.markdown(
-        '<div class="qj-section-note">先比較四種偏好模式的 Top 1，再往下切換單一模式查看 Top 3 與完整 16 候選表。</div>',
+        '<div class="qj-section-note">先看每種偏好推薦住哪；切換單一模式後，可選 Top 1 / 2 / 3 查看 800m 生活圈細節。</div>',
         unsafe_allow_html=True,
     )
     _render_summary_cards(top1)
@@ -59,7 +59,6 @@ def _render_summary_cards(top1: pd.DataFrame) -> None:
                         <div><span>月租</span><b>{money(row['rent'])} NTD</b></div>
                         <div><span>通勤</span><b>{minutes(row['commute_minutes'])}</b></div>
                     </div>
-                    <div class="qj-overview-livability">livability {float(row['livability_index']):.3f}</div>
                     <div class="qj-overview-copy">{MODE_COPY[mode]}</div>
                 </div>
                 """,
@@ -77,7 +76,6 @@ def _render_comparison_bar(top1: pd.DataFrame) -> None:
     for column, mode in zip(columns, MODE_ORDER):
         row = rows_by_mode[mode]
         short_name = row["living_area"].replace("生活圈", "")
-        livability = f"livability {float(row['livability_index']):.3f}" if mode == "生活品質型" else ""
         with column:
             st.markdown(
                 f"""
@@ -88,7 +86,6 @@ def _render_comparison_bar(top1: pd.DataFrame) -> None:
                     </div>
                     <div class="qj-comparison-main">{short_name}</div>
                     <div class="qj-comparison-meta">{money(row['rent'])} NTD｜{minutes(row['commute_minutes'])}</div>
-                    <div class="qj-comparison-livability">{livability}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,

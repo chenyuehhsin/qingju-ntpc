@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+import math
 from pathlib import Path
+from typing import Any
 
 import geopandas as gpd
 import pandas as pd
@@ -11,8 +14,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PREFERENCE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "preference_recommendations_by_workplace.csv"
 RENT_COMMUTE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "rent_commute_candidates_by_workplace.csv"
 LIVABILITY_CSV = PROJECT_ROOT / "data" / "processed" / "livability" / "livability_by_candidate.csv"
+LIVABILITY_RAW_CACHE_DIR = PROJECT_ROOT / "data" / "raw" / "livability" / "osm_overpass_800m_2026-08-22"
 CANDIDATE_LOCATIONS_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "candidate_locations_expanded.csv"
 COMMUTE_BY_WORKPLACE_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "commute_by_workplace.csv"
+HOUSING_BENCHMARK_CSV = PROJECT_ROOT / "data" / "processed" / "housing" / "moi_independent_suite_rent_benchmark.csv"
 POLICY_LENS_CSV = PROJECT_ROOT / "data" / "processed" / "policy" / "policy_lens_v0.csv"
 CAREER_POLICY_LENS_PHASE7_CSV = PROJECT_ROOT / "outputs" / "career" / "career_policy_lens_phase7.csv"
 CAREER_POLICY_LENS_PHASE7_MD = PROJECT_ROOT / "outputs" / "career" / "career_policy_lens_phase7.md"
@@ -62,6 +67,34 @@ MODE_COPY = {
     "通勤型": "適合最重視每日上下班時間的使用者。",
     "生活品質型": "優先考慮站點周邊餐飲、採買、休閒、文娛與醫療機能。",
 }
+POI_COUNT_COLUMNS = ["food_count", "shopping_count", "medical_count", "recreation_count", "culture_count"]
+REPRESENTATIVE_POI_LIMIT_PER_CATEGORY = 2
+REPRESENTATIVE_POI_CATEGORIES = {
+    "shopping": {
+        "label": "採買",
+        "tags": {"shop": {"convenience", "supermarket"}},
+    },
+    "medical": {
+        "label": "醫療",
+        "tags": {"amenity": {"clinic", "hospital", "pharmacy"}},
+    },
+    "recreation": {
+        "label": "公園/運動",
+        "tags": {"leisure": {"park", "sports_centre", "pitch", "fitness_centre", "stadium"}},
+    },
+}
+OSM_TYPE_LABELS = {
+    "convenience": "便利商店",
+    "supermarket": "超市",
+    "clinic": "診所",
+    "hospital": "醫院",
+    "pharmacy": "藥局",
+    "park": "公園",
+    "sports_centre": "運動中心",
+    "pitch": "球場",
+    "fitness_centre": "健身",
+    "stadium": "場館",
+}
 LIVING_AREA_NAMES = {
     "板橋站": "板橋生活圈",
     "汐止車站": "汐止生活圈",
@@ -102,6 +135,30 @@ def reason_for(mode: str, row: pd.Series) -> str:
     if mode == "平衡型":
         return "在租金與通勤時間之間取得較佳折衷。"
     return "以降低月租為主要排序方向，接受較長通勤換取省租。"
+
+
+def life_summary(row: pd.Series) -> str:
+    labels = {
+        "food_count": "餐飲",
+        "shopping_count": "採買",
+        "medical_count": "醫療",
+        "recreation_count": "休閒運動",
+        "culture_count": "文娛",
+    }
+    counts = {
+        column: int(row[column])
+        for column in POI_COUNT_COLUMNS
+        if column in row.index and not pd.isna(row[column])
+    }
+    if not counts:
+        return "目前只有租金與通勤資訊，生活機能細項不足以描述。"
+    strongest = sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:2]
+    weakest = [labels[column] for column, count in counts.items() if count == 0]
+    if weakest:
+        return f"{labels[strongest[0][0]]}機能相對明顯，但{weakest[0]}資料在 OSM 樣本中偏少。"
+    if strongest[0][1] >= 100:
+        return f"{labels[strongest[0][0]]}密度高，{labels[strongest[1][0]]}也有支撐，適合重視日常便利的人。"
+    return f"{labels[strongest[0][0]]}與{labels[strongest[1][0]]}是此生活圈較突出的日常機能。"
 
 
 @st.cache_data(show_spinner=False)
@@ -155,8 +212,9 @@ def load_dashboard_data(workplace_id: str) -> tuple[pd.DataFrame, pd.DataFrame, 
     candidates["lat"] = candidates["lat"].fillna(candidates["lat_location"])
     candidates["lon"] = candidates["lon"].fillna(candidates["lon_location"])
     candidates = candidates.drop(columns=[column for column in ["lat_location", "lon_location"] if column in candidates])
+    livability_columns = ["candidate_name", "equal_weight_livability_index", "total_poi_count", *POI_COUNT_COLUMNS]
     candidates = candidates.merge(
-        livability[["candidate_name", "equal_weight_livability_index", "total_poi_count"]],
+        livability[[column for column in livability_columns if column in livability.columns]],
         on="candidate_name",
         how="left",
         validate="one_to_one",
@@ -175,6 +233,7 @@ def load_dashboard_data(workplace_id: str) -> tuple[pd.DataFrame, pd.DataFrame, 
                 "living_area",
                 "livability_index",
                 "total_poi_count",
+                *[column for column in POI_COUNT_COLUMNS if column in candidates.columns],
                 "route_summary",
             ]
         ],
@@ -186,7 +245,17 @@ def load_dashboard_data(workplace_id: str) -> tuple[pd.DataFrame, pd.DataFrame, 
     recommendations["livability_index"] = recommendations["livability_index"].fillna(
         recommendations["livability_index_from_candidates"]
     )
-    recommendations = recommendations.drop(columns=["livability_index_from_candidates"])
+    for column in ["total_poi_count", *POI_COUNT_COLUMNS]:
+        from_candidates = f"{column}_from_candidates"
+        if from_candidates not in recommendations.columns:
+            continue
+        if column in recommendations.columns:
+            recommendations[column] = recommendations[column].fillna(recommendations[from_candidates])
+        else:
+            recommendations[column] = recommendations[from_candidates]
+    recommendations = recommendations.drop(
+        columns=[column for column in recommendations.columns if column.endswith("_from_candidates")]
+    )
 
     top3 = recommendations[recommendations["rank"] <= 3].copy()
 
@@ -262,8 +331,150 @@ def load_boundaries() -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     if missing:
         raise RuntimeError(f"Boundary file is missing expected columns: {sorted(missing)}")
     towns = towns[towns["COUNTYNAME"].isin(["新北市", "臺北市"])].copy()
+    if HOUSING_BENCHMARK_CSV.exists():
+        rent = pd.read_csv(HOUSING_BENCHMARK_CSV)
+        rent = rent[rent["city"].isin(["新北市", "臺北市"])][["city", "district", "rent_median"]].rename(
+            columns={"rent_median": "official_median_rent"}
+        )
+        towns = towns.merge(
+            rent,
+            left_on=["COUNTYNAME", "TOWNNAME"],
+            right_on=["city", "district"],
+            how="left",
+        )
+        towns = towns.drop(columns=[column for column in ["city", "district"] if column in towns.columns])
     cities = towns.dissolve(by="COUNTYNAME", as_index=False)
     return towns, cities
+
+
+@st.cache_data(show_spinner=False)
+def load_representative_pois(candidate_name: str) -> pd.DataFrame:
+    cache_path = LIVABILITY_RAW_CACHE_DIR / f"{_safe_poi_slug(candidate_name)}.json"
+    columns = ["category", "category_label", "name", "lat", "lon", "osm_type", "osm_id", "poi_type", "distance_meters"]
+    if not cache_path.exists():
+        return pd.DataFrame(columns=columns)
+
+    payload = json.loads(cache_path.read_text(encoding="utf-8"))
+    metadata = payload.get("metadata", {})
+    center_lat = float(metadata.get("lat", 0.0))
+    center_lon = float(metadata.get("lon", 0.0))
+    elements = payload.get("overpass_response", payload).get("elements", [])
+    rows: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+    seen_named_categories: set[tuple[str, str]] = set()
+
+    for element in elements:
+        if not isinstance(element, dict):
+            continue
+        tags = element.get("tags", {})
+        if not isinstance(tags, dict):
+            continue
+        category = _representative_poi_category(tags)
+        if category is None:
+            continue
+        lat, lon = _element_lat_lon(element)
+        if lat is None or lon is None:
+            continue
+        osm_key = f"{element.get('type')}:{element.get('id')}"
+        if osm_key in seen_ids:
+            continue
+        seen_ids.add(osm_key)
+        name = _poi_name(tags)
+        named_category_key = (category, name)
+        if named_category_key in seen_named_categories:
+            continue
+        seen_named_categories.add(named_category_key)
+        poi_type = _poi_type(tags)
+        rows.append(
+            {
+                "category": category,
+                "category_label": REPRESENTATIVE_POI_CATEGORIES[category]["label"],
+                "name": name,
+                "lat": lat,
+                "lon": lon,
+                "osm_type": str(element.get("type", "")),
+                "osm_id": str(element.get("id", "")),
+                "poi_type": OSM_TYPE_LABELS.get(poi_type, poi_type),
+                "distance_meters": _haversine_meters(center_lat, center_lon, lat, lon),
+            }
+        )
+
+    poi = pd.DataFrame(rows, columns=columns)
+    if poi.empty:
+        return poi
+    return (
+        poi.sort_values(["category", "distance_meters", "name"])
+        .groupby("category", as_index=False, sort=False)
+        .head(REPRESENTATIVE_POI_LIMIT_PER_CATEGORY)
+        .sort_values(["category", "distance_meters"])
+        .reset_index(drop=True)
+    )
+
+
+def _safe_poi_slug(value: str) -> str:
+    mapping = {
+        "汐止車站": "xizhi_station",
+        "頂溪站": "dingxi_station",
+        "景安站": "jingan_station",
+        "大坪林站": "dapinglin_station",
+        "板橋站": "banqiao_station",
+        "三重站": "sanchong_station",
+        "新莊站": "xinzhuang_station",
+        "蘆洲站": "luzhou_station",
+        "土城站": "tucheng_station",
+        "泰山站": "taishan_station",
+        "林口站": "linkou_station",
+        "淡水站": "tamsui_station",
+        "三峽北大特區": "sanxia_ntpu_main_gate",
+        "樹林車站": "shulin_station",
+        "五股區公所": "wugu_district_office",
+        "鶯歌車站": "yingge_station",
+    }
+    return mapping[value]
+
+
+def _representative_poi_category(tags: dict[str, Any]) -> str | None:
+    for category, definition in REPRESENTATIVE_POI_CATEGORIES.items():
+        for key, values in definition["tags"].items():
+            if str(tags.get(key, "")) in values:
+                return category
+    return None
+
+
+def _element_lat_lon(element: dict[str, Any]) -> tuple[float | None, float | None]:
+    if "lat" in element and "lon" in element:
+        return float(element["lat"]), float(element["lon"])
+    center = element.get("center")
+    if isinstance(center, dict) and "lat" in center and "lon" in center:
+        return float(center["lat"]), float(center["lon"])
+    return None, None
+
+
+def _poi_name(tags: dict[str, Any]) -> str:
+    for key in ["name:zh", "name", "brand:zh", "brand"]:
+        value = str(tags.get(key, "")).strip()
+        if value:
+            return value
+    poi_type = _poi_type(tags)
+    return OSM_TYPE_LABELS.get(poi_type, "未命名 POI")
+
+
+def _poi_type(tags: dict[str, Any]) -> str:
+    for key in ["shop", "amenity", "leisure"]:
+        value = str(tags.get(key, "")).strip()
+        if value:
+            return value
+    return "poi"
+
+
+def _haversine_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    radius = 6371000
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+    a = math.sin(delta_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2) ** 2
+    return 2 * radius * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
 @st.cache_data(show_spinner=False)
