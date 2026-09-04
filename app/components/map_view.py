@@ -11,16 +11,18 @@ from data_loader import MODE_COLORS, MODE_ORDER, living_area, minutes, money
 
 WALKING_LIVING_AREA_RADIUS_METERS = 800
 DETAIL_POI_COLORS = {
+    "center": "#243238",
     "transit": "#4F83A6",
     "shopping": "#78B995",
     "medical": "#C45B65",
     "recreation": "#D39B43",
 }
 DETAIL_POI_SYMBOLS = {
-    "transit": "T",
-    "shopping": "S",
-    "medical": "M",
-    "recreation": "P",
+    "center": "心",
+    "transit": "站",
+    "shopping": "採",
+    "medical": "醫",
+    "recreation": "園",
 }
 SHUANGBEI_BOUNDS = [[24.80, 121.22], [25.32, 121.75]]
 
@@ -45,7 +47,7 @@ def build_overview_map(
     _add_overview_base_context(map_obj, towns, cities)
     rent_group = folium.FeatureGroup(name="行政區租金背景", show=False).add_to(map_obj)
     other_group = folium.FeatureGroup(name="其他候選", show=True).add_to(map_obj)
-    commute_group = folium.FeatureGroup(name="通勤連結", show=True).add_to(map_obj)
+    commute_group = folium.FeatureGroup(name="通勤連結示意", show=True).add_to(map_obj)
     top3_group = folium.FeatureGroup(name="Top3", show=True).add_to(map_obj)
     workplace_group = folium.FeatureGroup(name="Workplace", show=True).add_to(map_obj)
     _add_rent_context_layer(rent_group, towns)
@@ -59,7 +61,7 @@ def build_overview_map(
         candidate_modes = _modes_for_candidate(top3, row["candidate_name"])
         rank = int(candidate_rows.iloc[0]["rank"])
         color = MODE_COLORS[candidate_modes[0]]
-        _add_commute_link(commute_group, row, center_lat, center_lon, color, rank)
+        _add_commute_link(commute_group, row, center_lat, center_lon, str(destination["destination"]), color, rank)
 
     for _, row in candidates.iterrows():
         if row["candidate_name"] in top3_names:
@@ -143,13 +145,13 @@ def build_recommendation_map(
     _add_overview_base_context(map_obj, towns, cities)
     rent_group = folium.FeatureGroup(name="行政區租金背景", show=False).add_to(map_obj)
     other_group = folium.FeatureGroup(name="其他候選", show=True).add_to(map_obj)
-    commute_group = folium.FeatureGroup(name="通勤連結", show=True).add_to(map_obj)
+    commute_group = folium.FeatureGroup(name="通勤連結示意", show=True).add_to(map_obj)
     top3_group = folium.FeatureGroup(name="Top3", show=True).add_to(map_obj)
     workplace_group = folium.FeatureGroup(name="Workplace", show=True).add_to(map_obj)
     _add_rent_context_layer(rent_group, towns)
 
     for _, row in mode_rows.iterrows():
-        _add_commute_link(commute_group, row, center_lat, center_lon, color, int(row["rank"]))
+        _add_commute_link(commute_group, row, center_lat, center_lon, str(destination["destination"]), color, int(row["rank"]))
 
     for _, row in candidates.iterrows():
         if row["candidate_name"] in top3_names:
@@ -184,6 +186,7 @@ def build_recommendation_map(
 def build_detail_map(
     row: pd.Series,
     pois: pd.DataFrame,
+    transport_stations: pd.DataFrame,
     destination: dict[str, float | str],
     towns: gpd.GeoDataFrame,
     cities: gpd.GeoDataFrame,
@@ -202,8 +205,8 @@ def build_detail_map(
     _add_detail_basemap(map_obj)
     _fit_detail_bounds(map_obj, lat, lon)
     walking_group = folium.FeatureGroup(name="800m 生活圈", show=True).add_to(map_obj)
-    transit_group = folium.FeatureGroup(name="交通", show=True).add_to(map_obj)
-    shopping_group = folium.FeatureGroup(name="採買", show=True).add_to(map_obj)
+    transit_group = folium.FeatureGroup(name="捷運 / 台鐵站點", show=True).add_to(map_obj)
+    shopping_group = folium.FeatureGroup(name="採買：超市 / 市場", show=True).add_to(map_obj)
     medical_group = folium.FeatureGroup(name="醫療", show=True).add_to(map_obj)
     recreation_group = folium.FeatureGroup(name="公園/運動", show=True).add_to(map_obj)
     poi_groups = {
@@ -223,14 +226,24 @@ def build_detail_map(
         tooltip=f"{row['living_area']}｜800m 步行生活圈",
     ).add_to(walking_group)
     _add_detail_poi_marker(
-        transit_group,
+        walking_group,
         lat,
         lon,
-        "transit",
+        "center",
         str(row["candidate_name"]),
-        "代表交通節點",
-        f"{row['living_area']} 的交通錨點",
+        "生活圈中心",
+        f"{row['living_area']}｜800m 步行生活圈中心",
     )
+    for _, station in transport_stations.iterrows():
+        _add_detail_poi_marker(
+            transit_group,
+            float(station["lat"]),
+            float(station["lon"]),
+            "transit",
+            str(station["name"]),
+            str(station["poi_type"]),
+            f"TDX 站點｜約 {float(station['distance_meters']):.0f}m",
+        )
     for _, poi in pois.iterrows():
         _add_detail_poi_marker(
             poi_groups.get(str(poi["category"]), recreation_group),
@@ -384,20 +397,80 @@ def _add_commute_link(
     row: pd.Series,
     workplace_lat: float,
     workplace_lon: float,
+    workplace_name: str,
     color: str,
     rank: int,
 ) -> None:
+    commute_text = _commute_link_text(row, workplace_name)
     folium.PolyLine(
         locations=[
             [float(row["lat"]), float(row["lon"])],
             [workplace_lat, workplace_lon],
         ],
         color=color,
-        weight=3.2 if rank == 1 else 2.2,
-        opacity=0.58 if rank == 1 else 0.42,
+        weight=2.2 if rank == 1 else 1.6,
+        opacity=0.38 if rank == 1 else 0.28,
         dash_array=None if rank == 1 else "6, 8",
-        tooltip=f"Top {rank}｜{living_area(row['candidate_name'])} → Workplace｜{minutes(row['commute_minutes'])}",
+        tooltip=f"通勤連結示意｜Top {rank}｜{commute_text}",
     ).add_to(layer)
+    _add_commute_time_label(layer, row, workplace_lat, workplace_lon, workplace_name, color, rank)
+
+
+def _add_commute_time_label(
+    layer: folium.FeatureGroup,
+    row: pd.Series,
+    workplace_lat: float,
+    workplace_lon: float,
+    workplace_name: str,
+    color: str,
+    rank: int,
+) -> None:
+    label_lat = (float(row["lat"]) * 0.58) + (workplace_lat * 0.42) + ((rank - 2) * 0.006)
+    label_lon = (float(row["lon"]) * 0.58) + (workplace_lon * 0.42) + ((2 - rank) * 0.004)
+    label = html.escape(f"約 {_rounded_commute_minutes(row)} 分鐘")
+    tooltip = html.escape(f"通勤連結示意｜{_commute_link_text(row, workplace_name)}")
+    folium.Marker(
+        location=[label_lat, label_lon],
+        tooltip=tooltip,
+        icon=folium.DivIcon(
+            html=(
+                '<div style="'
+                'display:inline-flex;align-items:center;justify-content:center;'
+                'min-width:56px;height:24px;padding:0 7px;'
+                'background:rgba(255,255,255,0.88);'
+                f'border:1.4px solid {color};'
+                'border-radius:999px;'
+                'box-shadow:0 1px 4px rgba(36,50,56,0.14);'
+                'color:#243238;font-size:12px;font-weight:850;'
+                'line-height:1;white-space:nowrap;'
+                f'opacity:{0.92 if rank == 1 else 0.82};'
+                f'">{label}</div>'
+            ),
+            icon_size=(70, 24),
+            icon_anchor=(35, 12),
+        ),
+    ).add_to(layer)
+
+
+def _commute_link_text(row: pd.Series, workplace_name: str) -> str:
+    origin = _short_place_name(str(row["candidate_name"]))
+    destination = _short_place_name(workplace_name)
+    return f"{origin} → {destination}｜約 {_rounded_commute_minutes(row)} 分鐘"
+
+
+def _rounded_commute_minutes(row: pd.Series) -> int:
+    return int(round(float(row["commute_minutes"])))
+
+
+def _short_place_name(value: str) -> str:
+    name = value.replace("生活圈", "").replace("車站", "").replace("站", "")
+    if name == "三峽北大特區":
+        return "三峽北大"
+    if name == "五股區公所":
+        return "五股"
+    if name == "我的工作地":
+        return name
+    return name
 
 
 def _district_context_style(feature: dict) -> dict:
@@ -513,14 +586,22 @@ def _add_detail_poi_marker(
         ),
         icon=folium.DivIcon(
             html=(
+                '<div style="display:flex;align-items:center;gap:5px;white-space:nowrap;">'
                 f'<div style="width:24px;height:24px;border-radius:999px;background:{color};'
                 'border:2px solid white;box-shadow:0 2px 7px rgba(36,50,56,0.24);'
-                'display:flex;align-items:center;justify-content:center;'
-                'color:white;font-size:11px;font-weight:900;">'
-                f'{symbol}</div>'
+                'display:flex;align-items:center;justify-content:center;flex:0 0 auto;'
+                'color:white;font-size:11px;font-weight:900;line-height:1;">'
+                f'{html.escape(symbol)}</div>'
+                '<div style="max-width:136px;overflow:hidden;text-overflow:ellipsis;'
+                'background:rgba(255,255,255,0.94);border:1px solid #D6DDE0;'
+                'border-left-width:4px;border-radius:8px;padding:3px 7px;'
+                f'border-left-color:{color};color:#243238;'
+                'font-size:12px;font-weight:760;line-height:1.2;'
+                'box-shadow:0 2px 8px rgba(36,50,56,0.13);">'
+                f'{safe_type}｜{safe_name}</div></div>'
             ),
-            icon_size=(24, 24),
-            icon_anchor=(12, 12),
+            icon_size=(178, 32),
+            icon_anchor=(12, 16),
         ),
     ).add_to(map_obj)
 
@@ -616,7 +697,7 @@ def _add_legend(map_obj: folium.Map, mode_color: str, workplace_name: str) -> No
           <div style="font-weight:800;margin-bottom:6px;">圖例</div>
           <div><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:{mode_color};margin-right:6px;"></span>目前模式 Top 3</div>
           <div><span style="display:inline-block;width:18px;height:10px;border-radius:50%;background:{mode_color};opacity:0.22;margin-right:6px;"></span>Top3 800m halo</div>
-          <div><span style="display:inline-block;width:20px;border-top:3px solid {mode_color};opacity:0.58;margin-right:6px;"></span>通勤連結</div>
+          <div><span style="display:inline-block;width:20px;border-top:3px solid {mode_color};opacity:0.38;margin-right:6px;"></span>通勤連結示意</div>
           <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#AEB8BA;margin-right:7px;"></span>其他已評估候選</div>
           <div><span style="color:#C45B65;font-size:16px;margin-right:4px;">★</span>工作地：{safe_name}</div>
           <div><span style="display:inline-block;width:18px;height:10px;background:#EADCA9;opacity:0.35;margin-right:6px;"></span>行政區租金背景（預設關閉）</div>
@@ -654,7 +735,7 @@ def _add_overview_legend(map_obj: folium.Map, workplace_name: str) -> None:
           <div style="font-weight:800;margin-bottom:6px;">Overview</div>
           {mode_items}
           <div><span style="display:inline-block;width:18px;height:10px;border-radius:50%;background:#78B995;opacity:0.22;margin-right:6px;"></span>Top3 800m halo</div>
-          <div><span style="display:inline-block;width:20px;border-top:3px solid #78B995;opacity:0.58;margin-right:6px;"></span>Commute links</div>
+          <div><span style="display:inline-block;width:20px;border-top:3px solid #78B995;opacity:0.38;margin-right:6px;"></span>通勤連結示意</div>
           <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#AEB8BA;margin-right:7px;"></span>Other evaluated candidates</div>
           <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#A98BC8;border:2px solid #fff;margin-right:6px;"></span>Other Top-3 options</div>
           <div><span style="color:#C45B65;font-size:16px;margin-right:4px;">★</span>工作地：{safe_name}</div>
@@ -688,10 +769,11 @@ def _add_detail_legend(map_obj: folium.Map, living_area_name: str) -> None:
         ">
           <div style="font-weight:800;margin-bottom:6px;">{safe_name}</div>
           <div><span style="display:inline-block;width:18px;height:10px;border-radius:50%;background:#78B995;opacity:0.30;margin-right:6px;"></span>800m 步行生活圈</div>
-          <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#4F83A6;color:white;font-size:9px;font-weight:900;margin-right:6px;">T</span>交通節點</div>
-          <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#78B995;color:white;font-size:9px;font-weight:900;margin-right:6px;">S</span>採買</div>
-          <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#C45B65;color:white;font-size:9px;font-weight:900;margin-right:6px;">M</span>醫療</div>
-          <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#D39B43;color:white;font-size:9px;font-weight:900;margin-right:6px;">P</span>公園/運動</div>
+          <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#243238;color:white;font-size:9px;font-weight:900;margin-right:6px;">心</span>生活圈中心</div>
+          <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#4F83A6;color:white;font-size:9px;font-weight:900;margin-right:6px;">站</span>捷運 / 台鐵站點</div>
+          <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#78B995;color:white;font-size:9px;font-weight:900;margin-right:6px;">採</span>超市 / 市場</div>
+          <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#C45B65;color:white;font-size:9px;font-weight:900;margin-right:6px;">醫</span>醫療</div>
+          <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#D39B43;color:white;font-size:9px;font-weight:900;margin-right:6px;">園</span>公園/運動</div>
         </div>
         {{% endmacro %}}
         """

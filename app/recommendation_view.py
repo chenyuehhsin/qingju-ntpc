@@ -8,7 +8,14 @@ from streamlit_folium import st_folium
 
 from components.cards import render_recommendation_cards
 from components.map_view import build_detail_map, build_recommendation_map
-from data_loader import MODE_COLORS, life_summary, load_representative_pois, minutes, money
+from data_loader import (
+    MODE_COLORS,
+    life_summary,
+    load_representative_pois,
+    load_representative_transport_stations,
+    minutes,
+    money,
+)
 
 
 def render_dashboard_view(
@@ -174,11 +181,22 @@ def _render_detail_section(
 ) -> None:
     st.markdown("### Detail map｜800m 步行生活圈")
     pois = load_representative_pois(str(selected_row["candidate_name"]))
+    transport_stations = load_representative_transport_stations(
+        str(selected_row["candidate_name"])
+    )
     detail_left, detail_right = st.columns([0.96, 2.74], gap="medium")
     with detail_left:
         _render_life_summary_card(mode, selected_row, pois)
     with detail_right:
-        detail_map = build_detail_map(selected_row, pois, destination, towns, cities, mode)
+        detail_map = build_detail_map(
+            selected_row,
+            pois,
+            transport_stations,
+            destination,
+            towns,
+            cities,
+            mode,
+        )
         st_folium(detail_map, height=520, use_container_width=True, returned_objects=[])
 
 

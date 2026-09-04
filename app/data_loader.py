@@ -15,6 +15,7 @@ PREFERENCE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "preferen
 RENT_COMMUTE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "rent_commute_candidates_by_workplace.csv"
 LIVABILITY_CSV = PROJECT_ROOT / "data" / "processed" / "livability" / "livability_by_candidate.csv"
 LIVABILITY_RAW_CACHE_DIR = PROJECT_ROOT / "data" / "raw" / "livability" / "osm_overpass_800m_2026-08-22"
+TDX_STATION_DATA_DIR = PROJECT_ROOT / "data" / "interim" / "transport" / "tdx_station_data"
 CANDIDATE_LOCATIONS_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "candidate_locations_expanded.csv"
 COMMUTE_BY_WORKPLACE_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "commute_by_workplace.csv"
 HOUSING_BENCHMARK_CSV = PROJECT_ROOT / "data" / "processed" / "housing" / "moi_independent_suite_rent_benchmark.csv"
@@ -69,10 +70,12 @@ MODE_COPY = {
 }
 POI_COUNT_COLUMNS = ["food_count", "shopping_count", "medical_count", "recreation_count", "culture_count"]
 REPRESENTATIVE_POI_LIMIT_PER_CATEGORY = 2
+REPRESENTATIVE_TRANSPORT_STATION_LIMIT = 5
+DETAIL_TRANSPORT_RADIUS_METERS = 800
 REPRESENTATIVE_POI_CATEGORIES = {
     "shopping": {
         "label": "採買",
-        "tags": {"shop": {"convenience", "supermarket"}},
+        "tags": {"shop": {"supermarket"}, "amenity": {"marketplace"}},
     },
     "medical": {
         "label": "醫療",
@@ -86,6 +89,7 @@ REPRESENTATIVE_POI_CATEGORIES = {
 OSM_TYPE_LABELS = {
     "convenience": "便利商店",
     "supermarket": "超市",
+    "marketplace": "市場",
     "clinic": "診所",
     "hospital": "醫院",
     "pharmacy": "藥局",
@@ -94,6 +98,11 @@ OSM_TYPE_LABELS = {
     "pitch": "球場",
     "fitness_centre": "健身",
     "stadium": "場館",
+}
+TDX_RAIL_STATION_FILES = {
+    "trtc_stations.json": {"operator": "TRTC", "label": "捷運"},
+    "tymc_stations.json": {"operator": "TYMC", "label": "機場捷運"},
+    "tra_stations.json": {"operator": "TRA", "label": "台鐵"},
 }
 LIVING_AREA_NAMES = {
     "板橋站": "板橋生活圈",
@@ -411,6 +420,74 @@ def load_representative_pois(candidate_name: str) -> pd.DataFrame:
     )
 
 
+@st.cache_data(show_spinner=False)
+def load_representative_transport_stations(candidate_name: str) -> pd.DataFrame:
+    columns = [
+        "name",
+        "lat",
+        "lon",
+        "operator",
+        "poi_type",
+        "station_uid",
+        "station_id",
+        "distance_meters",
+        "source",
+    ]
+    candidates = pd.read_csv(CANDIDATE_LOCATIONS_CSV)
+    candidate_rows = candidates[candidates["candidate_name"] == candidate_name]
+    if candidate_rows.empty:
+        return pd.DataFrame(columns=columns)
+
+    center = candidate_rows.iloc[0]
+    center_lat = float(center["lat"])
+    center_lon = float(center["lon"])
+    rows: list[dict[str, Any]] = []
+    seen_uids: set[str] = set()
+
+    for filename, metadata in TDX_RAIL_STATION_FILES.items():
+        station_path = TDX_STATION_DATA_DIR / filename
+        if not station_path.exists():
+            continue
+        stations = json.loads(station_path.read_text(encoding="utf-8"))
+        if not isinstance(stations, list):
+            continue
+        for station in stations:
+            if not isinstance(station, dict):
+                continue
+            lat, lon = _station_lat_lon(station)
+            if lat is None or lon is None:
+                continue
+            distance = _haversine_meters(center_lat, center_lon, lat, lon)
+            if distance > DETAIL_TRANSPORT_RADIUS_METERS:
+                continue
+            station_uid = str(station.get("StationUID", ""))
+            if station_uid in seen_uids:
+                continue
+            seen_uids.add(station_uid)
+            rows.append(
+                {
+                    "name": _station_name(station),
+                    "lat": lat,
+                    "lon": lon,
+                    "operator": metadata["operator"],
+                    "poi_type": metadata["label"],
+                    "station_uid": station_uid,
+                    "station_id": str(station.get("StationID", "")),
+                    "distance_meters": distance,
+                    "source": f"TDX station cache: {filename}",
+                }
+            )
+
+    stations = pd.DataFrame(rows, columns=columns)
+    if stations.empty:
+        return stations
+    return (
+        stations.sort_values(["distance_meters", "operator", "name"])
+        .head(REPRESENTATIVE_TRANSPORT_STATION_LIMIT)
+        .reset_index(drop=True)
+    )
+
+
 def _safe_poi_slug(value: str) -> str:
     mapping = {
         "汐止車站": "xizhi_station",
@@ -431,6 +508,26 @@ def _safe_poi_slug(value: str) -> str:
         "鶯歌車站": "yingge_station",
     }
     return mapping[value]
+
+
+def _station_lat_lon(station: dict[str, Any]) -> tuple[float | None, float | None]:
+    position = station.get("StationPosition")
+    if not isinstance(position, dict):
+        return None, None
+    lat = position.get("PositionLat")
+    lon = position.get("PositionLon")
+    if lat is None or lon is None:
+        return None, None
+    return float(lat), float(lon)
+
+
+def _station_name(station: dict[str, Any]) -> str:
+    name = station.get("StationName", {})
+    if isinstance(name, dict):
+        value = str(name.get("Zh_tw", "")).strip()
+        if value:
+            return value
+    return str(station.get("StationID", "未命名站點")).strip()
 
 
 def _representative_poi_category(tags: dict[str, Any]) -> str | None:
