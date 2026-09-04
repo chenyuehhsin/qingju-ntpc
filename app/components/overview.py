@@ -19,7 +19,7 @@ def render_overview(
 
     st.markdown("## 四模式推薦總覽")
     st.markdown(
-        '<div class="qj-section-note">先看每種偏好推薦住哪；切換單一模式後，可選 Top 1 / 2 / 3 查看 800m 生活圈細節。</div>',
+        '<div class="qj-section-note">先看每種偏好推薦住哪；切換單一模式後，可選 Top 1 / 2 / 3 查看約15分鐘核心生活圈與延伸生活圈。生活機能統計目前仍基於 800m 範圍。</div>',
         unsafe_allow_html=True,
     )
     _render_summary_cards(top1)

@@ -9,7 +9,9 @@ from branca.element import MacroElement, Template
 
 from data_loader import MODE_COLORS, MODE_ORDER, living_area, minutes, money
 
-WALKING_LIVING_AREA_RADIUS_METERS = 800
+CORE_LIVING_AREA_RADIUS_METERS = 1000
+EXTENDED_LIVING_AREA_RADIUS_METERS = 2000
+POI_STATISTICS_RADIUS_METERS = 800
 DETAIL_POI_COLORS = {
     "center": "#243238",
     "transit": "#4F83A6",
@@ -25,6 +27,8 @@ DETAIL_POI_SYMBOLS = {
     "recreation": "園",
 }
 SHUANGBEI_BOUNDS = [[24.80, 121.22], [25.32, 121.75]]
+TRANSPARENT_TILE_DATA_URI = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+LIVING_AREA_PANE = "living_area_pane"
 
 
 def build_overview_map(
@@ -45,6 +49,7 @@ def build_overview_map(
     )
     _fit_candidate_bounds(map_obj, candidates, center_lat, center_lon)
     _add_overview_base_context(map_obj, towns, cities)
+    _add_living_area_pane(map_obj)
     rent_group = folium.FeatureGroup(name="行政區租金背景", show=False).add_to(map_obj)
     other_group = folium.FeatureGroup(name="其他候選", show=True).add_to(map_obj)
     commute_group = folium.FeatureGroup(name="通勤連結示意", show=True).add_to(map_obj)
@@ -72,7 +77,7 @@ def build_overview_map(
         candidate_modes = _modes_for_candidate(top3, row["candidate_name"])
         color = MODE_COLORS[candidate_modes[0]]
         rank = int(top3[top3["candidate_name"] == row["candidate_name"]].sort_values("rank").iloc[0]["rank"])
-        _add_overview_top3_halo(top3_group, row, color, rank)
+        _add_overview_living_area_circles(top3_group, row, color, rank)
         _add_ranked_recommendation_marker(
             top3_group,
             row,
@@ -89,7 +94,7 @@ def build_overview_map(
         top1_modes = _modes_for_candidate(top3[top3["rank"] == 1], row["candidate_name"])
         primary_color = MODE_COLORS[top1_modes[0]]
         display_rank = int(top3[top3["candidate_name"] == row["candidate_name"]].sort_values("rank").iloc[0]["rank"])
-        _add_overview_top3_halo(top3_group, row, primary_color, display_rank)
+        _add_overview_living_area_circles(top3_group, row, primary_color, display_rank)
         _add_ranked_recommendation_marker(
             top3_group,
             row,
@@ -143,6 +148,7 @@ def build_recommendation_map(
     )
     _fit_candidate_bounds(map_obj, mode_rows, center_lat, center_lon)
     _add_overview_base_context(map_obj, towns, cities)
+    _add_living_area_pane(map_obj)
     rent_group = folium.FeatureGroup(name="行政區租金背景", show=False).add_to(map_obj)
     other_group = folium.FeatureGroup(name="其他候選", show=True).add_to(map_obj)
     commute_group = folium.FeatureGroup(name="通勤連結示意", show=True).add_to(map_obj)
@@ -162,7 +168,7 @@ def build_recommendation_map(
         rank = int(row["rank"])
         radius = 12 if rank == 1 else 8
         fill_opacity = 0.95 if rank == 1 else 0.78
-        _add_overview_top3_halo(top3_group, row, color, rank)
+        _add_overview_living_area_circles(top3_group, row, color, rank)
         _add_ranked_recommendation_marker(
             top3_group,
             row,
@@ -202,9 +208,10 @@ def build_detail_map(
         control_scale=True,
         prefer_canvas=True,
     )
-    _add_detail_basemap(map_obj)
+    _add_detail_basemap(map_obj, towns, cities)
     _fit_detail_bounds(map_obj, lat, lon)
-    walking_group = folium.FeatureGroup(name="800m 生活圈", show=True).add_to(map_obj)
+    extended_group = folium.FeatureGroup(name="延伸生活圈", show=True).add_to(map_obj)
+    core_group = folium.FeatureGroup(name="約15分鐘核心生活圈", show=True).add_to(map_obj)
     transit_group = folium.FeatureGroup(name="捷運 / 台鐵站點", show=True).add_to(map_obj)
     shopping_group = folium.FeatureGroup(name="採買：超市 / 市場", show=True).add_to(map_obj)
     medical_group = folium.FeatureGroup(name="醫療", show=True).add_to(map_obj)
@@ -216,23 +223,34 @@ def build_detail_map(
     }
     folium.Circle(
         location=[lat, lon],
-        radius=WALKING_LIVING_AREA_RADIUS_METERS,
+        radius=EXTENDED_LIVING_AREA_RADIUS_METERS,
+        color=color,
+        weight=1.4,
+        opacity=0.38,
+        fill=True,
+        fill_color=color,
+        fill_opacity=0.2,
+        tooltip=f"{row['living_area']}｜延伸生活圈（2 km）",
+    ).add_to(extended_group)
+    folium.Circle(
+        location=[lat, lon],
+        radius=CORE_LIVING_AREA_RADIUS_METERS,
         color=color,
         weight=2.4,
         opacity=0.88,
         fill=True,
         fill_color=color,
         fill_opacity=0.10,
-        tooltip=f"{row['living_area']}｜800m 步行生活圈",
-    ).add_to(walking_group)
+        tooltip=f"{row['living_area']}｜約15分鐘核心生活圈（1 km）",
+    ).add_to(core_group)
     _add_detail_poi_marker(
-        walking_group,
+        core_group,
         lat,
         lon,
         "center",
         str(row["candidate_name"]),
         "生活圈中心",
-        f"{row['living_area']}｜800m 步行生活圈中心",
+        f"{row['living_area']}｜約15分鐘核心生活圈中心",
     )
     for _, station in transport_stations.iterrows():
         _add_detail_poi_marker(
@@ -292,8 +310,8 @@ def _fit_candidate_bounds(map_obj: folium.Map, candidates: pd.DataFrame, center_
 
 
 def _fit_detail_bounds(map_obj: folium.Map, center_lat: float, center_lon: float) -> None:
-    lat_delta = 0.011
-    lon_delta = 0.012
+    lat_delta = 0.022
+    lon_delta = 0.024
     map_obj.fit_bounds(
         [[center_lat - lat_delta, center_lon - lon_delta], [center_lat + lat_delta, center_lon + lon_delta]],
         padding=(12, 12),
@@ -321,13 +339,80 @@ def _add_overview_base_context(map_obj: folium.Map, towns: gpd.GeoDataFrame, cit
     _add_city_boundary_context(map_obj, cities)
 
 
-def _add_detail_basemap(map_obj: folium.Map) -> None:
+def _add_living_area_pane(map_obj: folium.Map) -> None:
+    folium.map.CustomPane(LIVING_AREA_PANE, z_index=390).add_to(map_obj)
+
+
+def _add_detail_basemap(map_obj: folium.Map, towns: gpd.GeoDataFrame, cities: gpd.GeoDataFrame) -> None:
+    _add_detail_background_style(map_obj)
     folium.TileLayer(
-        tiles="OpenStreetMap",
-        name="OSM Standard",
+        tiles=TRANSPARENT_TILE_DATA_URI,
+        name="極簡生活圈底圖",
+        attr="Local transparent background",
         overlay=False,
         control=True,
+        show=True,
     ).add_to(map_obj)
+    boundary_group = folium.FeatureGroup(name="行政邊界", show=True, control=False).add_to(map_obj)
+
+    def town_style(feature: dict) -> dict:
+        city = feature["properties"].get("COUNTYNAME")
+        return {
+            "fillColor": "#F3F0E8" if city == "新北市" else "#F1F3F2",
+            "color": "#C7CECC",
+            "weight": 0.62,
+            "opacity": 0.42,
+            "fillOpacity": 0.42,
+        }
+
+    def city_style(feature: dict) -> dict:
+        city = feature["properties"].get("COUNTYNAME")
+        return {
+            "fillColor": "transparent",
+            "color": "#7A8A84" if city == "新北市" else "#71818A",
+            "weight": 1.55,
+            "opacity": 0.58,
+            "fillOpacity": 0.0,
+        }
+
+    folium.GeoJson(
+        towns,
+        name="行政區邊界",
+        style_function=town_style,
+        control=False,
+        tooltip=None,
+    ).add_to(boundary_group)
+    folium.GeoJson(
+        cities,
+        name="縣市邊界",
+        style_function=city_style,
+        control=False,
+        tooltip=folium.GeoJsonTooltip(fields=["COUNTYNAME"], labels=False, sticky=False),
+    ).add_to(boundary_group)
+    folium.TileLayer(
+        tiles="OpenStreetMap",
+        name="街道地圖",
+        overlay=False,
+        control=True,
+        show=False,
+    ).add_to(map_obj)
+
+
+def _add_detail_background_style(map_obj: folium.Map) -> None:
+    template = Template(
+        """
+        {% macro html(this, kwargs) %}
+        <style>
+          .leaflet-container {
+            background: #F6F3EC;
+          }
+        </style>
+        {% endmacro %}
+        """
+    )
+    macro = MacroElement()
+    macro._template = template
+    map_obj.get_root().add_child(macro)
 
 
 def _clamp_bounds_to_shuangbei(bounds: list[list[float]]) -> list[list[float]]:
@@ -378,17 +463,33 @@ def _add_city_boundary_context(map_obj: folium.Map, cities: gpd.GeoDataFrame) ->
     ).add_to(map_obj)
 
 
-def _add_overview_top3_halo(layer: folium.FeatureGroup, row: pd.Series, color: str, rank: int) -> None:
+def _add_overview_living_area_circles(layer: folium.FeatureGroup, row: pd.Series, color: str, rank: int) -> None:
+    lat = float(row["lat"])
+    lon = float(row["lon"])
+    area_name = living_area(row["candidate_name"])
     folium.Circle(
-        location=[float(row["lat"]), float(row["lon"])],
-        radius=WALKING_LIVING_AREA_RADIUS_METERS,
+        location=[lat, lon],
+        radius=EXTENDED_LIVING_AREA_RADIUS_METERS,
         color=color,
-        weight=2.0 if rank == 1 else 1.5,
-        opacity=0.46 if rank == 1 else 0.34,
+        weight=1.2 if rank == 1 else 0.9,
+        opacity=0.26 if rank == 1 else 0.19,
         fill=True,
         fill_color=color,
-        fill_opacity=0.13 if rank == 1 else 0.08,
-        tooltip=f"Top {rank}｜{living_area(row['candidate_name'])}｜800m",
+        fill_opacity=0.2 if rank == 1 else 0.1,
+        pane=LIVING_AREA_PANE,
+        tooltip=f"Top {rank}｜{area_name}｜延伸生活圈（2 km）",
+    ).add_to(layer)
+    folium.Circle(
+        location=[lat, lon],
+        radius=CORE_LIVING_AREA_RADIUS_METERS,
+        color=color,
+        weight=2.0 if rank == 1 else 1.45,
+        opacity=0.46 if rank == 1 else 0.32,
+        fill=True,
+        fill_color=color,
+        fill_opacity=0.075 if rank == 1 else 0.046,
+        pane=LIVING_AREA_PANE,
+        tooltip=f"Top {rank}｜{area_name}｜約15分鐘核心生活圈（1 km）",
     ).add_to(layer)
 
 
@@ -696,7 +797,8 @@ def _add_legend(map_obj: folium.Map, mode_color: str, workplace_name: str) -> No
         ">
           <div style="font-weight:800;margin-bottom:6px;">圖例</div>
           <div><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:{mode_color};margin-right:6px;"></span>目前模式 Top 3</div>
-          <div><span style="display:inline-block;width:18px;height:10px;border-radius:50%;background:{mode_color};opacity:0.22;margin-right:6px;"></span>Top3 800m halo</div>
+          <div><span style="display:inline-block;width:18px;height:10px;border-radius:50%;background:{mode_color};opacity:0.30;margin-right:6px;"></span>Top3 約15分鐘核心生活圈（1 km）</div>
+          <div><span style="display:inline-block;width:22px;height:12px;border-radius:50%;background:{mode_color};opacity:0.18;margin-right:6px;"></span>Top3 延伸生活圈（2 km）</div>
           <div><span style="display:inline-block;width:20px;border-top:3px solid {mode_color};opacity:0.38;margin-right:6px;"></span>通勤連結示意</div>
           <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#AEB8BA;margin-right:7px;"></span>其他已評估候選</div>
           <div><span style="color:#C45B65;font-size:16px;margin-right:4px;">★</span>工作地：{safe_name}</div>
@@ -734,7 +836,8 @@ def _add_overview_legend(map_obj: folium.Map, workplace_name: str) -> None:
         ">
           <div style="font-weight:800;margin-bottom:6px;">Overview</div>
           {mode_items}
-          <div><span style="display:inline-block;width:18px;height:10px;border-radius:50%;background:#78B995;opacity:0.22;margin-right:6px;"></span>Top3 800m halo</div>
+          <div><span style="display:inline-block;width:18px;height:10px;border-radius:50%;background:#78B995;opacity:0.30;margin-right:6px;"></span>Top3 約15分鐘核心生活圈（1 km）</div>
+          <div><span style="display:inline-block;width:22px;height:12px;border-radius:50%;background:#78B995;opacity:0.18;margin-right:6px;"></span>Top3 延伸生活圈（2 km）</div>
           <div><span style="display:inline-block;width:20px;border-top:3px solid #78B995;opacity:0.38;margin-right:6px;"></span>通勤連結示意</div>
           <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#AEB8BA;margin-right:7px;"></span>Other evaluated candidates</div>
           <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#A98BC8;border:2px solid #fff;margin-right:6px;"></span>Other Top-3 options</div>
@@ -768,12 +871,14 @@ def _add_detail_legend(map_obj: folium.Map, living_area_name: str) -> None:
             box-shadow: 0 1px 4px rgba(36,50,56,0.10);
         ">
           <div style="font-weight:800;margin-bottom:6px;">{safe_name}</div>
-          <div><span style="display:inline-block;width:18px;height:10px;border-radius:50%;background:#78B995;opacity:0.30;margin-right:6px;"></span>800m 步行生活圈</div>
+          <div><span style="display:inline-block;width:18px;height:10px;border-radius:50%;background:#78B995;opacity:0.30;margin-right:6px;"></span>約15分鐘核心生活圈（1 km）</div>
+          <div><span style="display:inline-block;width:22px;height:12px;border-radius:50%;background:#78B995;opacity:0.18;margin-right:6px;"></span>延伸生活圈（2 km）</div>
           <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#243238;color:white;font-size:9px;font-weight:900;margin-right:6px;">心</span>生活圈中心</div>
           <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#4F83A6;color:white;font-size:9px;font-weight:900;margin-right:6px;">站</span>捷運 / 台鐵站點</div>
           <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#78B995;color:white;font-size:9px;font-weight:900;margin-right:6px;">採</span>超市 / 市場</div>
           <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#C45B65;color:white;font-size:9px;font-weight:900;margin-right:6px;">醫</span>醫療</div>
           <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#D39B43;color:white;font-size:9px;font-weight:900;margin-right:6px;">園</span>公園/運動</div>
+          <div style="margin-top:6px;color:#65747A;font-size:12px;line-height:1.35;">生活機能統計目前仍基於 OSM {POI_STATISTICS_RADIUS_METERS}m 範圍。</div>
         </div>
         {{% endmacro %}}
         """

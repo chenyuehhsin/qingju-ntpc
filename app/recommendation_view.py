@@ -179,7 +179,11 @@ def _render_detail_section(
     towns,
     cities,
 ) -> None:
-    st.markdown("### Detail map｜800m 步行生活圈")
+    st.markdown("### Detail map｜約15分鐘核心生活圈 + 延伸生活圈")
+    st.markdown(
+        '<div class="qj-section-note">「15分鐘」為近似探索範圍，實際步行時間依道路與步行速度而異，不代表精準步行 isochrone。生活機能統計目前仍基於 800m 範圍。</div>',
+        unsafe_allow_html=True,
+    )
     pois = load_representative_pois(str(selected_row["candidate_name"]))
     transport_stations = load_representative_transport_stations(
         str(selected_row["candidate_name"])
@@ -217,11 +221,11 @@ def _render_life_summary_card(mode: str, row: pd.Series, pois: pd.DataFrame) -> 
             <div class="qj-life-metric-grid">
                 <div><span>月租</span><b>{money(row['rent'])}</b><small>NTD/month</small></div>
                 <div><span>通勤</span><b>{minutes(row['commute_minutes'])}</b><small>public transit</small></div>
-                <div><span>food</span><b>{food}</b><small>OSM 800m</small></div>
-                <div><span>shopping</span><b>{shopping}</b><small>OSM 800m</small></div>
-                <div><span>medical</span><b>{medical}</b><small>OSM 800m</small></div>
-                <div><span>recreation</span><b>{recreation}</b><small>OSM 800m</small></div>
-                <div><span>culture</span><b>{culture}</b><small>OSM 800m</small></div>
+                <div><span>food</span><b>{food}</b><small>OSM 800m 統計</small></div>
+                <div><span>shopping</span><b>{shopping}</b><small>OSM 800m 統計</small></div>
+                <div><span>medical</span><b>{medical}</b><small>OSM 800m 統計</small></div>
+                <div><span>recreation</span><b>{recreation}</b><small>OSM 800m 統計</small></div>
+                <div><span>culture</span><b>{culture}</b><small>OSM 800m 統計</small></div>
             </div>
             <div class="qj-life-summary">{html.escape(life_summary(row))}</div>
             <div class="qj-life-poi-note">{html.escape(poi_note)}</div>
@@ -239,6 +243,6 @@ def _count(row: pd.Series, column: str) -> int | str:
 
 def _representative_poi_note(pois: pd.DataFrame) -> str:
     if pois.empty:
-        return "代表 POI：目前沒有可用的 raw OSM cache 點位，只顯示交通節點。"
+        return "代表 POI：目前沒有可用的 raw OSM cache 點位，只顯示交通節點；生活機能統計仍基於 800m 範圍。"
     labels = pois["category_label"].dropna().astype(str).drop_duplicates().tolist()
-    return f"代表 POI：每類最多顯示 2 個；目前顯示 {'、'.join(labels)}。"
+    return f"代表 POI：每類最多顯示 2 個；目前顯示 {'、'.join(labels)}。生活機能統計仍基於 800m 範圍。"

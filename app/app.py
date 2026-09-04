@@ -365,9 +365,10 @@ def main() -> None:
             任意工作地址使用 OpenStreetMap Nominatim geocoding；地址解析結果會 local cache，避免重複查詢。<br>
             目前不是 door-to-door 通勤。<br>
             目前不包含汽車 / 機車通勤模式。<br>
-            生活品質型目前以站點周邊 800m OSM POI 作為生活機能 proxy。<br>
+            生活品質型目前以站點周邊 800m OSM POI 作為生活機能統計 proxy。<br>
             推薦權重為 MVP preference settings，不代表客觀最佳居住選擇。<br>
-            總覽地圖呈現工作地、Top 3 推薦 800m halo 與弱化候選點；行政區租金背景可在圖層控制開啟。Detail map 的 800m 圓形步行生活圈是 OSM POI proxy 的資料範圍，不是實際步行路網可達範圍。
+            總覽地圖呈現工作地、Top 3 推薦的約15分鐘核心生活圈（1 km）與延伸生活圈（2 km），以及弱化候選點；行政區租金背景可在圖層控制開啟。<br>
+            「15分鐘」為近似探索範圍，實際步行時間依道路與步行速度而異，不代表精準步行 isochrone；生活機能統計目前仍基於 800m 範圍。
             </div>
             """,
             unsafe_allow_html=True,
