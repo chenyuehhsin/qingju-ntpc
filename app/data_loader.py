@@ -8,6 +8,7 @@ from typing import Any
 import geopandas as gpd
 import pandas as pd
 import streamlit as st
+from shapely.geometry import Point
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +19,9 @@ LIVABILITY_RAW_CACHE_DIR = PROJECT_ROOT / "data" / "raw" / "livability" / "osm_o
 TDX_STATION_DATA_DIR = PROJECT_ROOT / "data" / "interim" / "transport" / "tdx_station_data"
 CANDIDATE_LOCATIONS_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "candidate_locations_expanded.csv"
 COMMUTE_BY_WORKPLACE_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "commute_by_workplace.csv"
+METRO_STATIONS_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "metro_stations.csv"
+METRO_LINES_GEOJSON = PROJECT_ROOT / "data" / "processed" / "transport" / "metro_lines.geojson"
+YOUBIKE_STATIONS_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "youbike_stations.csv"
 HOUSING_BENCHMARK_CSV = PROJECT_ROOT / "data" / "processed" / "housing" / "moi_independent_suite_rent_benchmark.csv"
 POLICY_LENS_CSV = PROJECT_ROOT / "data" / "processed" / "policy" / "policy_lens_v0.csv"
 CAREER_POLICY_LENS_PHASE7_CSV = PROJECT_ROOT / "outputs" / "career" / "career_policy_lens_phase7.csv"
@@ -72,6 +76,8 @@ POI_COUNT_COLUMNS = ["food_count", "shopping_count", "medical_count", "recreatio
 REPRESENTATIVE_POI_LIMIT_PER_CATEGORY = 2
 REPRESENTATIVE_TRANSPORT_STATION_LIMIT = 5
 DETAIL_TRANSPORT_RADIUS_METERS = 800
+DETAIL_EXTENDED_LIVING_AREA_RADIUS_METERS = 2000
+TAIWAN_PROJECTED_CRS = "EPSG:3826"
 REPRESENTATIVE_POI_CATEGORIES = {
     "shopping": {
         "label": "採買",
@@ -486,6 +492,110 @@ def load_representative_transport_stations(candidate_name: str) -> pd.DataFrame:
         .head(REPRESENTATIVE_TRANSPORT_STATION_LIMIT)
         .reset_index(drop=True)
     )
+
+
+def _candidate_center(candidate_name: str) -> tuple[float, float]:
+    candidates = pd.read_csv(CANDIDATE_LOCATIONS_CSV)
+    candidate_rows = candidates[candidates["candidate_name"] == candidate_name]
+    if candidate_rows.empty:
+        raise RuntimeError(f"Unknown candidate_name: {candidate_name}")
+    center = candidate_rows.iloc[0]
+    return float(center["lat"]), float(center["lon"])
+
+
+@st.cache_data(show_spinner=False)
+def load_detail_metro_stations(candidate_name: str) -> pd.DataFrame:
+    columns = [
+        "station_uid",
+        "station_id",
+        "station_name_zh",
+        "station_name_en",
+        "line_ids",
+        "line_names_zh",
+        "lat",
+        "lon",
+        "distance_meters",
+    ]
+    if not METRO_STATIONS_CSV.exists():
+        return pd.DataFrame(columns=columns)
+
+    center_lat, center_lon = _candidate_center(candidate_name)
+    stations = pd.read_csv(METRO_STATIONS_CSV)
+    stations["lat"] = pd.to_numeric(stations["lat"], errors="coerce")
+    stations["lon"] = pd.to_numeric(stations["lon"], errors="coerce")
+    stations = stations.dropna(subset=["lat", "lon"]).copy()
+    stations["distance_meters"] = stations.apply(
+        lambda row: _haversine_meters(center_lat, center_lon, float(row["lat"]), float(row["lon"])),
+        axis=1,
+    )
+    stations = stations[stations["distance_meters"] <= DETAIL_EXTENDED_LIVING_AREA_RADIUS_METERS].copy()
+    if stations.empty:
+        return pd.DataFrame(columns=columns)
+    return stations.sort_values(["distance_meters", "line_ids", "station_name_zh"])[columns].reset_index(drop=True)
+
+
+@st.cache_data(show_spinner=False)
+def load_detail_youbike_stations(candidate_name: str) -> pd.DataFrame:
+    columns = [
+        "city",
+        "station_uid",
+        "station_id",
+        "station_name_zh",
+        "station_name_en",
+        "lat",
+        "lon",
+        "station_address_zh",
+        "distance_meters",
+    ]
+    if not YOUBIKE_STATIONS_CSV.exists():
+        return pd.DataFrame(columns=columns)
+
+    center_lat, center_lon = _candidate_center(candidate_name)
+    stations = pd.read_csv(YOUBIKE_STATIONS_CSV)
+    stations["lat"] = pd.to_numeric(stations["lat"], errors="coerce")
+    stations["lon"] = pd.to_numeric(stations["lon"], errors="coerce")
+    stations = stations.dropna(subset=["lat", "lon"]).copy()
+    stations["distance_meters"] = stations.apply(
+        lambda row: _haversine_meters(center_lat, center_lon, float(row["lat"]), float(row["lon"])),
+        axis=1,
+    )
+    stations = stations[stations["distance_meters"] <= DETAIL_EXTENDED_LIVING_AREA_RADIUS_METERS].copy()
+    if stations.empty:
+        return pd.DataFrame(columns=columns)
+    return stations.sort_values(["distance_meters", "station_name_zh"])[columns].reset_index(drop=True)
+
+
+@st.cache_data(show_spinner=False)
+def load_detail_metro_lines(candidate_name: str) -> dict[str, Any]:
+    empty = {
+        "type": "FeatureCollection",
+        "features": [],
+        "metadata": {
+            "source": str(METRO_LINES_GEOJSON.relative_to(PROJECT_ROOT)),
+            "filter_radius_meters": DETAIL_EXTENDED_LIVING_AREA_RADIUS_METERS,
+        },
+    }
+    if not METRO_LINES_GEOJSON.exists():
+        return empty
+
+    center_lat, center_lon = _candidate_center(candidate_name)
+    lines = gpd.read_file(METRO_LINES_GEOJSON)
+    if lines.empty or "geometry" not in lines:
+        return empty
+    if lines.crs is None:
+        lines = lines.set_crs("EPSG:4326")
+
+    center = gpd.GeoSeries([Point(center_lon, center_lat)], crs="EPSG:4326").to_crs(TAIWAN_PROJECTED_CRS).iloc[0]
+    buffer = center.buffer(DETAIL_EXTENDED_LIVING_AREA_RADIUS_METERS)
+    projected = lines.to_crs(TAIWAN_PROJECTED_CRS)
+    filtered = lines[projected.geometry.notna() & projected.geometry.intersects(buffer)].copy()
+    if filtered.empty:
+        return empty
+    for column in filtered.columns:
+        if column == filtered.geometry.name:
+            continue
+        filtered[column] = filtered[column].map(lambda value: "" if pd.isna(value) else str(value))
+    return json.loads(filtered.to_crs("EPSG:4326").to_json())
 
 
 def _safe_poi_slug(value: str) -> str:

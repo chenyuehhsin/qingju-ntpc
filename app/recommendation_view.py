@@ -11,8 +11,10 @@ from components.map_view import build_detail_map, build_recommendation_map
 from data_loader import (
     MODE_COLORS,
     life_summary,
+    load_detail_metro_lines,
+    load_detail_metro_stations,
+    load_detail_youbike_stations,
     load_representative_pois,
-    load_representative_transport_stations,
     minutes,
     money,
 )
@@ -184,10 +186,11 @@ def _render_detail_section(
         '<div class="qj-section-note">「15分鐘」為近似探索範圍，實際步行時間依道路與步行速度而異，不代表精準步行 isochrone。生活機能統計目前仍基於 800m 範圍。</div>',
         unsafe_allow_html=True,
     )
-    pois = load_representative_pois(str(selected_row["candidate_name"]))
-    transport_stations = load_representative_transport_stations(
-        str(selected_row["candidate_name"])
-    )
+    candidate_name = str(selected_row["candidate_name"])
+    pois = load_representative_pois(candidate_name)
+    metro_lines = load_detail_metro_lines(candidate_name)
+    metro_stations = load_detail_metro_stations(candidate_name)
+    youbike_stations = load_detail_youbike_stations(candidate_name)
     detail_left, detail_right = st.columns([0.96, 2.74], gap="medium")
     with detail_left:
         _render_life_summary_card(mode, selected_row, pois)
@@ -195,7 +198,9 @@ def _render_detail_section(
         detail_map = build_detail_map(
             selected_row,
             pois,
-            transport_stations,
+            metro_lines,
+            metro_stations,
+            youbike_stations,
             destination,
             towns,
             cities,

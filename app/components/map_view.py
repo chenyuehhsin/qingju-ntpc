@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+from typing import Any
 
 import folium
 import geopandas as gpd
@@ -15,6 +16,7 @@ POI_STATISTICS_RADIUS_METERS = 800
 DETAIL_POI_COLORS = {
     "center": "#243238",
     "transit": "#4F83A6",
+    "youbike": "#2F9E73",
     "shopping": "#78B995",
     "medical": "#C45B65",
     "recreation": "#D39B43",
@@ -192,7 +194,9 @@ def build_recommendation_map(
 def build_detail_map(
     row: pd.Series,
     pois: pd.DataFrame,
-    transport_stations: pd.DataFrame,
+    metro_lines: dict[str, Any],
+    metro_stations: pd.DataFrame,
+    youbike_stations: pd.DataFrame,
     destination: dict[str, float | str],
     towns: gpd.GeoDataFrame,
     cities: gpd.GeoDataFrame,
@@ -210,12 +214,13 @@ def build_detail_map(
     )
     _add_detail_basemap(map_obj, towns, cities)
     _fit_detail_bounds(map_obj, lat, lon)
-    extended_group = folium.FeatureGroup(name="延伸生活圈", show=True).add_to(map_obj)
+    extended_group = folium.FeatureGroup(name="延伸生活圈", show=False).add_to(map_obj)
     core_group = folium.FeatureGroup(name="約15分鐘核心生活圈", show=True).add_to(map_obj)
-    transit_group = folium.FeatureGroup(name="捷運 / 台鐵站點", show=True).add_to(map_obj)
-    shopping_group = folium.FeatureGroup(name="採買：超市 / 市場", show=True).add_to(map_obj)
-    medical_group = folium.FeatureGroup(name="醫療", show=True).add_to(map_obj)
-    recreation_group = folium.FeatureGroup(name="公園/運動", show=True).add_to(map_obj)
+    rail_group = folium.FeatureGroup(name="軌道交通", show=True).add_to(map_obj)
+    youbike_group = folium.FeatureGroup(name="YouBike", show=False).add_to(map_obj)
+    shopping_group = folium.FeatureGroup(name="採買", show=True).add_to(map_obj)
+    medical_group = folium.FeatureGroup(name="醫療", show=False).add_to(map_obj)
+    recreation_group = folium.FeatureGroup(name="公園 / 運動", show=False).add_to(map_obj)
     poi_groups = {
         "shopping": shopping_group,
         "medical": medical_group,
@@ -252,15 +257,24 @@ def build_detail_map(
         "生活圈中心",
         f"{row['living_area']}｜約15分鐘核心生活圈中心",
     )
-    for _, station in transport_stations.iterrows():
-        _add_detail_poi_marker(
-            transit_group,
+    _add_detail_metro_lines(rail_group, metro_lines)
+    for _, station in metro_stations.iterrows():
+        _add_detail_metro_station_marker(
+            rail_group,
             float(station["lat"]),
             float(station["lon"]),
-            "transit",
-            str(station["name"]),
-            str(station["poi_type"]),
-            f"TDX 站點｜約 {float(station['distance_meters']):.0f}m",
+            str(station["station_name_zh"]),
+            str(station.get("line_ids", "")),
+            str(station.get("line_names_zh", "")),
+            float(station["distance_meters"]),
+        )
+    for _, station in youbike_stations.iterrows():
+        _add_detail_youbike_marker(
+            youbike_group,
+            float(station["lat"]),
+            float(station["lon"]),
+            str(station["station_name_zh"]),
+            float(station["distance_meters"]),
         )
     for _, poi in pois.iterrows():
         _add_detail_poi_marker(
@@ -658,6 +672,108 @@ def _add_ranked_recommendation_marker(
     ).add_to(map_obj)
 
 
+def _add_detail_metro_lines(layer: folium.FeatureGroup, metro_lines: dict[str, Any]) -> None:
+    features = metro_lines.get("features", []) if isinstance(metro_lines, dict) else []
+    if not features:
+        return
+
+    def line_style(feature: dict[str, Any]) -> dict[str, Any]:
+        properties = feature.get("properties", {})
+        color = str(properties.get("line_color") or "#4F83A6")
+        return {
+            "color": color,
+            "weight": 3.0,
+            "opacity": 0.72,
+        }
+
+    folium.GeoJson(
+        metro_lines,
+        name="TDX TRTC Shape",
+        style_function=line_style,
+        control=False,
+        tooltip=folium.GeoJsonTooltip(
+            fields=["line_name_zh", "line_id"],
+            aliases=["路線", "Line"],
+            labels=True,
+            sticky=False,
+        ),
+    ).add_to(layer)
+
+
+def _clean_map_text(value: object) -> str:
+    if pd.isna(value):
+        return ""
+    return str(value).strip()
+
+
+def _add_detail_metro_station_marker(
+    layer: folium.FeatureGroup,
+    lat: float,
+    lon: float,
+    station_name: str,
+    line_ids: str,
+    line_names: str,
+    distance_meters: float,
+) -> None:
+    name = _clean_map_text(station_name) or "未命名捷運站"
+    line_text = _clean_map_text(line_names) or _clean_map_text(line_ids) or "TRTC"
+    safe_name = html.escape(name)
+    safe_line = html.escape(line_text)
+    folium.CircleMarker(
+        location=[lat, lon],
+        radius=5.2,
+        color="#FFFFFF",
+        weight=1.8,
+        fill=True,
+        fill_color="#4F83A6",
+        fill_opacity=0.96,
+        opacity=0.98,
+        tooltip=f"{safe_name}｜{safe_line}",
+        popup=folium.Popup(
+            f"""
+            <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-width:170px;">
+              <div style="font-weight:850;font-size:14px;">{safe_name}</div>
+              <div style="color:#65747A;margin-top:3px;">{safe_line}</div>
+              <div style="color:#65747A;margin-top:5px;">TDX TRTC 站點｜約 {distance_meters:.0f}m</div>
+            </div>
+            """,
+            max_width=240,
+        ),
+    ).add_to(layer)
+
+
+def _add_detail_youbike_marker(
+    layer: folium.FeatureGroup,
+    lat: float,
+    lon: float,
+    station_name: str,
+    distance_meters: float,
+) -> None:
+    name = _clean_map_text(station_name) or "未命名 YouBike 站"
+    safe_name = html.escape(name)
+    folium.CircleMarker(
+        location=[lat, lon],
+        radius=3.8,
+        color="#FFFFFF",
+        weight=1.0,
+        fill=True,
+        fill_color=DETAIL_POI_COLORS["youbike"],
+        fill_opacity=0.74,
+        opacity=0.86,
+        tooltip=safe_name,
+        popup=folium.Popup(
+            f"""
+            <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-width:170px;">
+              <div style="font-weight:850;font-size:14px;">{safe_name}</div>
+              <div style="color:#65747A;margin-top:5px;">YouBike 靜態站點｜約 {distance_meters:.0f}m</div>
+              <div style="color:#65747A;margin-top:5px;">僅靜態站點資料</div>
+            </div>
+            """,
+            max_width=240,
+        ),
+    ).add_to(layer)
+
+
 def _add_detail_poi_marker(
     map_obj: folium.Map,
     lat: float,
@@ -874,7 +990,8 @@ def _add_detail_legend(map_obj: folium.Map, living_area_name: str) -> None:
           <div><span style="display:inline-block;width:18px;height:10px;border-radius:50%;background:#78B995;opacity:0.30;margin-right:6px;"></span>約15分鐘核心生活圈（1 km）</div>
           <div><span style="display:inline-block;width:22px;height:12px;border-radius:50%;background:#78B995;opacity:0.18;margin-right:6px;"></span>延伸生活圈（2 km）</div>
           <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#243238;color:white;font-size:9px;font-weight:900;margin-right:6px;">心</span>生活圈中心</div>
-          <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#4F83A6;color:white;font-size:9px;font-weight:900;margin-right:6px;">站</span>捷運 / 台鐵站點</div>
+          <div><span style="display:inline-block;width:20px;border-top:3px solid #4F83A6;opacity:0.72;margin-right:6px;"></span>軌道交通（TDX TRTC Shape / 站點）</div>
+          <div><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#2F9E73;border:1px solid #fff;margin-right:6px;"></span>YouBike 靜態站點（預設關閉）</div>
           <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#78B995;color:white;font-size:9px;font-weight:900;margin-right:6px;">採</span>超市 / 市場</div>
           <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#C45B65;color:white;font-size:9px;font-weight:900;margin-right:6px;">醫</span>醫療</div>
           <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#D39B43;color:white;font-size:9px;font-weight:900;margin-right:6px;">園</span>公園/運動</div>
