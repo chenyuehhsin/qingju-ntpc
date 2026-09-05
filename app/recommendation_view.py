@@ -14,6 +14,8 @@ from data_loader import (
     load_detail_metro_lines,
     load_detail_metro_stations,
     load_detail_youbike_stations,
+    load_district_analysis_table,
+    load_livability_density_pois,
     load_representative_pois,
     minutes,
     money,
@@ -183,11 +185,12 @@ def _render_detail_section(
 ) -> None:
     st.markdown("### Detail map｜約15分鐘核心生活圈 + 延伸生活圈")
     st.markdown(
-        '<div class="qj-section-note">「15分鐘」為近似探索範圍，實際步行時間依道路與步行速度而異，不代表精準步行 isochrone。生活機能統計目前仍基於 800m 範圍。</div>',
+        '<div class="qj-section-note">「15分鐘」為近似探索範圍，實際步行時間依道路與步行速度而異，不代表精準步行 isochrone。生活機能密度依公開 POI 的餐飲、採買、休閒與文化設施空間密度計算，反映設施聚集程度，不代表實際人流或消費熱度。目前可用 OSM cache 半徑為 800m，heatmap 僅使用此範圍內且同時落在 2km 延伸生活圈內的點位。</div>',
         unsafe_allow_html=True,
     )
     candidate_name = str(selected_row["candidate_name"])
     pois = load_representative_pois(candidate_name)
+    livability_density_pois = load_livability_density_pois(candidate_name)
     metro_lines = load_detail_metro_lines(candidate_name)
     metro_stations = load_detail_metro_stations(candidate_name)
     youbike_stations = load_detail_youbike_stations(candidate_name)
@@ -198,6 +201,7 @@ def _render_detail_section(
         detail_map = build_detail_map(
             selected_row,
             pois,
+            livability_density_pois,
             metro_lines,
             metro_stations,
             youbike_stations,
@@ -217,12 +221,14 @@ def _render_life_summary_card(mode: str, row: pd.Series, pois: pd.DataFrame) -> 
     recreation = _count(row, "recreation_count")
     culture = _count(row, "culture_count")
     poi_note = _representative_poi_note(pois)
+    district_context = _district_context_summary(row)
     st.markdown(
         f"""
         <div class="qj-life-detail-card" style="border-left-color: {color};">
             <div class="qj-life-detail-eyebrow">Selected Top {int(row['rank'])}</div>
             <div class="qj-life-detail-title">{html.escape(str(row['living_area']))}</div>
             <div class="qj-station">{html.escape(str(row['candidate_name']))}｜{html.escape(str(row['district']))}</div>
+            <div class="qj-life-poi-note">{html.escape(district_context)}</div>
             <div class="qj-life-metric-grid">
                 <div><span>月租</span><b>{money(row['rent'])}</b><small>NTD/month</small></div>
                 <div><span>通勤</span><b>{minutes(row['commute_minutes'])}</b><small>public transit</small></div>
@@ -244,6 +250,26 @@ def _count(row: pd.Series, column: str) -> int | str:
     if column not in row.index or pd.isna(row[column]):
         return "NA"
     return int(row[column])
+
+
+def _district_context_summary(row: pd.Series) -> str:
+    district = str(row["district"])
+    district_analysis = load_district_analysis_table()
+    matches = district_analysis[(district_analysis["city"] == "新北市") & (district_analysis["district"] == district)]
+    if matches.empty:
+        youth_population = "unresolved"
+        youth_share = "unresolved"
+        rent = f"{money(row['rent'])} NTD/month"
+    else:
+        context = matches.iloc[0]
+        youth_population = str(context.get("youth_population_18_35_display", "unresolved"))
+        youth_share = str(context.get("youth_population_share_display", "unresolved"))
+        rent = str(context.get("official_median_rent_display", "unresolved"))
+    return (
+        f"所在行政區背景：{row['living_area']} → {district}｜"
+        f"18–35 青年人口數 {youth_population}｜青年占比 {youth_share}｜行政區租金 {rent}。"
+        "行政區人口不可解讀為 1km / 2km 生活圈人口。"
+    )
 
 
 def _representative_poi_note(pois: pd.DataFrame) -> str:

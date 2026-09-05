@@ -5,7 +5,16 @@ import streamlit as st
 from streamlit_folium import st_folium
 
 from components.map_view import build_overview_map
-from data_loader import MODE_COLORS, MODE_COPY, MODE_ORDER, minutes, money
+from data_loader import (
+    DISTRICT_ANALYSIS_LAYER_OPTIONS,
+    DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT,
+    DISTRICT_ANALYSIS_LAYER_YOUTH_SHARE,
+    MODE_COLORS,
+    MODE_COPY,
+    MODE_ORDER,
+    minutes,
+    money,
+)
 
 
 def render_overview(
@@ -25,7 +34,16 @@ def render_overview(
     _render_summary_cards(top1)
 
     st.markdown("### Overview map")
-    overview_map = build_overview_map(candidates, top3, destination, towns, cities)
+    analysis_layer = st.segmented_control(
+        "行政區背景",
+        options=DISTRICT_ANALYSIS_LAYER_OPTIONS,
+        default="無",
+        key="overview_district_analysis_layer",
+    )
+    if analysis_layer is None:
+        analysis_layer = "無"
+    _render_analysis_layer_note(str(analysis_layer), towns)
+    overview_map = build_overview_map(candidates, top3, destination, towns, cities, str(analysis_layer))
     st_folium(overview_map, height=560, use_container_width=True, returned_objects=[])
 
     _render_comparison_bar(top1)
@@ -90,6 +108,23 @@ def _render_comparison_bar(top1: pd.DataFrame) -> None:
                 """,
                 unsafe_allow_html=True,
             )
+
+
+def _render_analysis_layer_note(analysis_layer: str, towns) -> None:
+    if analysis_layer not in {DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT, DISTRICT_ANALYSIS_LAYER_YOUTH_SHARE}:
+        return
+    field = (
+        "youth_population_18_35"
+        if analysis_layer == DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT
+        else "youth_population_18_35_share"
+    )
+    valid_count = int(pd.to_numeric(towns.get(field, pd.Series(dtype=float)), errors="coerce").notna().sum())
+    if valid_count > 0:
+        return
+    st.markdown(
+        '<div class="qj-section-note">Phase 6 exact 18–35 青年人口目前只到新北市整體，沒有可 exact 對齊的行政區 18–35 資料；此圖層標示為 unresolved，不估算、不補值。</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def _soft_background(mode: str) -> str:

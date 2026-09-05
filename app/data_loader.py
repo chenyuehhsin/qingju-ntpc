@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,15 @@ PREFERENCE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "preferen
 RENT_COMMUTE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "rent_commute_candidates_by_workplace.csv"
 LIVABILITY_CSV = PROJECT_ROOT / "data" / "processed" / "livability" / "livability_by_candidate.csv"
 LIVABILITY_RAW_CACHE_DIR = PROJECT_ROOT / "data" / "raw" / "livability" / "osm_overpass_800m_2026-08-22"
+YOUTH_SINGLE_AGE_PHASE6_CSV = (
+    PROJECT_ROOT / "data" / "processed" / "career" / "youth" / "ntpc_population_single_age_phase6.csv"
+)
+RIS_DISTRICT_YOUTH_18_35_CSV = (
+    PROJECT_ROOT / "data" / "processed" / "housing" / "ntpc_district_youth_18_35.csv"
+)
+NTPC_POPULATION_AGE_DISTRIBUTION_CSV = (
+    PROJECT_ROOT / "data" / "raw" / "population" / "ntpc_stats_population_age_distribution.csv"
+)
 TDX_STATION_DATA_DIR = PROJECT_ROOT / "data" / "interim" / "transport" / "tdx_station_data"
 CANDIDATE_LOCATIONS_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "candidate_locations_expanded.csv"
 COMMUTE_BY_WORKPLACE_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "commute_by_workplace.csv"
@@ -72,6 +82,16 @@ MODE_COPY = {
     "通勤型": "適合最重視每日上下班時間的使用者。",
     "生活品質型": "優先考慮站點周邊餐飲、採買、休閒、文娛與醫療機能。",
 }
+DISTRICT_ANALYSIS_LAYER_NONE = "無"
+DISTRICT_ANALYSIS_LAYER_RENT = "行政區租金"
+DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT = "18–35 青年人口數"
+DISTRICT_ANALYSIS_LAYER_YOUTH_SHARE = "18–35 青年人口占比"
+DISTRICT_ANALYSIS_LAYER_OPTIONS = [
+    DISTRICT_ANALYSIS_LAYER_NONE,
+    DISTRICT_ANALYSIS_LAYER_RENT,
+    DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT,
+    DISTRICT_ANALYSIS_LAYER_YOUTH_SHARE,
+]
 POI_COUNT_COLUMNS = ["food_count", "shopping_count", "medical_count", "recreation_count", "culture_count"]
 REPRESENTATIVE_POI_LIMIT_PER_CATEGORY = 2
 REPRESENTATIVE_TRANSPORT_STATION_LIMIT = 5
@@ -90,6 +110,27 @@ REPRESENTATIVE_POI_CATEGORIES = {
     "recreation": {
         "label": "公園/運動",
         "tags": {"leisure": {"park", "sports_centre", "pitch", "fitness_centre", "stadium"}},
+    },
+}
+LIVABILITY_DENSITY_CATEGORIES = {
+    "food": {
+        "label": "餐飲",
+        "tags": {"amenity": {"restaurant", "cafe"}},
+    },
+    "shopping": {
+        "label": "採買",
+        "tags": {"shop": {"convenience", "supermarket"}},
+    },
+    "recreation": {
+        "label": "休閒",
+        "tags": {"leisure": {"park", "sports_centre", "pitch", "fitness_centre", "stadium"}},
+    },
+    "culture": {
+        "label": "文化",
+        "tags": {
+            "amenity": {"cinema", "library", "arts_centre", "theatre"},
+            "tourism": {"museum", "gallery"},
+        },
     },
 }
 OSM_TYPE_LABELS = {
@@ -136,6 +177,12 @@ def living_area(candidate_name: str) -> str:
 
 def money(value: float | int) -> str:
     return f"{float(value):,.0f}"
+
+
+def maybe_money(value: object) -> str:
+    if pd.isna(value):
+        return "unresolved"
+    return f"{float(value):,.0f} NTD/month"
 
 
 def minutes(value: float | int) -> str:
@@ -346,20 +393,430 @@ def load_boundaries() -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
     if missing:
         raise RuntimeError(f"Boundary file is missing expected columns: {sorted(missing)}")
     towns = towns[towns["COUNTYNAME"].isin(["新北市", "臺北市"])].copy()
-    if HOUSING_BENCHMARK_CSV.exists():
-        rent = pd.read_csv(HOUSING_BENCHMARK_CSV)
-        rent = rent[rent["city"].isin(["新北市", "臺北市"])][["city", "district", "rent_median"]].rename(
-            columns={"rent_median": "official_median_rent"}
-        )
-        towns = towns.merge(
-            rent,
-            left_on=["COUNTYNAME", "TOWNNAME"],
-            right_on=["city", "district"],
-            how="left",
-        )
-        towns = towns.drop(columns=[column for column in ["city", "district"] if column in towns.columns])
+    district_analysis = load_district_analysis_table()
+    towns = towns.merge(
+        district_analysis,
+        left_on=["COUNTYNAME", "TOWNNAME"],
+        right_on=["city", "district"],
+        how="left",
+    )
+    towns = towns.drop(columns=[column for column in ["city", "district"] if column in towns.columns])
+    display_defaults = {
+        "youth_population_18_35_display": "unresolved",
+        "youth_population_share_display": "unresolved",
+        "official_median_rent_display": "unresolved",
+        "analysis_data_year_display": "青年人口: unresolved; 行政區總人口: unresolved; 租金: unresolved",
+        "youth_population_status": "unresolved",
+        "youth_share_status": "unresolved",
+        "denominator_status": "unresolved",
+    }
+    for column, default in display_defaults.items():
+        if column not in towns.columns:
+            towns[column] = default
+        else:
+            towns[column] = towns[column].fillna(default)
     cities = towns.dissolve(by="COUNTYNAME", as_index=False)
     return towns, cities
+
+
+@st.cache_data(show_spinner=False)
+def load_district_analysis_table() -> pd.DataFrame:
+    rent = _load_district_rent_table()
+    denominators = _load_district_population_denominators()
+    youth = _load_exact_youth_population_by_district()
+
+    district_keys = pd.concat(
+        [
+            frame[["city", "district"]]
+            for frame in [rent, denominators, youth]
+            if not frame.empty and {"city", "district"}.issubset(frame.columns)
+        ],
+        ignore_index=True,
+    ).drop_duplicates()
+    if district_keys.empty:
+        district_keys = pd.DataFrame(columns=["city", "district"])
+
+    result = district_keys.merge(rent, on=["city", "district"], how="left")
+    latest_denominator = _latest_denominator_by_district(denominators)
+    result = result.merge(latest_denominator, on=["city", "district"], how="left")
+
+    if not youth.empty:
+        youth = _attach_youth_share_from_denominators(youth, denominators)
+    else:
+        youth = pd.DataFrame(
+            columns=[
+                "city",
+                "district",
+                "youth_population_18_35",
+                "youth_population_18_35_share",
+                "youth_share_denominator_population",
+                "youth_share_denominator_status",
+                "youth_population_status",
+                "youth_share_status",
+                "youth_population_period",
+                "youth_population_year",
+            ]
+        )
+    result = result.merge(youth, on=["city", "district"], how="left")
+    same_source_denominator = result["youth_share_denominator_population"].notna()
+    result.loc[same_source_denominator, "district_total_population"] = result.loc[
+        same_source_denominator, "youth_share_denominator_population"
+    ]
+    result.loc[same_source_denominator, "district_total_population_year"] = result.loc[
+        same_source_denominator, "youth_population_year"
+    ]
+    result.loc[same_source_denominator, "district_total_population_period"] = result.loc[
+        same_source_denominator, "youth_population_period"
+    ]
+    result.loc[same_source_denominator, "denominator_status"] = result.loc[
+        same_source_denominator, "youth_share_denominator_status"
+    ]
+
+    youth_period = _latest_exact_youth_period_display()
+    unresolved_youth = (
+        "unresolved: Phase 6 exact 18-35 data is available only at New Taipei city level, "
+        "not district level"
+    )
+    result["youth_population_status"] = result["youth_population_status"].fillna(unresolved_youth)
+    result["youth_share_status"] = result["youth_share_status"].fillna(
+        "unresolved: exact district-level 18-35 numerator unavailable"
+    )
+    result["youth_population_period"] = result["youth_population_period"].fillna(youth_period)
+    result["district_total_population_period"] = result["district_total_population_period"].fillna("unresolved")
+    result["denominator_status"] = result["denominator_status"].fillna(
+        "unresolved: district total resident population unavailable in local New Taipei file"
+    )
+    result["rent_data_period"] = result["rent_data_period"].fillna("unresolved")
+    result["youth_population_18_35_display"] = result["youth_population_18_35"].map(_population_display)
+    result["youth_population_share_display"] = result["youth_population_18_35_share"].map(_percent_display)
+    result["official_median_rent_display"] = result["official_median_rent"].map(maybe_money)
+    result["district_total_population_display"] = result["district_total_population"].map(_population_display)
+    result["analysis_data_year_display"] = result.apply(_district_analysis_year_display, axis=1)
+    return result.reset_index(drop=True)
+
+
+def _load_district_rent_table() -> pd.DataFrame:
+    columns = ["city", "district", "official_median_rent", "rent_data_period"]
+    if not HOUSING_BENCHMARK_CSV.exists():
+        return pd.DataFrame(columns=columns)
+    rent = pd.read_csv(HOUSING_BENCHMARK_CSV)
+    if rent.empty:
+        return pd.DataFrame(columns=columns)
+    rent = rent[rent["city"].isin(["新北市", "臺北市"])][["city", "district", "rent_median"]].copy()
+    rent = rent.rename(columns={"rent_median": "official_median_rent"})
+    rent["rent_data_period"] = "2026-03"
+    return rent[columns]
+
+
+def _load_district_population_denominators() -> pd.DataFrame:
+    columns = [
+        "city",
+        "district",
+        "roc_year",
+        "year",
+        "total_population",
+        "denominator_period",
+        "denominator_status",
+    ]
+    if not NTPC_POPULATION_AGE_DISTRIBUTION_CSV.exists():
+        return pd.DataFrame(columns=columns)
+    raw = pd.read_csv(NTPC_POPULATION_AGE_DISTRIBUTION_CSV)
+    if raw.empty or len(raw.columns) < 3:
+        return pd.DataFrame(columns=columns)
+    year_col = raw.columns[0]
+    area_col = raw.columns[1]
+    total_col = raw.columns[2]
+    frame = raw.iloc[2:].copy()
+    frame["roc_year"] = pd.to_numeric(frame[year_col], errors="coerce")
+    frame = frame.dropna(subset=["roc_year", area_col]).copy()
+    frame["area_name"] = frame[area_col].astype(str).str.strip()
+    frame = frame[frame["area_name"].str.startswith("新北市") & (frame["area_name"] != "新北市")].copy()
+    if frame.empty:
+        return pd.DataFrame(columns=columns)
+    frame["city"] = "新北市"
+    frame["district"] = frame["area_name"].str.replace("新北市", "", regex=False)
+    frame["total_population"] = frame[total_col].map(_number_from_raw)
+    frame = frame.dropna(subset=["total_population"]).copy()
+    frame["roc_year"] = frame["roc_year"].astype(int)
+    frame["year"] = frame["roc_year"] + 1911
+    frame["denominator_period"] = frame.apply(
+        lambda row: f"{int(row['roc_year'])}年 / {int(row['year'])}", axis=1
+    )
+    frame["denominator_status"] = "available: district total resident population"
+    return frame[columns].reset_index(drop=True)
+
+
+def _latest_denominator_by_district(denominators: pd.DataFrame) -> pd.DataFrame:
+    columns = [
+        "city",
+        "district",
+        "district_total_population",
+        "district_total_population_year",
+        "district_total_population_period",
+        "denominator_status",
+    ]
+    if denominators.empty:
+        return pd.DataFrame(columns=columns)
+    latest_roc_year = int(denominators["roc_year"].max())
+    latest = denominators[denominators["roc_year"] == latest_roc_year].copy()
+    latest = latest.rename(
+        columns={
+            "total_population": "district_total_population",
+            "year": "district_total_population_year",
+            "denominator_period": "district_total_population_period",
+        }
+    )
+    return latest[columns].reset_index(drop=True)
+
+
+def _load_exact_youth_population_by_district() -> pd.DataFrame:
+    columns = [
+        "city",
+        "district",
+        "youth_population_18_35",
+        "youth_population_18_35_share",
+        "youth_share_denominator_population",
+        "youth_share_denominator_status",
+        "youth_population_roc_year",
+        "youth_population_year",
+        "youth_population_period",
+        "youth_population_status",
+        "youth_share_status",
+    ]
+    ris_youth = _load_ris_district_youth_population()
+    if not ris_youth.empty:
+        return ris_youth[columns].reset_index(drop=True)
+    if not YOUTH_SINGLE_AGE_PHASE6_CSV.exists():
+        return pd.DataFrame(columns=columns)
+    youth = pd.read_csv(YOUTH_SINGLE_AGE_PHASE6_CSV)
+    required = {"period", "roc_year", "year", "area", "sex", "age", "population"}
+    if not required.issubset(youth.columns):
+        return pd.DataFrame(columns=columns)
+    latest_period = _latest_exact_youth_period(youth)
+    if latest_period is None:
+        return pd.DataFrame(columns=columns)
+    youth = youth[
+        (youth["period"] == latest_period)
+        & (youth["sex"] == "性別總計")
+        & (pd.to_numeric(youth["age"], errors="coerce").between(18, 35))
+    ].copy()
+    youth["district"] = youth["area"].map(_district_from_ntpc_area)
+    youth = youth.dropna(subset=["district"]).copy()
+    if youth.empty:
+        return pd.DataFrame(columns=columns)
+    result = (
+        youth.groupby(["district", "roc_year", "year", "period"], as_index=False)["population"]
+        .sum()
+        .rename(
+            columns={
+                "population": "youth_population_18_35",
+                "roc_year": "youth_population_roc_year",
+                "year": "youth_population_year",
+                "period": "youth_population_period",
+            }
+        )
+    )
+    result["city"] = "新北市"
+    result["youth_population_status"] = "exact_18_35_single_age_sum"
+    result["youth_population_18_35_share"] = pd.NA
+    result["youth_share_denominator_population"] = pd.NA
+    result["youth_share_denominator_status"] = pd.NA
+    result["youth_share_status"] = pd.NA
+    return result[columns].reset_index(drop=True)
+
+
+def _load_ris_district_youth_population() -> pd.DataFrame:
+    columns = [
+        "city",
+        "district",
+        "youth_population_18_35",
+        "youth_population_18_35_share",
+        "youth_share_denominator_population",
+        "youth_share_denominator_status",
+        "youth_population_roc_year",
+        "youth_population_year",
+        "youth_population_period",
+        "youth_population_status",
+        "youth_share_status",
+    ]
+    if not RIS_DISTRICT_YOUTH_18_35_CSV.exists():
+        return pd.DataFrame(columns=columns)
+    youth = pd.read_csv(RIS_DISTRICT_YOUTH_18_35_CSV)
+    required = {
+        "city",
+        "district",
+        "roc_year",
+        "year",
+        "data_period",
+        "total_population",
+        "youth_18_35_count",
+        "youth_18_35_share",
+    }
+    if youth.empty or not required.issubset(youth.columns):
+        return pd.DataFrame(columns=columns)
+
+    result = youth[list(required)].copy()
+    result = result.rename(
+        columns={
+            "roc_year": "youth_population_roc_year",
+            "year": "youth_population_year",
+            "data_period": "youth_population_period",
+            "total_population": "youth_share_denominator_population",
+            "youth_18_35_count": "youth_population_18_35",
+            "youth_18_35_share": "youth_population_18_35_share",
+        }
+    )
+    result["youth_population_18_35"] = pd.to_numeric(result["youth_population_18_35"], errors="coerce")
+    result["youth_population_18_35_share"] = pd.to_numeric(
+        result["youth_population_18_35_share"], errors="coerce"
+    )
+    result["youth_share_denominator_population"] = pd.to_numeric(
+        result["youth_share_denominator_population"], errors="coerce"
+    )
+    result["youth_population_roc_year"] = pd.to_numeric(result["youth_population_roc_year"], errors="coerce")
+    result["youth_population_year"] = pd.to_numeric(result["youth_population_year"], errors="coerce")
+    result["youth_population_status"] = "exact_18_35_ris_village_single_age"
+    result["youth_share_status"] = "exact_18_35_with_same_ris_source_total_population"
+    result["youth_share_denominator_status"] = "available: same RIS source month district total population"
+    return result[columns].reset_index(drop=True)
+
+
+def _attach_youth_share_from_denominators(youth: pd.DataFrame, denominators: pd.DataFrame) -> pd.DataFrame:
+    youth = youth.copy()
+    for column in [
+        "youth_population_18_35_share",
+        "youth_share_denominator_population",
+        "youth_share_denominator_status",
+        "youth_share_status",
+    ]:
+        if column not in youth.columns:
+            youth[column] = pd.NA
+
+    missing_share = youth["youth_population_18_35_share"].isna() & youth["youth_population_18_35"].notna()
+    if missing_share.any() and not denominators.empty:
+        share_denominator = denominators[
+            denominators["roc_year"].isin(youth["youth_population_roc_year"].dropna().unique())
+        ][["city", "district", "roc_year", "total_population", "denominator_status"]].rename(
+            columns={
+                "roc_year": "youth_population_roc_year",
+                "total_population": "_fallback_youth_share_denominator_population",
+                "denominator_status": "_fallback_youth_share_denominator_status",
+            }
+        )
+        youth = youth.merge(
+            share_denominator,
+            on=["city", "district", "youth_population_roc_year"],
+            how="left",
+        )
+        youth["youth_share_denominator_population"] = youth["youth_share_denominator_population"].fillna(
+            youth["_fallback_youth_share_denominator_population"]
+        )
+        youth["youth_share_denominator_status"] = youth["youth_share_denominator_status"].fillna(
+            youth["_fallback_youth_share_denominator_status"]
+        )
+        youth = youth.drop(
+            columns=["_fallback_youth_share_denominator_population", "_fallback_youth_share_denominator_status"]
+        )
+
+    youth["youth_population_18_35_share"] = youth["youth_population_18_35_share"].fillna(
+        youth["youth_population_18_35"] / youth["youth_share_denominator_population"]
+    )
+    youth["youth_share_status"] = youth["youth_share_status"].fillna(
+        youth["youth_population_18_35_share"].map(
+            lambda value: "exact_18_35_with_reliable_denominator" if not pd.isna(value) else "unresolved_denominator"
+        )
+    )
+    return youth.reset_index(drop=True)
+
+
+def _latest_exact_youth_period(youth: pd.DataFrame) -> str | None:
+    rows = youth[(youth["area"] == "新北市") & (youth["sex"] == "性別總計")].copy()
+    if rows.empty:
+        return None
+    rows["_month_sort"] = rows["period"].map(_period_month_sort)
+    rows = rows.sort_values(["year", "_month_sort", "period"])
+    return str(rows.iloc[-1]["period"])
+
+
+def _latest_exact_youth_period_display() -> str:
+    ris_period = _latest_ris_youth_period_display()
+    if ris_period != "unresolved":
+        return ris_period
+    if not YOUTH_SINGLE_AGE_PHASE6_CSV.exists():
+        return "unresolved"
+    youth = pd.read_csv(YOUTH_SINGLE_AGE_PHASE6_CSV)
+    latest_period = _latest_exact_youth_period(youth)
+    if latest_period is None:
+        return "unresolved"
+    rows = youth[youth["period"] == latest_period]
+    years = rows["year"].dropna().unique()
+    if len(years) == 0:
+        return latest_period
+    return f"{latest_period} / {int(years[0])}"
+
+
+def _latest_ris_youth_period_display() -> str:
+    if not RIS_DISTRICT_YOUTH_18_35_CSV.exists():
+        return "unresolved"
+    youth = pd.read_csv(RIS_DISTRICT_YOUTH_18_35_CSV)
+    if youth.empty or "data_period" not in youth.columns:
+        return "unresolved"
+    periods = youth["data_period"].dropna().astype(str).unique()
+    if len(periods) == 0:
+        return "unresolved"
+    return str(periods[-1])
+
+
+def _period_month_sort(period: object) -> int:
+    text = str(period)
+    match = re.search(r"(\d+)月", text)
+    if match:
+        return int(match.group(1))
+    return 0
+
+
+def _district_from_ntpc_area(area: object) -> str | None:
+    text = str(area).strip()
+    if text.startswith("新北市") and text != "新北市":
+        district = text.replace("新北市", "", 1)
+        return district or None
+    if text.endswith(("區", "鄉", "鎮")):
+        return text
+    return None
+
+
+def _number_from_raw(value: object) -> float | None:
+    text = str(value).strip().replace(",", "")
+    if text in {"", "-", "nan", "NaN"}:
+        return None
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
+def _population_display(value: object) -> str:
+    if pd.isna(value):
+        return "unresolved"
+    return f"{float(value):,.0f}"
+
+
+def _percent_display(value: object) -> str:
+    if pd.isna(value):
+        return "unresolved"
+    return f"{float(value) * 100:.1f}%"
+
+
+def _district_analysis_year_display(row: pd.Series) -> str:
+    youth_period = row.get("youth_population_period", "unresolved")
+    denominator_period = row.get("district_total_population_period", "unresolved")
+    rent_period = row.get("rent_data_period", "unresolved")
+    youth_status = row.get("youth_population_status", "unresolved")
+    if isinstance(youth_status, str) and youth_status.startswith("unresolved"):
+        youth_text = f"青年人口: unresolved（Phase 6 exact {youth_period} 只到新北市整體）"
+    else:
+        youth_text = f"青年人口: {youth_period}"
+    return f"{youth_text}; 行政區總人口: {denominator_period}; 租金: {rent_period}"
 
 
 @st.cache_data(show_spinner=False)
@@ -424,6 +881,67 @@ def load_representative_pois(candidate_name: str) -> pd.DataFrame:
         .sort_values(["category", "distance_meters"])
         .reset_index(drop=True)
     )
+
+
+@st.cache_data(show_spinner=False)
+def load_livability_density_pois(candidate_name: str) -> pd.DataFrame:
+    cache_path = LIVABILITY_RAW_CACHE_DIR / f"{_safe_poi_slug(candidate_name)}.json"
+    columns = [
+        "category",
+        "category_label",
+        "lat",
+        "lon",
+        "weight",
+        "distance_meters",
+        "source_radius_meters",
+    ]
+    if not cache_path.exists():
+        return pd.DataFrame(columns=columns)
+
+    payload = json.loads(cache_path.read_text(encoding="utf-8"))
+    metadata = payload.get("metadata", {})
+    center_lat = float(metadata.get("lat", 0.0))
+    center_lon = float(metadata.get("lon", 0.0))
+    source_radius_meters = int(metadata.get("radius_meters", 0) or 0)
+    elements = payload.get("overpass_response", payload).get("elements", [])
+    rows: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+
+    for element in elements:
+        if not isinstance(element, dict):
+            continue
+        tags = element.get("tags", {})
+        if not isinstance(tags, dict):
+            continue
+        category = _livability_density_category(tags)
+        if category is None:
+            continue
+        lat, lon = _element_lat_lon(element)
+        if lat is None or lon is None:
+            continue
+        distance_meters = _haversine_meters(center_lat, center_lon, lat, lon)
+        if distance_meters > DETAIL_EXTENDED_LIVING_AREA_RADIUS_METERS:
+            continue
+        osm_key = f"{element.get('type')}:{element.get('id')}"
+        if osm_key in seen_ids:
+            continue
+        seen_ids.add(osm_key)
+        rows.append(
+            {
+                "category": category,
+                "category_label": LIVABILITY_DENSITY_CATEGORIES[category]["label"],
+                "lat": lat,
+                "lon": lon,
+                "weight": 1.0,
+                "distance_meters": distance_meters,
+                "source_radius_meters": source_radius_meters,
+            }
+        )
+
+    poi = pd.DataFrame(rows, columns=columns)
+    if poi.empty:
+        return poi
+    return poi.sort_values(["distance_meters", "category"]).reset_index(drop=True)
 
 
 @st.cache_data(show_spinner=False)
@@ -642,6 +1160,14 @@ def _station_name(station: dict[str, Any]) -> str:
 
 def _representative_poi_category(tags: dict[str, Any]) -> str | None:
     for category, definition in REPRESENTATIVE_POI_CATEGORIES.items():
+        for key, values in definition["tags"].items():
+            if str(tags.get(key, "")) in values:
+                return category
+    return None
+
+
+def _livability_density_category(tags: dict[str, Any]) -> str | None:
+    for category, definition in LIVABILITY_DENSITY_CATEGORIES.items():
         for key, values in definition["tags"].items():
             if str(tags.get(key, "")) in values:
                 return category

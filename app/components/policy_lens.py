@@ -21,9 +21,21 @@ import matplotlib.font_manager as fm
 from matplotlib import pyplot as plt
 from streamlit_folium import st_folium
 
-from data_loader import money
+from data_loader import (
+    DISTRICT_ANALYSIS_LAYER_NONE,
+    DISTRICT_ANALYSIS_LAYER_OPTIONS,
+    DISTRICT_ANALYSIS_LAYER_RENT,
+    DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT,
+    DISTRICT_ANALYSIS_LAYER_YOUTH_SHARE,
+    load_district_analysis_table,
+    money,
+)
 
 
+POLICY_BASEMAP_MINIMAL = "極簡底圖"
+POLICY_BASEMAP_STREET = "街道地圖"
+POLICY_BASEMAP_OPTIONS = [POLICY_BASEMAP_MINIMAL, POLICY_BASEMAP_STREET]
+TRANSPARENT_TILE_DATA_URI = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
 POLICY_VIEWS = {
     "租金": {
         "field": "official_median_rent",
@@ -60,6 +72,35 @@ POLICY_VIEWS = {
         "low_color": "#EFEAF4",
         "high_color": "#8F78AD",
         "higher_label": "樣本占比越高",
+    },
+}
+POLICY_DISTRICT_ANALYSIS_CONFIG = {
+    DISTRICT_ANALYSIS_LAYER_RENT: {
+        "field": "official_median_rent",
+        "title": "行政區租金",
+        "unit": "NTD/month",
+        "low_color": "#F8EBDD",
+        "high_color": "#D97950",
+        "higher_label": "租金越高",
+        "missing_label": "無租金資料",
+    },
+    DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT: {
+        "field": "youth_population_18_35",
+        "title": "18–35 青年人口數",
+        "unit": "people",
+        "low_color": "#E8F1EF",
+        "high_color": "#4F9E8D",
+        "higher_label": "青年人口多只代表影響規模較大，不等於政策一定優先",
+        "missing_label": "unresolved",
+    },
+    DISTRICT_ANALYSIS_LAYER_YOUTH_SHARE: {
+        "field": "youth_population_18_35_share",
+        "title": "18–35 青年人口占比",
+        "unit": "share",
+        "low_color": "#EEF0F7",
+        "high_color": "#6F7FB7",
+        "higher_label": "青年人口占比高只代表影響規模較大，不等於政策一定優先",
+        "missing_label": "unresolved",
     },
 }
 
@@ -101,7 +142,7 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
         """
         <div class="qj-policy-section-head">
             <div class="qj-policy-section-title">安居政策觀察</div>
-            <div class="qj-policy-section-copy">從租金、交通可達性、生活機能與租賃資料結構觀察新北青年居住環境。</div>
+            <div class="qj-policy-section-copy">從租金、交通可達性、生活機能、租賃資料結構與行政區背景觀察新北青年居住環境。青年人口多只代表影響規模較大，不等於政策一定優先；本階段不提出社宅、公園、共居等政策處方。</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -114,20 +155,43 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
             options=list(POLICY_VIEWS.keys()),
             default=st.session_state.get("policy_view", "租金"),
             key="policy_view",
-            label_visibility="collapsed",
+        )
+        selected_district_layer = st.segmented_control(
+            "行政區背景",
+            options=DISTRICT_ANALYSIS_LAYER_OPTIONS,
+            default=st.session_state.get("policy_district_analysis_layer", DISTRICT_ANALYSIS_LAYER_NONE),
+            key="policy_district_analysis_layer",
+        )
+        selected_basemap = st.segmented_control(
+            "底圖",
+            options=POLICY_BASEMAP_OPTIONS,
+            default=st.session_state.get("policy_basemap", POLICY_BASEMAP_MINIMAL),
+            key="policy_basemap",
         )
     if selected_view is None:
         selected_view = "租金"
+    if selected_district_layer is None:
+        selected_district_layer = DISTRICT_ANALYSIS_LAYER_NONE
+    if selected_basemap is None:
+        selected_basemap = POLICY_BASEMAP_MINIMAL
+    _render_policy_district_layer_note(str(selected_district_layer), towns)
 
     map_col, detail_col = st.columns([2.65, 1.0], gap="medium")
     with map_col:
-        map_obj = build_policy_map(policy, towns, cities, selected_view)
+        map_obj = build_policy_map(
+            policy,
+            towns,
+            cities,
+            selected_view,
+            str(selected_district_layer),
+            str(selected_basemap),
+        )
         map_state = st_folium(
             map_obj,
             height=650,
             use_container_width=True,
             returned_objects=["last_object_clicked"],
-            key=f"policy_map_{selected_view}",
+            key=f"policy_map_{selected_view}_{selected_district_layer}_{selected_basemap}",
         )
     clicked_candidate = _candidate_from_click(policy, map_state)
     if clicked_candidate:
@@ -161,6 +225,23 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
 
     with st.expander("資料、方法與限制", expanded=False):
         render_policy_method_notes()
+
+
+def _render_policy_district_layer_note(analysis_layer: str, towns: gpd.GeoDataFrame) -> None:
+    if analysis_layer not in {DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT, DISTRICT_ANALYSIS_LAYER_YOUTH_SHARE}:
+        return
+    field = (
+        "youth_population_18_35"
+        if analysis_layer == DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT
+        else "youth_population_18_35_share"
+    )
+    valid_count = int(pd.to_numeric(towns.get(field, pd.Series(dtype=float)), errors="coerce").notna().sum())
+    if valid_count > 0:
+        return
+    st.markdown(
+        '<div class="qj-section-note">Phase 6 exact 18–35 青年人口目前只到新北市整體，沒有可 exact 對齊的行政區 18–35 資料；此行政區背景標示為 unresolved，不估算、不補值。</div>',
+        unsafe_allow_html=True,
+    )
 
 
 def render_career_policy_observations(
@@ -752,6 +833,8 @@ def build_policy_map(
     towns: gpd.GeoDataFrame,
     cities: gpd.GeoDataFrame,
     view: str,
+    district_analysis_layer: str = DISTRICT_ANALYSIS_LAYER_NONE,
+    basemap: str = POLICY_BASEMAP_MINIMAL,
 ) -> folium.Map:
     view_config = POLICY_VIEWS[view]
     values = policy[view_config["field"]]
@@ -766,12 +849,14 @@ def build_policy_map(
     map_obj = folium.Map(
         location=[25.04, 121.50],
         zoom_start=10,
-        tiles="OpenStreetMap",
+        tiles=None,
         control_scale=True,
         prefer_canvas=True,
     )
+    _add_policy_basemap(map_obj, basemap)
     _fit_policy_bounds(map_obj, policy)
     _add_policy_boundaries(map_obj, towns, cities)
+    _add_policy_district_analysis_layer(map_obj, towns, district_analysis_layer)
 
     for _, row in policy.iterrows():
         value = float(row[view_config["field"]])
@@ -808,6 +893,7 @@ def build_policy_map(
     _add_city_label(map_obj, 25.095, 121.405, "新北市")
     _add_city_label(map_obj, 25.045, 121.555, "臺北市")
     _add_policy_legend(map_obj, view_config, min_value, max_value)
+    _add_policy_district_analysis_legend(map_obj, towns, district_analysis_layer)
     return map_obj
 
 
@@ -830,6 +916,7 @@ def render_candidate_detail(row: pd.Series) -> None:
     sample_warning = ""
     if int(row["total_rental_record_count"]) < SMALL_SAMPLE_THRESHOLD:
         sample_warning = '<div class="qj-policy-warning">小樣本，請謹慎解讀</div>'
+    district_context = _district_context_for_candidate(row)
     st.html(
         f"""
         <div class="qj-policy-detail">
@@ -841,6 +928,7 @@ def render_candidate_detail(row: pd.Series) -> None:
                 <div><span>生活機能 proxy</span><b>{float(row['livability_index']):.3f}</b><small>OSM 800m</small></div>
                 <div><span>政策型租賃相關登錄樣本</span><b>{share * 100:.1f}%</b><small>{int(row['policy_linked_record_count'])} / {int(row['total_rental_record_count'])}</small></div>
             </div>
+            <div class="qj-policy-mini-note">{html.escape(district_context)}</div>
             {sample_warning}
             <div class="qj-policy-description">{html.escape(_describe_candidate(row))}</div>
         </div>
@@ -912,11 +1000,51 @@ def render_policy_method_notes() -> None:
         livability 是 OSM 800m POI proxy，不代表完整生活品質。<br>
         policy-linked share 是租賃登錄樣本結構，不是市場占比、政策住宅供給率或青年租屋占比。<br>
         租賃資料沒有承租人年齡，因此不可稱為青年租賃案件。<br>
+        青年人口多只代表可能影響規模較大，不等於政策一定優先；本階段不直接提出社宅、公園、共居等政策處方。<br>
         Policy Lens 是 screening tool，不是因果分析或正式政策排序。
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+
+def _add_policy_basemap(map_obj: folium.Map, basemap: str) -> None:
+    if basemap == POLICY_BASEMAP_STREET:
+        folium.TileLayer(
+            tiles="OpenStreetMap",
+            name=POLICY_BASEMAP_STREET,
+            overlay=False,
+            control=False,
+            show=True,
+        ).add_to(map_obj)
+        return
+
+    _add_policy_minimal_background_style(map_obj)
+    folium.TileLayer(
+        tiles=TRANSPARENT_TILE_DATA_URI,
+        name=POLICY_BASEMAP_MINIMAL,
+        attr="Local transparent background",
+        overlay=False,
+        control=False,
+        show=True,
+    ).add_to(map_obj)
+
+
+def _add_policy_minimal_background_style(map_obj: folium.Map) -> None:
+    template = Template(
+        """
+        {% macro html(this, kwargs) %}
+        <style>
+          .leaflet-container {
+            background: #F6F3EC;
+          }
+        </style>
+        {% endmacro %}
+        """
+    )
+    macro = MacroElement()
+    macro._template = template
+    map_obj.get_root().add_child(macro)
 
 
 def _fit_policy_bounds(map_obj: folium.Map, policy: pd.DataFrame) -> None:
@@ -972,6 +1100,69 @@ def _add_policy_boundaries(map_obj: folium.Map, towns: gpd.GeoDataFrame, cities:
     ).add_to(map_obj)
 
 
+def _add_policy_district_analysis_layer(
+    map_obj: folium.Map,
+    towns: gpd.GeoDataFrame,
+    analysis_layer: str,
+) -> None:
+    if analysis_layer == DISTRICT_ANALYSIS_LAYER_NONE or analysis_layer not in POLICY_DISTRICT_ANALYSIS_CONFIG:
+        return
+    config = POLICY_DISTRICT_ANALYSIS_CONFIG[analysis_layer]
+    field = str(config["field"])
+    values = pd.to_numeric(towns[field], errors="coerce") if field in towns.columns else pd.Series(dtype=float)
+    valid_values = values.dropna()
+    color_map = None
+    if not valid_values.empty:
+        color_map = LinearColormap(
+            colors=[str(config["low_color"]), str(config["high_color"])],
+            vmin=float(valid_values.min()),
+            vmax=float(valid_values.max()),
+        )
+
+    def analysis_style(feature: dict[str, object]) -> dict[str, object]:
+        properties = feature.get("properties", {})
+        value = properties.get(field) if isinstance(properties, dict) else None
+        has_value = value is not None and not pd.isna(value)
+        fill_color = color_map(float(value)) if has_value and color_map is not None else "#EFF1F0"
+        return {
+            "fillColor": fill_color,
+            "color": "#8FA0A4" if has_value else "#C7D0D2",
+            "weight": 0.80 if has_value else 0.56,
+            "opacity": 0.64 if has_value else 0.38,
+            "fillOpacity": 0.32 if has_value else 0.12,
+        }
+
+    folium.GeoJson(
+        towns,
+        name=analysis_layer,
+        style_function=analysis_style,
+        control=False,
+        tooltip=_policy_district_analysis_tooltip(),
+    ).add_to(map_obj)
+
+
+def _policy_district_analysis_tooltip() -> folium.GeoJsonTooltip:
+    return folium.GeoJsonTooltip(
+        fields=[
+            "TOWNNAME",
+            "youth_population_18_35_display",
+            "youth_population_share_display",
+            "official_median_rent_display",
+            "analysis_data_year_display",
+        ],
+        aliases=[
+            "行政區",
+            "18–35 青年人口數",
+            "18–35 青年人口占比",
+            "行政區租金",
+            "資料年度",
+        ],
+        labels=True,
+        sticky=False,
+        localize=False,
+    )
+
+
 def _scaled_radius(value: float, min_value: float, max_value: float) -> float:
     if max_value == min_value:
         return 10.0
@@ -1019,6 +1210,26 @@ def _policy_sample_tooltip(row: pd.Series) -> str:
     return (
         f"{row['living_area']}｜{float(row['policy_linked_record_share']) * 100:.1f}%"
         f"（{int(row['policy_linked_record_count'])} / {int(row['total_rental_record_count'])}）{warning}"
+    )
+
+
+def _district_context_for_candidate(row: pd.Series) -> str:
+    district = str(row["district"])
+    district_analysis = load_district_analysis_table()
+    matches = district_analysis[(district_analysis["city"] == "新北市") & (district_analysis["district"] == district)]
+    if matches.empty:
+        youth_population = "unresolved"
+        youth_share = "unresolved"
+        rent = f"{money(row['official_median_rent'])} NTD/month"
+    else:
+        context = matches.iloc[0]
+        youth_population = str(context.get("youth_population_18_35_display", "unresolved"))
+        youth_share = str(context.get("youth_population_share_display", "unresolved"))
+        rent = str(context.get("official_median_rent_display", "unresolved"))
+    return (
+        f"所在行政區背景：{row['living_area']} → {district}｜"
+        f"18–35 青年人口數 {youth_population}｜青年占比 {youth_share}｜行政區租金 {rent}。"
+        "行政區人口不可解讀為 1km / 2km 生活圈人口。"
     )
 
 
@@ -1107,6 +1318,70 @@ def _add_policy_legend(map_obj: folium.Map, view_config: dict[str, str], min_val
     macro = MacroElement()
     macro._template = template
     map_obj.get_root().add_child(macro)
+
+
+def _add_policy_district_analysis_legend(
+    map_obj: folium.Map,
+    towns: gpd.GeoDataFrame,
+    analysis_layer: str,
+) -> None:
+    if analysis_layer == DISTRICT_ANALYSIS_LAYER_NONE or analysis_layer not in POLICY_DISTRICT_ANALYSIS_CONFIG:
+        return
+    config = POLICY_DISTRICT_ANALYSIS_CONFIG[analysis_layer]
+    field = str(config["field"])
+    values = pd.to_numeric(towns[field], errors="coerce") if field in towns.columns else pd.Series(dtype=float)
+    valid_values = values.dropna()
+    if valid_values.empty:
+        min_label = "unresolved"
+        max_label = "unresolved"
+        bar_style = "background:#EFF1F0;border:1px solid #C7D0D2;"
+        note = str(config["missing_label"])
+    else:
+        min_value = float(valid_values.min())
+        max_value = float(valid_values.max())
+        min_label = _policy_analysis_value_label(min_value, str(config["unit"]))
+        max_label = _policy_analysis_value_label(max_value, str(config["unit"]))
+        bar_style = f"background:linear-gradient(90deg,{config['low_color']},{config['high_color']});"
+        note = str(config["higher_label"])
+    template = Template(
+        f"""
+        {{% macro html(this, kwargs) %}}
+        <div style="
+            position: fixed;
+            left: 24px;
+            bottom: 28px;
+            z-index: 9998;
+            background: rgba(255,255,255,0.94);
+            border: 1px solid #D6DDE0;
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: #243238;
+            font-size: 13px;
+            box-shadow: 0 1px 4px rgba(36,50,56,0.10);
+            min-width: 214px;
+            max-width: 290px;
+        ">
+          <div style="font-weight:850;margin-bottom:7px;">行政區背景：{html.escape(str(config['title']))}</div>
+          <div style="height:10px;border-radius:999px;{bar_style}margin-bottom:5px;"></div>
+          <div style="display:flex;justify-content:space-between;color:#65747A;font-size:12px;"><span>{min_label}</span><span>{max_label}</span></div>
+          <div style="margin-top:7px;color:#65747A;line-height:1.35;">{html.escape(note)}</div>
+        </div>
+        {{% endmacro %}}
+        """
+    )
+    macro = MacroElement()
+    macro._template = template
+    map_obj.get_root().add_child(macro)
+
+
+def _policy_analysis_value_label(value: float, unit: str) -> str:
+    if unit == "share":
+        return f"{value * 100:.1f}%"
+    if unit == "NTD/month":
+        return f"{money(value)}"
+    if unit == "people":
+        return f"{value:,.0f}"
+    return f"{value:.2f}"
 
 
 def _configure_matplotlib() -> None:
