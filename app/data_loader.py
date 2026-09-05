@@ -16,12 +16,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PREFERENCE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "preference_recommendations_by_workplace.csv"
 RENT_COMMUTE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "rent_commute_candidates_by_workplace.csv"
 LIVABILITY_CSV = PROJECT_ROOT / "data" / "processed" / "livability" / "livability_by_candidate.csv"
+LIVABILITY_POI_POINTS_CSV = PROJECT_ROOT / "data" / "processed" / "housing" / "livability_poi_points.csv"
 LIVABILITY_RAW_CACHE_DIR = PROJECT_ROOT / "data" / "raw" / "livability" / "osm_overpass_800m_2026-08-22"
 YOUTH_SINGLE_AGE_PHASE6_CSV = (
     PROJECT_ROOT / "data" / "processed" / "career" / "youth" / "ntpc_population_single_age_phase6.csv"
 )
-RIS_DISTRICT_YOUTH_18_35_CSV = (
-    PROJECT_ROOT / "data" / "processed" / "housing" / "ntpc_district_youth_18_35.csv"
+NTPC_DISTRICT_YOUTH_18_35_CSV = (
+    PROJECT_ROOT / "data" / "processed" / "population" / "ntpc_district_youth_18_35.csv"
 )
 NTPC_POPULATION_AGE_DISTRIBUTION_CSV = (
     PROJECT_ROOT / "data" / "raw" / "population" / "ntpc_stats_population_age_distribution.csv"
@@ -42,15 +43,7 @@ CAREER_V4_TRAINING_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_techn
 CAREER_BEAUTY_PHASE5_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_beauty_candidates_phase5.csv"
 CAREER_TRAINING_MAPPING_CSV = PROJECT_ROOT / "data" / "processed" / "career" / "career_training_skill_mapping.csv"
 CAREER_TAIWANJOBS_RAW_CSV = PROJECT_ROOT / "data" / "raw" / "career" / "jobs" / "taiwanjobs_open_jobs_2026-09-01.csv"
-BOUNDARY_SHP = (
-    PROJECT_ROOT
-    / "data"
-    / "interim"
-    / "housing"
-    / "boundaries"
-    / "nlsc_town_boundary_twd97"
-    / "TOWN_MOI_1120317.shp"
-)
+NTPC_BOUNDARY_GEOJSON = PROJECT_ROOT / "data" / "processed" / "geography" / "ntpc_district_boundaries.geojson"
 
 MODE_ORDER = ["省租型", "平衡型", "通勤型", "生活品質型"]
 WORKPLACE_ORDER = [
@@ -92,6 +85,7 @@ DISTRICT_ANALYSIS_LAYER_OPTIONS = [
     DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT,
     DISTRICT_ANALYSIS_LAYER_YOUTH_SHARE,
 ]
+EXPECTED_NTPC_DISTRICT_COUNT = 29
 POI_COUNT_COLUMNS = ["food_count", "shopping_count", "medical_count", "recreation_count", "culture_count"]
 REPRESENTATIVE_POI_LIMIT_PER_CATEGORY = 2
 REPRESENTATIVE_TRANSPORT_STATION_LIMIT = 5
@@ -379,14 +373,15 @@ def _validate_dashboard_data(candidates: pd.DataFrame, recommendations: pd.DataF
 
 @st.cache_data(show_spinner=False)
 def load_boundaries() -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    if not BOUNDARY_SHP.exists():
+    if not NTPC_BOUNDARY_GEOJSON.exists():
         raise FileNotFoundError(
-            "Expected existing NLSC/MOI boundary data at "
-            f"{BOUNDARY_SHP.relative_to(PROJECT_ROOT)}; the dashboard does not download new data."
+            "Expected processed NLSC/MOI New Taipei boundary data at "
+            f"{NTPC_BOUNDARY_GEOJSON.relative_to(PROJECT_ROOT)}; run "
+            "scripts/housing/build_ntpc_district_boundaries.py before starting the dashboard."
         )
-    towns = gpd.read_file(BOUNDARY_SHP, encoding="utf-8")
+    towns = gpd.read_file(NTPC_BOUNDARY_GEOJSON, encoding="utf-8")
     if towns.crs is None:
-        towns = towns.set_crs("EPSG:3824")
+        towns = towns.set_crs("EPSG:4326")
     towns = towns.to_crs("EPSG:4326")
     required = {"COUNTYNAME", "TOWNNAME", "geometry"}
     missing = required - set(towns.columns)
@@ -394,13 +389,19 @@ def load_boundaries() -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
         raise RuntimeError(f"Boundary file is missing expected columns: {sorted(missing)}")
     towns = towns[towns["COUNTYNAME"].isin(["新北市", "臺北市"])].copy()
     district_analysis = load_district_analysis_table()
+    towns["_district_join_key"] = towns["TOWNNAME"].map(_normalize_district_name)
+    district_analysis["_district_join_key"] = district_analysis["district"].map(_normalize_district_name)
+    _validate_ntpc_youth_geojson_join(towns, district_analysis)
     towns = towns.merge(
         district_analysis,
-        left_on=["COUNTYNAME", "TOWNNAME"],
-        right_on=["city", "district"],
+        left_on=["COUNTYNAME", "_district_join_key"],
+        right_on=["city", "_district_join_key"],
         how="left",
+        validate="many_to_one",
     )
-    towns = towns.drop(columns=[column for column in ["city", "district"] if column in towns.columns])
+    towns = towns.drop(
+        columns=[column for column in ["city", "district", "_district_join_key"] if column in towns.columns]
+    )
     display_defaults = {
         "youth_population_18_35_display": "unresolved",
         "youth_population_share_display": "unresolved",
@@ -409,6 +410,9 @@ def load_boundaries() -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
         "youth_population_status": "unresolved",
         "youth_share_status": "unresolved",
         "denominator_status": "unresolved",
+        "district_total_population_display": "unresolved",
+        "youth_population_source_period_display": "unresolved",
+        "youth_population_precision_display": "unresolved",
     }
     for column, default in display_defaults.items():
         if column not in towns.columns:
@@ -491,6 +495,10 @@ def load_district_analysis_table() -> pd.DataFrame:
     result["youth_population_share_display"] = result["youth_population_18_35_share"].map(_percent_display)
     result["official_median_rent_display"] = result["official_median_rent"].map(maybe_money)
     result["district_total_population_display"] = result["district_total_population"].map(_population_display)
+    result["youth_population_source_period_display"] = result["youth_population_period"].fillna("unresolved")
+    result["youth_population_precision_display"] = result["youth_population_status"].map(
+        lambda value: "Exact 18–35" if str(value).startswith("exact_18_35") else "unresolved"
+    )
     result["analysis_data_year_display"] = result.apply(_district_analysis_year_display, axis=1)
     return result.reset_index(drop=True)
 
@@ -639,15 +647,13 @@ def _load_ris_district_youth_population() -> pd.DataFrame:
         "youth_population_status",
         "youth_share_status",
     ]
-    if not RIS_DISTRICT_YOUTH_18_35_CSV.exists():
+    if not NTPC_DISTRICT_YOUTH_18_35_CSV.exists():
         return pd.DataFrame(columns=columns)
-    youth = pd.read_csv(RIS_DISTRICT_YOUTH_18_35_CSV)
+    youth = pd.read_csv(NTPC_DISTRICT_YOUTH_18_35_CSV)
     required = {
         "city",
         "district",
-        "roc_year",
-        "year",
-        "data_period",
+        "source_month",
         "total_population",
         "youth_18_35_count",
         "youth_18_35_share",
@@ -656,16 +662,25 @@ def _load_ris_district_youth_population() -> pd.DataFrame:
         return pd.DataFrame(columns=columns)
 
     result = youth[list(required)].copy()
+    result["district"] = result["district"].map(_normalize_district_name)
+    if result["district"].duplicated().any():
+        duplicates = sorted(result.loc[result["district"].duplicated(), "district"].unique())
+        raise RuntimeError(f"Duplicate normalized districts in exact youth population data: {duplicates}")
+    if len(result) != EXPECTED_NTPC_DISTRICT_COUNT:
+        raise RuntimeError(
+            f"Expected {EXPECTED_NTPC_DISTRICT_COUNT} exact youth population districts, got {len(result)}"
+        )
     result = result.rename(
         columns={
-            "roc_year": "youth_population_roc_year",
-            "year": "youth_population_year",
-            "data_period": "youth_population_period",
             "total_population": "youth_share_denominator_population",
             "youth_18_35_count": "youth_population_18_35",
             "youth_18_35_share": "youth_population_18_35_share",
         }
     )
+    source_metadata = result["source_month"].map(_source_month_metadata)
+    result["youth_population_roc_year"] = source_metadata.map(lambda value: value[0])
+    result["youth_population_year"] = source_metadata.map(lambda value: value[1])
+    result["youth_population_period"] = source_metadata.map(lambda value: value[2])
     result["youth_population_18_35"] = pd.to_numeric(result["youth_population_18_35"], errors="coerce")
     result["youth_population_18_35_share"] = pd.to_numeric(
         result["youth_population_18_35_share"], errors="coerce"
@@ -675,9 +690,9 @@ def _load_ris_district_youth_population() -> pd.DataFrame:
     )
     result["youth_population_roc_year"] = pd.to_numeric(result["youth_population_roc_year"], errors="coerce")
     result["youth_population_year"] = pd.to_numeric(result["youth_population_year"], errors="coerce")
-    result["youth_population_status"] = "exact_18_35_ris_village_single_age"
-    result["youth_share_status"] = "exact_18_35_with_same_ris_source_total_population"
-    result["youth_share_denominator_status"] = "available: same RIS source month district total population"
+    result["youth_population_status"] = "exact_18_35_ris_odrp014_village_single_age"
+    result["youth_share_status"] = "exact_18_35_with_same_odrp014_month_total_population"
+    result["youth_share_denominator_status"] = "available: same ODRP014 month district total population"
     return result[columns].reset_index(drop=True)
 
 
@@ -756,15 +771,50 @@ def _latest_exact_youth_period_display() -> str:
 
 
 def _latest_ris_youth_period_display() -> str:
-    if not RIS_DISTRICT_YOUTH_18_35_CSV.exists():
+    if not NTPC_DISTRICT_YOUTH_18_35_CSV.exists():
         return "unresolved"
-    youth = pd.read_csv(RIS_DISTRICT_YOUTH_18_35_CSV)
-    if youth.empty or "data_period" not in youth.columns:
+    youth = pd.read_csv(NTPC_DISTRICT_YOUTH_18_35_CSV)
+    if youth.empty or "source_month" not in youth.columns:
         return "unresolved"
-    periods = youth["data_period"].dropna().astype(str).unique()
+    periods = youth["source_month"].dropna().astype(str).map(lambda value: _source_month_metadata(value)[2]).unique()
     if len(periods) == 0:
         return "unresolved"
     return str(periods[-1])
+
+
+def _source_month_metadata(value: object) -> tuple[int | None, int | None, str]:
+    text = str(value).strip()
+    if not re.fullmatch(r"\d{5}", text):
+        return None, None, "unresolved"
+    roc_year, month = int(text[:3]), int(text[3:])
+    if not 1 <= month <= 12:
+        return None, None, "unresolved"
+    return roc_year, roc_year + 1911, f"{roc_year + 1911}-{month:02d}"
+
+
+def _normalize_district_name(value: object) -> str:
+    return re.sub(r"\s+", "", str(value).strip()).replace("臺", "台")
+
+
+def _validate_ntpc_youth_geojson_join(towns: gpd.GeoDataFrame, district_analysis: pd.DataFrame) -> None:
+    youth = district_analysis[
+        (district_analysis["city"] == "新北市") & district_analysis["youth_population_18_35"].notna()
+    ].copy()
+    if youth.empty:
+        return
+    if len(youth) != EXPECTED_NTPC_DISTRICT_COUNT:
+        raise RuntimeError(f"Expected {EXPECTED_NTPC_DISTRICT_COUNT} New Taipei youth rows, got {len(youth)}")
+    if youth["_district_join_key"].duplicated().any():
+        raise RuntimeError("Duplicate normalized New Taipei district names in youth data")
+    boundary_names = set(towns.loc[towns["COUNTYNAME"] == "新北市", "_district_join_key"])
+    youth_names = set(youth["_district_join_key"])
+    missing_boundaries = sorted(youth_names - boundary_names)
+    missing_youth = sorted(boundary_names - youth_names)
+    if missing_boundaries or missing_youth:
+        raise RuntimeError(
+            "New Taipei youth population / GeoJSON join mismatch: "
+            f"missing_boundaries={missing_boundaries}, missing_youth={missing_youth}"
+        )
 
 
 def _period_month_sort(period: object) -> int:
@@ -885,7 +935,6 @@ def load_representative_pois(candidate_name: str) -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False)
 def load_livability_density_pois(candidate_name: str) -> pd.DataFrame:
-    cache_path = LIVABILITY_RAW_CACHE_DIR / f"{_safe_poi_slug(candidate_name)}.json"
     columns = [
         "category",
         "category_label",
@@ -895,53 +944,29 @@ def load_livability_density_pois(candidate_name: str) -> pd.DataFrame:
         "distance_meters",
         "source_radius_meters",
     ]
-    if not cache_path.exists():
+    if not LIVABILITY_POI_POINTS_CSV.exists():
         return pd.DataFrame(columns=columns)
-
-    payload = json.loads(cache_path.read_text(encoding="utf-8"))
-    metadata = payload.get("metadata", {})
-    center_lat = float(metadata.get("lat", 0.0))
-    center_lon = float(metadata.get("lon", 0.0))
-    source_radius_meters = int(metadata.get("radius_meters", 0) or 0)
-    elements = payload.get("overpass_response", payload).get("elements", [])
-    rows: list[dict[str, Any]] = []
-    seen_ids: set[str] = set()
-
-    for element in elements:
-        if not isinstance(element, dict):
-            continue
-        tags = element.get("tags", {})
-        if not isinstance(tags, dict):
-            continue
-        category = _livability_density_category(tags)
-        if category is None:
-            continue
-        lat, lon = _element_lat_lon(element)
-        if lat is None or lon is None:
-            continue
-        distance_meters = _haversine_meters(center_lat, center_lon, lat, lon)
-        if distance_meters > DETAIL_EXTENDED_LIVING_AREA_RADIUS_METERS:
-            continue
-        osm_key = f"{element.get('type')}:{element.get('id')}"
-        if osm_key in seen_ids:
-            continue
-        seen_ids.add(osm_key)
-        rows.append(
-            {
-                "category": category,
-                "category_label": LIVABILITY_DENSITY_CATEGORIES[category]["label"],
-                "lat": lat,
-                "lon": lon,
-                "weight": 1.0,
-                "distance_meters": distance_meters,
-                "source_radius_meters": source_radius_meters,
-            }
-        )
-
-    poi = pd.DataFrame(rows, columns=columns)
+    points = pd.read_csv(LIVABILITY_POI_POINTS_CSV)
+    required = {"candidate_name", "poi_type", "lat", "lon", "source"}
+    missing = sorted(required - set(points.columns))
+    if missing:
+        raise RuntimeError(f"Livability POI points are missing required columns: {missing}")
+    poi = points.loc[
+        (points["candidate_name"].astype(str) == candidate_name)
+        & (points["poi_type"].isin(["food", "shopping", "recreation", "culture"]))
+    ].copy()
     if poi.empty:
-        return poi
-    return poi.sort_values(["distance_meters", "category"]).reset_index(drop=True)
+        return pd.DataFrame(columns=columns)
+    poi = poi.rename(columns={"poi_type": "category"})
+    poi["category_label"] = poi["category"].map(
+        {name: definition["label"] for name, definition in LIVABILITY_DENSITY_CATEGORIES.items()}
+    )
+    poi["weight"] = 1.0
+    poi["distance_meters"] = pd.NA
+    poi["source_radius_meters"] = pd.NA
+    poi["lat"] = pd.to_numeric(poi["lat"], errors="coerce")
+    poi["lon"] = pd.to_numeric(poi["lon"], errors="coerce")
+    return poi[columns].dropna(subset=["lat", "lon"]).sort_values(["category", "lat", "lon"]).reset_index(drop=True)
 
 
 @st.cache_data(show_spinner=False)
@@ -1372,7 +1397,7 @@ def load_career_learning_ladder_phase8() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame | None, pd.DataFrame]:
     missing_files = [
         path.relative_to(PROJECT_ROOT)
         for path in [
@@ -1380,7 +1405,6 @@ def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
             CAREER_V4_TRAINING_CSV,
             CAREER_BEAUTY_PHASE5_CSV,
             CAREER_TRAINING_MAPPING_CSV,
-            CAREER_TAIWANJOBS_RAW_CSV,
         ]
         if not path.exists()
     ]
@@ -1391,7 +1415,11 @@ def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
     training_v4 = pd.read_csv(CAREER_V4_TRAINING_CSV)
     beauty_phase5 = pd.read_csv(CAREER_BEAUTY_PHASE5_CSV)
     course_mapping = pd.read_csv(CAREER_TRAINING_MAPPING_CSV)
-    taiwanjobs_raw = pd.read_csv(CAREER_TAIWANJOBS_RAW_CSV, encoding="utf-8-sig")
+    taiwanjobs_raw = (
+        pd.read_csv(CAREER_TAIWANJOBS_RAW_CSV, encoding="utf-8-sig")
+        if CAREER_TAIWANJOBS_RAW_CSV.exists()
+        else None
+    )
 
     required_v35 = {
         "target_occupation_code",
@@ -1491,10 +1519,14 @@ def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
         ("v4 training", training_v4, required_v4),
         ("Phase 5 beauty candidates", beauty_phase5, required_beauty),
         ("v4 course mapping", course_mapping, required_mapping),
-        ("TaiwanJobs raw jobs", taiwanjobs_raw, required_taiwanjobs),
     ]:
         missing = sorted(required - set(frame.columns))
         if missing:
             raise RuntimeError(f"Career {label} is missing required columns: {missing}")
+
+    if taiwanjobs_raw is not None:
+        missing = sorted(required_taiwanjobs - set(taiwanjobs_raw.columns))
+        if missing:
+            raise RuntimeError(f"Career TaiwanJobs raw jobs is missing required columns: {missing}")
 
     return candidates_v35, training_v4, course_mapping, taiwanjobs_raw, beauty_phase5

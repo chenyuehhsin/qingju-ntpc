@@ -259,15 +259,22 @@ def _district_context_summary(row: pd.Series) -> str:
     if matches.empty:
         youth_population = "unresolved"
         youth_share = "unresolved"
+        total_population = "unresolved"
+        source_period = "unresolved"
+        precision = "unresolved"
         rent = f"{money(row['rent'])} NTD/month"
     else:
         context = matches.iloc[0]
         youth_population = str(context.get("youth_population_18_35_display", "unresolved"))
         youth_share = str(context.get("youth_population_share_display", "unresolved"))
+        total_population = str(context.get("district_total_population_display", "unresolved"))
+        source_period = str(context.get("youth_population_source_period_display", "unresolved"))
+        precision = str(context.get("youth_population_precision_display", "unresolved"))
         rent = str(context.get("official_median_rent_display", "unresolved"))
     return (
         f"所在行政區背景：{row['living_area']} → {district}｜"
-        f"18–35 青年人口數 {youth_population}｜青年占比 {youth_share}｜行政區租金 {rent}。"
+        f"18–35 青年人口數 {youth_population}｜青年占比 {youth_share}｜行政區總人口 {total_population}｜"
+        f"資料期別 {source_period}｜資料精度 {precision}｜行政區租金 {rent}。"
         "行政區人口不可解讀為 1km / 2km 生活圈人口。"
     )
 

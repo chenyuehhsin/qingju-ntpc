@@ -268,6 +268,7 @@ def build_detail_map(
     _add_detail_basemap(map_obj, towns, cities)
     _fit_detail_bounds(map_obj, lat, lon)
     _add_livability_density_heatmap(map_obj, livability_density_pois)
+    has_livability_density = not livability_density_pois.empty
     extended_group = folium.FeatureGroup(name="延伸生活圈", show=True).add_to(map_obj)
     core_group = folium.FeatureGroup(name="約15分鐘核心生活圈", show=True).add_to(map_obj)
     rail_group = folium.FeatureGroup(name="軌道交通", show=True).add_to(map_obj)
@@ -341,7 +342,7 @@ def build_detail_map(
             f"{poi['category_label']}｜約 {float(poi['distance_meters']):.0f}m",
         )
     folium.LayerControl(collapsed=False).add_to(map_obj)
-    _add_detail_legend(map_obj, str(row["living_area"]))
+    _add_detail_legend(map_obj, str(row["living_area"]), has_livability_density)
     return map_obj
 
 
@@ -474,15 +475,17 @@ def _district_analysis_tooltip() -> folium.GeoJsonTooltip:
             "TOWNNAME",
             "youth_population_18_35_display",
             "youth_population_share_display",
-            "official_median_rent_display",
-            "analysis_data_year_display",
+            "district_total_population_display",
+            "youth_population_source_period_display",
+            "youth_population_precision_display",
         ],
         aliases=[
             "行政區",
             "18–35 青年人口數",
             "18–35 青年人口占比",
-            "行政區租金",
-            "資料年度",
+            "行政區總人口",
+            "資料期別",
+            "資料精度",
         ],
         labels=True,
         sticky=False,
@@ -1167,8 +1170,15 @@ def _add_overview_legend(map_obj: folium.Map, workplace_name: str) -> None:
     map_obj.get_root().add_child(macro)
 
 
-def _add_detail_legend(map_obj: folium.Map, living_area_name: str) -> None:
+def _add_detail_legend(map_obj: folium.Map, living_area_name: str, has_livability_density: bool) -> None:
     safe_name = html.escape(living_area_name)
+    heatmap_legend = (
+        '<div><span style="display:inline-block;width:22px;height:11px;border-radius:999px;'
+        'background:linear-gradient(90deg,#7CCDB7,#F1D879,#ECA15A,#C45B65);opacity:0.52;'
+        'margin-right:6px;"></span>生活機能密度（預設開啟）</div>'
+        if has_livability_density
+        else '<div style="color:#8A5B34;">生活機能密度：未載入 POI 點位資料</div>'
+    )
     template = Template(
         f"""
         {{% macro html(this, kwargs) %}}
@@ -1186,7 +1196,7 @@ def _add_detail_legend(map_obj: folium.Map, living_area_name: str) -> None:
             box-shadow: 0 1px 4px rgba(36,50,56,0.10);
         ">
           <div style="font-weight:800;margin-bottom:6px;">{safe_name}</div>
-          <div><span style="display:inline-block;width:22px;height:11px;border-radius:999px;background:linear-gradient(90deg,#7CCDB7,#F1D879,#ECA15A,#C45B65);opacity:0.52;margin-right:6px;"></span>生活機能密度（預設開啟）</div>
+          {heatmap_legend}
           <div><span style="display:inline-block;width:18px;height:10px;border-radius:50%;background:#78B995;opacity:0.30;margin-right:6px;"></span>約15分鐘核心生活圈（1 km）</div>
           <div><span style="display:inline-block;width:22px;height:12px;border-radius:50%;background:#78B995;opacity:0.18;margin-right:6px;"></span>延伸生活圈（2 km）</div>
           <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#243238;color:white;font-size:9px;font-weight:900;margin-right:6px;">心</span>生活圈中心</div>

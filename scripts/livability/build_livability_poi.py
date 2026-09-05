@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import argparse
 import tempfile
 import time
 import urllib.error
@@ -32,15 +33,17 @@ RENT_COMMUTE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "rent_c
 
 RAW_CACHE_DIR = PROJECT_ROOT / "data" / "raw" / "livability" / "osm_overpass_800m_2026-08-22"
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed" / "livability"
+HOUSING_PROCESSED_DIR = PROJECT_ROOT / "data" / "processed" / "housing"
 OUTPUT_DIR = PROJECT_ROOT / "outputs" / "livability"
 OUTPUT_CSV = PROCESSED_DIR / "livability_by_candidate.csv"
+POI_POINTS_CSV = HOUSING_PROCESSED_DIR / "livability_poi_points.csv"
 OUTPUT_FIG = OUTPUT_DIR / "01_livability_poi_comparison.png"
 OUTPUT_MD = OUTPUT_DIR / "livability_exploration.md"
 QUERY_DEFINITION_JSON = OUTPUT_DIR / "osm_overpass_query_definition.json"
 
 OVERPASS_ENDPOINTS = [
-    "https://overpass-api.de/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass-api.de/api/interpreter",
 ]
 OVERPASS_SOURCE_URL = "; ".join(OVERPASS_ENDPOINTS)
 USER_AGENT = "qingju-ntpc-hackathon/0.1 (livability POI MVP)"
@@ -88,6 +91,7 @@ CATEGORY_NORM_COLUMNS = [
     "culture_norm",
     "medical_norm",
 ]
+HEATMAP_POI_TYPES = ("food", "shopping", "recreation", "culture")
 
 
 def configure_matplotlib() -> None:
@@ -153,7 +157,7 @@ def request_overpass(query: str) -> tuple[dict[str, Any], str]:
     data = urllib.parse.urlencode({"data": query}).encode("utf-8")
     last_error: Exception | None = None
     for endpoint in OVERPASS_ENDPOINTS:
-        for attempt in range(3):
+        for attempt in range(1):
             request = urllib.request.Request(
                 endpoint,
                 data=data,
@@ -165,7 +169,7 @@ def request_overpass(query: str) -> tuple[dict[str, Any], str]:
                 method="POST",
             )
             try:
-                with urllib.request.urlopen(request, timeout=120) as response:
+                with urllib.request.urlopen(request, timeout=20) as response:
                     content_type = response.headers.get("Content-Type", "")
                     body = response.read().decode("utf-8")
                 if "json" not in content_type:
@@ -176,10 +180,8 @@ def request_overpass(query: str) -> tuple[dict[str, Any], str]:
                 if exc.code not in {429, 502, 503, 504}:
                     raise
                 exc.read()
-                time.sleep(20 * (attempt + 1))
             except (urllib.error.URLError, TimeoutError) as exc:
                 last_error = exc
-                time.sleep(10 * (attempt + 1))
     raise RuntimeError(f"All Overpass endpoints failed. Last error: {last_error}")
 
 
@@ -243,6 +245,59 @@ def classify_response(cache_payload: dict[str, Any]) -> dict[str, int]:
     counts = {f"{category_name}_count": len(ids) for category_name, ids in category_ids.items()}
     counts["total_poi_count"] = len(all_ids)
     return counts
+
+
+def element_lat_lon(element: dict[str, Any]) -> tuple[float | None, float | None]:
+    lat = element.get("lat")
+    lon = element.get("lon")
+    if lat is None or lon is None:
+        center = element.get("center", {})
+        if isinstance(center, dict):
+            lat = center.get("lat")
+            lon = center.get("lon")
+    try:
+        return float(lat), float(lon)
+    except (TypeError, ValueError):
+        return None, None
+
+
+def build_heatmap_poi_points(candidates: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, str | float]] = []
+    for _, candidate in candidates.iterrows():
+        cache_payload = load_or_fetch_candidate_response(candidate)
+        metadata = cache_payload.get("metadata", {})
+        response = cache_payload.get("overpass_response", cache_payload)
+        seen_ids: set[str] = set()
+        for element in response.get("elements", []):
+            if not isinstance(element, dict):
+                continue
+            tags = element.get("tags", {})
+            if not isinstance(tags, dict):
+                continue
+            poi_type = next(
+                (category for category in HEATMAP_POI_TYPES if element_matches_category(tags, category)),
+                None,
+            )
+            if poi_type is None:
+                continue
+            element_id = f"{element.get('type')}:{element.get('id')}"
+            if element_id in seen_ids:
+                continue
+            lat, lon = element_lat_lon(element)
+            if lat is None or lon is None:
+                continue
+            seen_ids.add(element_id)
+            rows.append(
+                {
+                    "candidate_name": str(candidate["candidate_name"]),
+                    "poi_type": poi_type,
+                    "name": str(tags.get("name", "")),
+                    "lat": lat,
+                    "lon": lon,
+                    "source": str(metadata.get("source_url", "OpenStreetMap via Overpass API")),
+                }
+            )
+    return pd.DataFrame(rows, columns=["candidate_name", "poi_type", "name", "lat", "lon", "source"])
 
 
 def normalize_min_max(series: pd.Series) -> pd.Series:
@@ -484,6 +539,36 @@ def write_query_definition() -> None:
 
 
 def main() -> int:
+    global DOWNLOAD_DATE, RAW_CACHE_DIR
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--poi-points-only",
+        action="store_true",
+        help="Fetch/cache the existing Overpass POI source and write only the tracked Heatmap point dataset.",
+    )
+    parser.add_argument("--download-date", help="ISO download date for --poi-points-only raw-cache provenance.")
+    args = parser.parse_args()
+
+    if args.poi_points_only:
+        DOWNLOAD_DATE = args.download_date or datetime.now().date().isoformat()
+        RAW_CACHE_DIR = PROJECT_ROOT / "data" / "raw" / "livability" / f"osm_overpass_800m_{DOWNLOAD_DATE}"
+        HOUSING_PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
+        candidates = load_candidates()
+        points = build_heatmap_poi_points(candidates)
+        candidate_names = set(points["candidate_name"])
+        expected_names = set(candidates["candidate_name"])
+        if candidate_names != expected_names:
+            raise RuntimeError(
+                "Heatmap POI points are incomplete: "
+                f"missing={sorted(expected_names - candidate_names)}, unexpected={sorted(candidate_names - expected_names)}"
+            )
+        if set(points["poi_type"]) - set(HEATMAP_POI_TYPES):
+            raise RuntimeError("Heatmap POI points include unsupported categories.")
+        points.to_csv(POI_POINTS_CSV, index=False, encoding="utf-8")
+        print(f"Wrote {POI_POINTS_CSV.relative_to(PROJECT_ROOT)}")
+        print(f"POI points: {len(points)} across {points['candidate_name'].nunique()} candidates")
+        return 0
+
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     RAW_CACHE_DIR.mkdir(parents=True, exist_ok=True)

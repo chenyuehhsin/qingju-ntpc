@@ -977,15 +977,15 @@ def build_policy_scatter(policy: pd.DataFrame):
     ax.text(x_min + 1, y_min + 700, "較低租金 × 較短通勤", color="#58676D", fontsize=10, weight="bold")
     ax.text(commute_threshold + 1, y_min + 700, "較低租金 × 較長通勤", color="#58676D", fontsize=10, weight="bold")
 
-    ax.set_xlabel("Commute accessibility minutes（越右 = 公共運輸可達性越弱）")
-    ax.set_ylabel("Official median rent（NTD/month）")
-    ax.set_title("Policy v0 housing-accessibility pressure screening", loc="left", fontsize=15, weight="bold")
+    ax.set_xlabel("公共運輸可達性（分鐘；越右 = 可達性越弱）")
+    ax.set_ylabel("行政區租金中位數（NTD／月）")
+    ax.set_title("租金 × 公共運輸可達性壓力篩選", loc="left", fontsize=15, weight="bold")
     ax.grid(True, color="#E5EBEC", linewidth=0.8)
     ax.set_axisbelow(True)
     ax.spines[["top", "right"]].set_visible(False)
     ax.spines[["left", "bottom"]].set_color("#B8C2C5")
     colorbar = fig.colorbar(scatter, ax=ax, shrink=0.86, pad=0.02)
-    colorbar.set_label("livability_index")
+    colorbar.set_label("生活機能 proxy（OSM 800m）")
     fig.tight_layout()
     return fig
 
@@ -1147,15 +1147,17 @@ def _policy_district_analysis_tooltip() -> folium.GeoJsonTooltip:
             "TOWNNAME",
             "youth_population_18_35_display",
             "youth_population_share_display",
-            "official_median_rent_display",
-            "analysis_data_year_display",
+            "district_total_population_display",
+            "youth_population_source_period_display",
+            "youth_population_precision_display",
         ],
         aliases=[
             "行政區",
             "18–35 青年人口數",
             "18–35 青年人口占比",
-            "行政區租金",
-            "資料年度",
+            "行政區總人口",
+            "資料期別",
+            "資料精度",
         ],
         labels=True,
         sticky=False,
@@ -1220,15 +1222,22 @@ def _district_context_for_candidate(row: pd.Series) -> str:
     if matches.empty:
         youth_population = "unresolved"
         youth_share = "unresolved"
+        total_population = "unresolved"
+        source_period = "unresolved"
+        precision = "unresolved"
         rent = f"{money(row['official_median_rent'])} NTD/month"
     else:
         context = matches.iloc[0]
         youth_population = str(context.get("youth_population_18_35_display", "unresolved"))
         youth_share = str(context.get("youth_population_share_display", "unresolved"))
+        total_population = str(context.get("district_total_population_display", "unresolved"))
+        source_period = str(context.get("youth_population_source_period_display", "unresolved"))
+        precision = str(context.get("youth_population_precision_display", "unresolved"))
         rent = str(context.get("official_median_rent_display", "unresolved"))
     return (
         f"所在行政區背景：{row['living_area']} → {district}｜"
-        f"18–35 青年人口數 {youth_population}｜青年占比 {youth_share}｜行政區租金 {rent}。"
+        f"18–35 青年人口數 {youth_population}｜青年占比 {youth_share}｜行政區總人口 {total_population}｜"
+        f"資料期別 {source_period}｜資料精度 {precision}｜行政區租金 {rent}。"
         "行政區人口不可解讀為 1km / 2km 生活圈人口。"
     )
 
@@ -1386,6 +1395,7 @@ def _policy_analysis_value_label(value: float, unit: str) -> str:
 
 def _configure_matplotlib() -> None:
     candidates = [
+        "/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc",
         "/System/Library/Fonts/STHeiti Medium.ttc",
         "/System/Library/Fonts/Hiragino Sans GB.ttc",
         "/Library/Fonts/Arial Unicode.ttf",

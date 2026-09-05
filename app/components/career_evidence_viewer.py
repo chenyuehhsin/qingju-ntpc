@@ -270,7 +270,7 @@ def render_career_evidence_viewer(
     candidates_v35: pd.DataFrame,
     training_v4: pd.DataFrame,
     course_mapping: pd.DataFrame,
-    taiwanjobs_raw: pd.DataFrame,
+    taiwanjobs_raw: pd.DataFrame | None,
     beauty_phase5: pd.DataFrame,
 ) -> None:
     _html(
@@ -301,7 +301,7 @@ def render_career_evidence_viewer(
 def _render_selected_evidence(
     evidence: pd.DataFrame,
     course_mapping: pd.DataFrame,
-    taiwanjobs_raw: pd.DataFrame,
+    taiwanjobs_raw: pd.DataFrame | None,
     selected_name: str,
 ) -> None:
     if selected_name not in set(evidence["target_occupation_name"].astype(str)):
@@ -330,7 +330,9 @@ def _render_selected_evidence(
     _render_detail(selected, selected_mapping, taiwanjobs_raw)
 
 
-def _render_discovery_map(evidence: pd.DataFrame, taiwanjobs_raw: pd.DataFrame, domain_label: str) -> None:
+def _render_discovery_map(
+    evidence: pd.DataFrame, taiwanjobs_raw: pd.DataFrame | None, domain_label: str
+) -> None:
     if st.button("探索可能路徑", use_container_width=False, key="career_explore_button"):
         st.session_state.career_view_layer = "discovery"
         st.session_state.career_selected_path = None
@@ -457,7 +459,7 @@ def _render_explore_section() -> str:
     return selected
 
 
-def _render_path_cards(evidence: pd.DataFrame, taiwanjobs_raw: pd.DataFrame) -> None:
+def _render_path_cards(evidence: pd.DataFrame, taiwanjobs_raw: pd.DataFrame | None) -> None:
     cols = st.columns(4, gap="medium")
     for col, (_, row) in zip(cols, evidence.iterrows()):
         occupation_name = str(row["target_occupation_name"])
@@ -486,7 +488,7 @@ def _render_path_cards(evidence: pd.DataFrame, taiwanjobs_raw: pd.DataFrame) -> 
                 st.rerun()
 
 
-def _render_detail(row: pd.Series, course_mapping: pd.DataFrame, taiwanjobs_raw: pd.DataFrame) -> None:
+def _render_detail(row: pd.Series, course_mapping: pd.DataFrame, taiwanjobs_raw: pd.DataFrame | None) -> None:
     left, right = st.columns([1.08, 0.92], gap="medium")
     with left:
         st.markdown("#### 為什麼值得探索？")
@@ -536,21 +538,24 @@ def _render_detail(row: pd.Series, course_mapping: pd.DataFrame, taiwanjobs_raw:
 
     with right:
         st.markdown("#### 台灣市場證據")
-        market_stats = _job_market_stats(row, taiwanjobs_raw)
-        _html(
-            f"""
-            <div class="qj-panel">
-                <div class="qj-career-profile-grid">
-                    {_metric_html("高相關職缺", _number(market_stats["verified_job_count"]), translate_value=False)}
-                    {_metric_html("待確認候選", _number(market_stats["pending_job_count"]), translate_value=False)}
-                    {_metric_html("需求人數", _number(market_stats["verified_demand_persons"]), translate_value=False)}
-                    {_metric_html("月薪資料", market_stats["salary"], translate_value=False)}
-                    {_metric_html("市場訊號", _market_signal_label(row, market_stats=market_stats), translate_value=False)}
+        if taiwanjobs_raw is None and not _is_beauty_row(row):
+            _render_aggregate_market_evidence(row)
+        else:
+            market_stats = _job_market_stats(row, taiwanjobs_raw)
+            _html(
+                f"""
+                <div class="qj-panel">
+                    <div class="qj-career-profile-grid">
+                        {_metric_html("高相關職缺", _number(market_stats["verified_job_count"]), translate_value=False)}
+                        {_metric_html("待確認候選", _number(market_stats["pending_job_count"]), translate_value=False)}
+                        {_metric_html("需求人數", _number(market_stats["verified_demand_persons"]), translate_value=False)}
+                        {_metric_html("月薪資料", market_stats["salary"], translate_value=False)}
+                        {_metric_html("市場訊號", _market_signal_label(row, market_stats=market_stats), translate_value=False)}
+                    </div>
+                    <div class="qj-note">只把通過高相關性篩選的 TaiwanJobs 職缺納入主要統計；待確認候選不計入職缺數、需求人數或月薪。</div>
                 </div>
-                <div class="qj-note">只把通過高相關性篩選的 TaiwanJobs 職缺納入主要統計；待確認候選不計入職缺數、需求人數或月薪。</div>
-            </div>
-            """
-        )
+                """
+            )
         _render_market_job_preview(row, taiwanjobs_raw)
 
         st.markdown("#### 培訓資源")
@@ -762,9 +767,36 @@ def _render_market_evidence_expander(row: pd.Series) -> None:
         )
 
 
-def _render_market_job_preview(row: pd.Series, taiwanjobs_raw: pd.DataFrame) -> None:
+def _render_aggregate_market_evidence(row: pd.Series) -> None:
+    salary_lower = _clean(row.get("salary_lower_median", ""))
+    salary_upper = _clean(row.get("salary_upper_median", ""))
+    salary = "未知"
+    if salary_lower and salary_upper:
+        salary = f"NT$ {_salary_amount(salary_lower)} - {_salary_amount(salary_upper)}"
+    elif salary_lower:
+        salary = f"NT$ {_salary_amount(salary_lower)} 以上"
+    _html(
+        f"""
+        <div class="qj-panel">
+            <div class="qj-career-profile-grid">
+                {_metric_html("彙整對應職缺", _number(row.get("matched_job_count")), translate_value=False)}
+                {_metric_html("彙整需求人數", _number(row.get("total_demand_persons")), translate_value=False)}
+                {_metric_html("月薪彙整", salary, translate_value=False)}
+                {_metric_html("市場訊號", _row_market_validation(row), translate_value=False)}
+            </div>
+            <div class="qj-note">以上為既有 Career output 的彙整市場證據；未將其重新判定為逐筆職缺或高相關職缺統計。</div>
+        </div>
+        """
+    )
+
+
+def _render_market_job_preview(row: pd.Series, taiwanjobs_raw: pd.DataFrame | None) -> None:
     if _is_beauty_row(row):
         _render_phase5_beauty_job_preview(row)
+        return
+
+    if taiwanjobs_raw is None:
+        st.info("原始 TaiwanJobs 資料未載入，此細節目前不可用。")
         return
 
     matched_jobs = _matched_taiwanjobs(row, taiwanjobs_raw)
@@ -1090,6 +1122,8 @@ def _market_signal_label(
     taiwanjobs_raw: pd.DataFrame | None = None,
     market_stats: dict[str, object] | None = None,
 ) -> str:
+    if taiwanjobs_raw is None and market_stats is None:
+        return _translate_value(_row_market_validation(row))
     stats = market_stats if market_stats is not None else _job_market_stats(row, taiwanjobs_raw)
     verified_count = int(float(stats.get("verified_job_count", 0) or 0))
     pending_count = int(float(stats.get("pending_job_count", 0) or 0))
@@ -1104,7 +1138,9 @@ def _localized_alias_text(target_occupation: str) -> str:
     return "；".join(LOCALIZED_JOB_ALIASES.get(target_occupation, []))
 
 
-def _matched_taiwanjobs(row: pd.Series, taiwanjobs_raw: pd.DataFrame) -> pd.DataFrame:
+def _matched_taiwanjobs(row: pd.Series, taiwanjobs_raw: pd.DataFrame | None) -> pd.DataFrame:
+    if taiwanjobs_raw is None:
+        return pd.DataFrame()
     matched_title_list = [title.strip() for title in _clean(row.get("matched_titles", "")).split(";") if title.strip()]
     matched_titles = set(matched_title_list)
     if not matched_titles and str(row.get("target_occupation_name", "")) not in LOCALIZED_JOB_ALIASES:
@@ -1152,7 +1188,7 @@ def _prioritized_job_preview(matched_jobs: pd.DataFrame) -> pd.DataFrame:
     return display.head(5).drop(columns=["_confidence_order", "_monthly"])
 
 
-def _job_market_stats(row: pd.Series, taiwanjobs_raw: pd.DataFrame) -> dict[str, object]:
+def _job_market_stats(row: pd.Series, taiwanjobs_raw: pd.DataFrame | None) -> dict[str, object]:
     if _is_beauty_row(row):
         lower = _clean(row.get("salary_lower_median_high", ""))
         upper = _clean(row.get("salary_upper_median_high", ""))
