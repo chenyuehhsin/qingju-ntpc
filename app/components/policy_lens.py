@@ -9,6 +9,8 @@ from pathlib import Path
 import folium
 import geopandas as gpd
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 from branca.colormap import LinearColormap
 from branca.element import MacroElement, Template
@@ -106,6 +108,11 @@ POLICY_DISTRICT_ANALYSIS_CONFIG = {
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SMALL_SAMPLE_THRESHOLD = 50
+YOUTH_JOB_EMPLOYMENT_SUMMARY_CSV = (
+    PROJECT_ROOT / "data" / "processed" / "employment" / "new_taipei_employment_summary.csv"
+)
+YOUTH_JOB_RENT_CSV = PROJECT_ROOT / "data" / "processed" / "housing" / "moi_independent_suite_rent_benchmark.csv"
+YOUTH_JOB_POPULATION_CSV = PROJECT_ROOT / "data" / "processed" / "population" / "ntpc_district_youth_18_35.csv"
 
 
 def render_policy_lens(
@@ -214,14 +221,17 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
         row = policy[policy["candidate_name"] == selected_candidate].iloc[0]
         render_candidate_detail(row)
 
-    st.markdown("## 租金 × 公共運輸可達性壓力篩選")
+    st.markdown("## 青年工作機會 × 居住成本")
     st.markdown(
-        '<div class="qj-section-note">X = commute accessibility minutes，Y = official median rent，顏色 = livability_index。象限線使用目前 16 個候選點的 median 動態計算。</div>',
+        '<div class="qj-section-note">X = 官方行政區租金中位數，Y = 每千名青年求才人數，圓點大小 = 求才人數。僅呈現租金、Exact 18–35 青年人口與工作資料都有效的行政區；此指標不是就業率或就業機率。</div>',
         unsafe_allow_html=True,
     )
-    fig = build_policy_scatter(policy)
-    st.pyplot(fig, use_container_width=True)
-    plt.close(fig)
+    youth_job_data = load_youth_job_opportunity_data()
+    if youth_job_data.empty:
+        st.warning("目前沒有同時具備租金、Exact 18–35 青年人口與工作資料的行政區。")
+    else:
+        st.caption(f"有效行政區：{len(youth_job_data)} 區｜資料缺值不補值")
+        st.plotly_chart(build_youth_job_scatter(youth_job_data), use_container_width=True)
 
     with st.expander("資料、方法與限制", expanded=False):
         render_policy_method_notes()
@@ -990,6 +1000,90 @@ def build_policy_scatter(policy: pd.DataFrame):
     return fig
 
 
+@st.cache_data(show_spinner=False)
+def load_youth_job_opportunity_data() -> pd.DataFrame:
+    """Join exact district youth population, official rent, and processed employment aggregates."""
+    rent = pd.read_csv(YOUTH_JOB_RENT_CSV, encoding="utf-8-sig")
+    rent = rent.loc[rent["city"].eq("新北市"), ["district", "rent_median"]].copy()
+    rent["median_rent"] = pd.to_numeric(rent["rent_median"], errors="coerce")
+    rent = rent[["district", "median_rent"]]
+
+    youth = pd.read_csv(YOUTH_JOB_POPULATION_CSV, encoding="utf-8-sig")
+    youth = youth.loc[youth["city"].eq("新北市"), ["district", "youth_18_35_count"]].copy()
+    youth["youth_18_35_count"] = pd.to_numeric(youth["youth_18_35_count"], errors="coerce")
+
+    work = pd.read_csv(YOUTH_JOB_EMPLOYMENT_SUMMARY_CSV, encoding="utf-8-sig")
+    work_columns = {"district", "job_postings", "hiring_count", "company_count", "median_salary", "top_job_category"}
+    missing_work = work_columns - set(work.columns)
+    if missing_work:
+        raise RuntimeError(f"Employment summary is missing columns: {sorted(missing_work)}")
+    work = work[list(work_columns)].copy()
+    for column in ["job_postings", "hiring_count", "company_count", "median_salary"]:
+        work[column] = pd.to_numeric(work[column], errors="coerce")
+
+    result = rent.merge(youth, on="district", how="inner", validate="one_to_one").merge(
+        work, on="district", how="inner", validate="one_to_one"
+    )
+    result["youth_18_35_count"] = pd.to_numeric(result["youth_18_35_count"], errors="coerce")
+    result["hiring_count"] = pd.to_numeric(result["hiring_count"], errors="coerce")
+    result["youth_job_opportunity_per_1000"] = (
+        result["hiring_count"] / result["youth_18_35_count"] * 1000
+    )
+    output_columns = [
+        "district", "median_rent", "youth_18_35_count", "hiring_count", "job_postings",
+        "company_count", "median_salary", "youth_job_opportunity_per_1000",
+    ]
+    required_xy = ["median_rent", "youth_18_35_count", "hiring_count", "youth_job_opportunity_per_1000"]
+    result = result.dropna(subset=required_xy)
+    result = result.loc[result["youth_18_35_count"].gt(0)].sort_values("district").reset_index(drop=True)
+    return result[output_columns]
+
+
+def build_youth_job_scatter(data: pd.DataFrame) -> go.Figure:
+    rent_median = float(data["median_rent"].median())
+    opportunity_median = float(data["youth_job_opportunity_per_1000"].median())
+    fig = px.scatter(
+        data,
+        x="median_rent",
+        y="youth_job_opportunity_per_1000",
+        text="district",
+        size="hiring_count",
+        size_max=30,
+        custom_data=[
+            "district", "median_rent", "hiring_count", "job_postings", "company_count",
+            "youth_18_35_count", "youth_job_opportunity_per_1000", "median_salary",
+        ],
+        labels={
+            "median_rent": "官方行政區租金中位數（NTD／月）",
+            "youth_job_opportunity_per_1000": "每千名青年求才人數",
+            "hiring_count": "求才人數",
+        },
+    )
+    fig.update_traces(
+        textposition="top center",
+        marker={"color": "#0F766E", "line": {"color": "#FFFFFF", "width": 1}},
+        hovertemplate=(
+            "<b>%{customdata[0]}</b><br>"
+            "租金中位數：NT$%{customdata[1]:,.0f}/月<br>"
+            "求才人數：%{customdata[2]:,.0f} 人<br>"
+            "職缺筆數：%{customdata[3]:,.0f} 筆<br>"
+            "公司數：%{customdata[4]:,.0f} 家<br>"
+            "Exact 18–35 青年人口：%{customdata[5]:,.0f} 人<br>"
+            "每千名青年求才人數：%{customdata[6]:.2f}<br>"
+            "職缺月薪中位數：NT$%{customdata[7]:,.0f}/月<extra></extra>"
+        ),
+    )
+    fig.add_vline(x=rent_median, line_dash="dash", line_color="#64748B")
+    fig.add_hline(y=opportunity_median, line_dash="dash", line_color="#64748B")
+    fig.update_layout(
+        height=570,
+        margin={"l": 0, "r": 0, "t": 20, "b": 0},
+        plot_bgcolor="#F8FAFC",
+        hoverlabel={"bgcolor": "#111827", "font": {"color": "#F8FAFC", "size": 13}},
+    )
+    return fig
+
+
 def render_policy_method_notes() -> None:
     st.markdown(
         """
@@ -999,6 +1093,8 @@ def render_policy_method_notes() -> None:
         commute 是候選生活圈代表節點到現有 workplace anchors 的公共運輸 proxy。<br>
         livability 是 OSM 800m POI proxy，不代表完整生活品質。<br>
         policy-linked share 是租賃登錄樣本結構，不是市場占比、政策住宅供給率或青年租屋占比。<br>
+        青年工作機會 scatter 使用官方行政區租金、RIS Exact 18–35 行政區人口與 TaiwanJobs 新北 29 區 district summary join；Y 軸是每千名青年求才人數，不是就業率或就業機率。<br>
+        職缺月薪中位數只納入核薪方式為月薪且上下限皆可解析的職缺，使用薪資上下限中點的行政區中位數；其缺值只影響 tooltip，不排除 scatter 點。租金、青年人口或求才人數缺值才不繪製。<br>
         租賃資料沒有承租人年齡，因此不可稱為青年租賃案件。<br>
         青年人口多只代表可能影響規模較大，不等於政策一定優先；本階段不直接提出社宅、公園、共居等政策處方。<br>
         Policy Lens 是 screening tool，不是因果分析或正式政策排序。
