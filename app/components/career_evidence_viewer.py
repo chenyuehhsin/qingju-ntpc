@@ -671,9 +671,12 @@ def _render_method_limitations_expander() -> None:
         _html(
             """
             <div class="qj-panel qj-note">
-                O*NET 為美國職業資料，台灣職涯制度與證照要求可能不同。<br>
-                TaiwanJobs 職稱 mapping 仍需要人工確認，尤其是醫療 × 科技職稱。<br>
-                培訓資料目前只有課程名稱，沒有完整 syllabus 或細部課程內容。<br>
+                <b>資料來源與證據型態</b><br>
+                <b>O*NET 31.0（2026-08）</b>：美國職業、技能與準備程度資料；External occupational reference，台灣職涯制度與證照要求可能不同。<br>
+                <b>TaiwanJobs（2026-09-01 snapshot）</b>：台灣公開職缺與職稱映射；職缺層級 evidence，職稱 mapping 仍需人工確認，尤其是醫療 × 科技職稱。<br>
+                <b>產業人才投資方案課程（2026-09 snapshot）</b>：課程名稱、時數與費用的 Derived mapping；沒有完整 syllabus，不代表技能已習得。<br>
+                <b>104／1111（2026-09-06 check）</b>：僅 External sanity check，作市場存在性查核；不納入 TaiwanJobs 統計或 market score。<br>
+                <b>新北人口（109年10月／2020）</b>：僅 historical snapshot；Exact 18–35，不能視為目前人口或與 2026 行政區資料同期比較。<br>
                 本頁不代表轉職成功機率，也沒有合成單一職涯分數。<br>
                 高相關職缺來自中文 alias + JOB_DETAIL relevance QA，只代表目前公開資料中可追溯的職缺證據。
             </div>

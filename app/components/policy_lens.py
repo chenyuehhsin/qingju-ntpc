@@ -1377,12 +1377,14 @@ def render_policy_method_notes() -> None:
     st.markdown(
         """
         <div class="qj-note">
-        <b>資料與方法限制</b><br>
-        租金是行政區尺度 MOI 獨立套房官方 benchmark，不是站點周邊即時房租。<br>
-        commute 是候選生活圈代表節點到現有 workplace anchors 的公共運輸 proxy。<br>
-        livability 是 OSM 800m POI proxy，不代表完整生活品質。<br>
+        <b>資料來源、期別與尺度</b><br>
+        <b>租金｜MOI 2026-03</b>：行政區獨立套房官方 benchmark；行政區尺度，不是站點周邊即時房租。<br>
+        <b>通勤｜TDX MaaS 2026-08-24 平日 08:00</b>：候選生活圈代表節點至 workplace anchors 的 Derived 公共運輸 scenario。<br>
+        <b>生活機能｜OSM / Overpass 2026-08-22</b>：候選站點 800m POI Derived proxy，不代表完整生活品質。<br>
+        <b>青年人口｜RIS 2026-07</b>：新北 29 行政區村里單一年齡彙整，Exact 18–35；是行政區背景，不是生活圈人口。<br>
+        <b>就業｜TaiwanJobs 新北職缺 2026-08-25</b>：29 行政區 snapshot；employment summary 與「每千青年求才人數」皆為 Derived，不是就業率、錄取機率或就業機會保證。<br>
+        <br><b>方法限制</b><br>
         policy-linked share 是租賃登錄樣本結構，不是市場占比、政策住宅供給率或青年租屋占比。<br>
-        青年工作機會 scatter 使用官方行政區租金、RIS Exact 18–35 行政區人口與 TaiwanJobs 新北 29 區 district summary join；Y 軸是每千名青年求才人數，不是就業率或就業機率。<br>
         職缺月薪中位數只納入核薪方式為月薪且上下限皆可解析的職缺，使用薪資上下限中點的行政區中位數；其缺值只影響 tooltip，不排除 scatter 點。租金、青年人口或求才人數缺值才不繪製。<br>
         租賃資料沒有承租人年齡，因此不可稱為青年租賃案件。<br>
         青年人口多只代表可能影響規模較大，不等於政策一定優先；本階段不直接提出社宅、公園、共居等政策處方。<br>

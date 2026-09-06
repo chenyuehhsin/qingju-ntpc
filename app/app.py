@@ -358,17 +358,18 @@ def main() -> None:
         st.markdown(
             """
             <div class="qj-note">
-            <b>資料限制</b><br>
-            租金為 MOI 行政區獨立套房官方 benchmark，不是即時房源價格。<br>
-            租金目前是行政區尺度，不代表特定車站周邊實際租金。<br>
-            通勤為 TDX MaaS 平日 08:00、代表交通節點到工作地的公共運輸時間。<br>
+            <b>主要資料來源與尺度</b><br>
+            <b>租金｜MOI</b>：2026-03 行政區獨立套房租金 benchmark；行政區尺度，屬官方 benchmark，不是即時房源或車站周邊實際租金。<br>
+            <b>通勤｜TDX MaaS</b>：2026-08-24 平日 08:00 情境；代表交通節點至工作地的公共運輸時間，屬 Derived scenario，不是 door-to-door 時間。<br>
+            <b>生活機能｜OSM / Overpass</b>：2026-08-22 snapshot；候選站點周邊 800m POI 的 Derived proxy，不代表完整生活品質。<br>
+            <b>青年人口｜RIS 戶政司</b>：2026-07；新北 29 行政區村里單一年齡彙整，Exact 18–35，不可解讀為 1km / 2km 生活圈人口。<br>
+            <b>地址定位｜OpenStreetMap Nominatim</b>：使用者輸入地址的 External geocoding；結果僅 local cache，避免重複查詢。<br>
+            <br><b>使用限制</b><br>
             任意工作地址使用 OpenStreetMap Nominatim geocoding；地址解析結果會 local cache，避免重複查詢。<br>
             目前不是 door-to-door 通勤。<br>
             目前不包含汽車 / 機車通勤模式。<br>
-            生活品質型目前以站點周邊 800m OSM POI 作為生活機能統計 proxy。<br>
             推薦權重為 MVP preference settings，不代表客觀最佳居住選擇。<br>
             總覽地圖呈現工作地、Top 3 推薦的約15分鐘核心生活圈（1 km）與延伸生活圈（2 km），以及弱化候選點；行政區背景可切換為無、租金、18–35 青年人口數或 18–35 青年人口占比。<br>
-            青年人口行政區圖層使用戶政司村里單一年齡資料彙整的 Exact 18–35（2026-07）；行政區人口不可解讀為 1km / 2km 生活圈人口。<br>
             「15分鐘」為近似探索範圍，實際步行時間依道路與步行速度而異，不代表精準步行 isochrone；生活機能統計目前仍基於 800m 範圍。
             </div>
             """,
