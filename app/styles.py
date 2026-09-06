@@ -300,6 +300,26 @@ def apply_styles() -> None:
             margin-top: -0.35rem;
             margin-bottom: 0.55rem;
         }
+        .qj-map-provenance {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.45rem 0.85rem;
+            margin: 0.15rem 0 0.7rem;
+            padding: 0.62rem 0.78rem;
+            color: #315f45;
+            background: #eef7f1;
+            border: 1px solid #cfe2d5;
+            border-left: 4px solid #4f9e8d;
+            border-radius: 7px;
+            font-size: 0.92rem;
+        }
+        .qj-map-provenance b {
+            color: #243238;
+        }
+        .qj-map-provenance span {
+            font-weight: 760;
+        }
         .qj-mode-heading {
             font-size: clamp(2.1rem, 3vw, 3.25rem);
             font-weight: 920;

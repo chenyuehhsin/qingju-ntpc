@@ -65,7 +65,7 @@ DISTRICT_ANALYSIS_CONFIG = {
     },
     DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT: {
         "field": "youth_population_18_35",
-        "title": "18–35 青年人口數",
+        "title": "18–35青年人口數",
         "unit": "people",
         "low_color": "#E8F1EF",
         "high_color": "#4F9E8D",
@@ -74,7 +74,7 @@ DISTRICT_ANALYSIS_CONFIG = {
     },
     DISTRICT_ANALYSIS_LAYER_YOUTH_SHARE: {
         "field": "youth_population_18_35_share",
-        "title": "18–35 青年人口占比",
+        "title": "18–35青年人口占比",
         "unit": "share",
         "low_color": "#EEF0F7",
         "high_color": "#6F7FB7",
@@ -465,28 +465,25 @@ def _add_district_analysis_layer(map_obj: folium.Map, towns: gpd.GeoDataFrame, a
         name=analysis_layer,
         style_function=analysis_style,
         control=False,
-        tooltip=_district_analysis_tooltip(),
+        tooltip=_district_analysis_tooltip(analysis_layer),
     ).add_to(map_obj)
 
 
-def _district_analysis_tooltip() -> folium.GeoJsonTooltip:
+def _district_analysis_tooltip(analysis_layer: str) -> folium.GeoJsonTooltip:
+    display_fields = {
+        DISTRICT_ANALYSIS_LAYER_RENT: ("official_median_rent_display", "行政區租金"),
+        DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT: ("youth_population_18_35_display", "18–35青年人口數"),
+        DISTRICT_ANALYSIS_LAYER_YOUTH_SHARE: ("youth_population_share_display", "18–35青年人口占比"),
+    }
+    selected_field, selected_alias = display_fields[analysis_layer]
+    remaining_fields = [
+        (field, alias)
+        for field, alias in display_fields.values()
+        if field != selected_field
+    ]
     return folium.GeoJsonTooltip(
-        fields=[
-            "TOWNNAME",
-            "youth_population_18_35_display",
-            "youth_population_share_display",
-            "district_total_population_display",
-            "youth_population_source_period_display",
-            "youth_population_precision_display",
-        ],
-        aliases=[
-            "行政區",
-            "18–35 青年人口數",
-            "18–35 青年人口占比",
-            "行政區總人口",
-            "資料期別",
-            "資料精度",
-        ],
+        fields=["TOWNNAME", selected_field, *[field for field, _ in remaining_fields]],
+        aliases=["行政區", f"★ {selected_alias}（目前圖層）", *[alias for _, alias in remaining_fields]],
         labels=True,
         sticky=False,
         localize=False,

@@ -18,9 +18,6 @@ RENT_COMMUTE_CSV = PROJECT_ROOT / "data" / "processed" / "integration" / "rent_c
 LIVABILITY_CSV = PROJECT_ROOT / "data" / "processed" / "livability" / "livability_by_candidate.csv"
 LIVABILITY_POI_POINTS_CSV = PROJECT_ROOT / "data" / "processed" / "housing" / "livability_poi_points.csv"
 LIVABILITY_RAW_CACHE_DIR = PROJECT_ROOT / "data" / "raw" / "livability" / "osm_overpass_800m_2026-08-22"
-YOUTH_SINGLE_AGE_PHASE6_CSV = (
-    PROJECT_ROOT / "data" / "processed" / "career" / "youth" / "ntpc_population_single_age_phase6.csv"
-)
 NTPC_DISTRICT_YOUTH_18_35_CSV = (
     PROJECT_ROOT / "data" / "processed" / "population" / "ntpc_district_youth_18_35.csv"
 )
@@ -78,13 +75,13 @@ MODE_COPY = {
 }
 DISTRICT_ANALYSIS_LAYER_NONE = "無"
 DISTRICT_ANALYSIS_LAYER_RENT = "行政區租金"
-DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT = "18–35 青年人口數"
-DISTRICT_ANALYSIS_LAYER_YOUTH_SHARE = "18–35 青年人口占比"
+DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT = "18–35青年人口數"
+DISTRICT_ANALYSIS_LAYER_YOUTH_SHARE = "18–35青年人口占比"
 DISTRICT_ANALYSIS_LAYER_OPTIONS = [
-    DISTRICT_ANALYSIS_LAYER_NONE,
     DISTRICT_ANALYSIS_LAYER_RENT,
     DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT,
     DISTRICT_ANALYSIS_LAYER_YOUTH_SHARE,
+    DISTRICT_ANALYSIS_LAYER_NONE,
 ]
 EXPECTED_NTPC_DISTRICT_COUNT = 29
 POI_COUNT_COLUMNS = ["food_count", "shopping_count", "medical_count", "recreation_count", "culture_count"]
@@ -478,10 +475,7 @@ def load_district_analysis_table() -> pd.DataFrame:
     ]
 
     youth_period = _latest_exact_youth_period_display()
-    unresolved_youth = (
-        "unresolved: Phase 6 exact 18-35 data is available only at New Taipei city level, "
-        "not district level"
-    )
+    unresolved_youth = "unavailable: processed RIS exact 18-35 district data"
     result["youth_population_status"] = result["youth_population_status"].fillna(unresolved_youth)
     result["youth_share_status"] = result["youth_share_status"].fillna(
         "unresolved: exact district-level 18-35 numerator unavailable"
@@ -593,45 +587,7 @@ def _load_exact_youth_population_by_district() -> pd.DataFrame:
         "youth_share_status",
     ]
     ris_youth = _load_ris_district_youth_population()
-    if not ris_youth.empty:
-        return ris_youth[columns].reset_index(drop=True)
-    if not YOUTH_SINGLE_AGE_PHASE6_CSV.exists():
-        return pd.DataFrame(columns=columns)
-    youth = pd.read_csv(YOUTH_SINGLE_AGE_PHASE6_CSV)
-    required = {"period", "roc_year", "year", "area", "sex", "age", "population"}
-    if not required.issubset(youth.columns):
-        return pd.DataFrame(columns=columns)
-    latest_period = _latest_exact_youth_period(youth)
-    if latest_period is None:
-        return pd.DataFrame(columns=columns)
-    youth = youth[
-        (youth["period"] == latest_period)
-        & (youth["sex"] == "性別總計")
-        & (pd.to_numeric(youth["age"], errors="coerce").between(18, 35))
-    ].copy()
-    youth["district"] = youth["area"].map(_district_from_ntpc_area)
-    youth = youth.dropna(subset=["district"]).copy()
-    if youth.empty:
-        return pd.DataFrame(columns=columns)
-    result = (
-        youth.groupby(["district", "roc_year", "year", "period"], as_index=False)["population"]
-        .sum()
-        .rename(
-            columns={
-                "population": "youth_population_18_35",
-                "roc_year": "youth_population_roc_year",
-                "year": "youth_population_year",
-                "period": "youth_population_period",
-            }
-        )
-    )
-    result["city"] = "新北市"
-    result["youth_population_status"] = "exact_18_35_single_age_sum"
-    result["youth_population_18_35_share"] = pd.NA
-    result["youth_share_denominator_population"] = pd.NA
-    result["youth_share_denominator_status"] = pd.NA
-    result["youth_share_status"] = pd.NA
-    return result[columns].reset_index(drop=True)
+    return ris_youth[columns].reset_index(drop=True)
 
 
 def _load_ris_district_youth_population() -> pd.DataFrame:
@@ -745,30 +701,8 @@ def _attach_youth_share_from_denominators(youth: pd.DataFrame, denominators: pd.
     return youth.reset_index(drop=True)
 
 
-def _latest_exact_youth_period(youth: pd.DataFrame) -> str | None:
-    rows = youth[(youth["area"] == "新北市") & (youth["sex"] == "性別總計")].copy()
-    if rows.empty:
-        return None
-    rows["_month_sort"] = rows["period"].map(_period_month_sort)
-    rows = rows.sort_values(["year", "_month_sort", "period"])
-    return str(rows.iloc[-1]["period"])
-
-
 def _latest_exact_youth_period_display() -> str:
-    ris_period = _latest_ris_youth_period_display()
-    if ris_period != "unresolved":
-        return ris_period
-    if not YOUTH_SINGLE_AGE_PHASE6_CSV.exists():
-        return "unresolved"
-    youth = pd.read_csv(YOUTH_SINGLE_AGE_PHASE6_CSV)
-    latest_period = _latest_exact_youth_period(youth)
-    if latest_period is None:
-        return "unresolved"
-    rows = youth[youth["period"] == latest_period]
-    years = rows["year"].dropna().unique()
-    if len(years) == 0:
-        return latest_period
-    return f"{latest_period} / {int(years[0])}"
+    return _latest_ris_youth_period_display()
 
 
 def _latest_ris_youth_period_display() -> str:
@@ -818,14 +752,6 @@ def _validate_ntpc_youth_geojson_join(towns: gpd.GeoDataFrame, district_analysis
         )
 
 
-def _period_month_sort(period: object) -> int:
-    text = str(period)
-    match = re.search(r"(\d+)月", text)
-    if match:
-        return int(match.group(1))
-    return 0
-
-
 def _district_from_ntpc_area(area: object) -> str | None:
     text = str(area).strip()
     if text.startswith("新北市") and text != "新北市":
@@ -862,11 +788,7 @@ def _district_analysis_year_display(row: pd.Series) -> str:
     youth_period = row.get("youth_population_period", "unresolved")
     denominator_period = row.get("district_total_population_period", "unresolved")
     rent_period = row.get("rent_data_period", "unresolved")
-    youth_status = row.get("youth_population_status", "unresolved")
-    if isinstance(youth_status, str) and youth_status.startswith("unresolved"):
-        youth_text = f"青年人口: unresolved（Phase 6 exact {youth_period} 只到新北市整體）"
-    else:
-        youth_text = f"青年人口: {youth_period}"
+    youth_text = f"青年人口: {youth_period}"
     return f"{youth_text}; 行政區總人口: {denominator_period}; 租金: {rent_period}"
 
 

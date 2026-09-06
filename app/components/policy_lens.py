@@ -117,6 +117,7 @@ POLICY_DISTRICT_ANALYSIS_CONFIG = {
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SMALL_SAMPLE_THRESHOLD = 50
+DEFAULT_POLICY_POPUP_CANDIDATE = "三重站"
 YOUTH_JOB_EMPLOYMENT_SUMMARY_CSV = (
     PROJECT_ROOT / "data" / "processed" / "employment" / "new_taipei_employment_summary.csv"
 )
@@ -202,6 +203,11 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
     st.caption(
         "圓圈固定代表生活圈；地圖強調焦點只改變視覺強調維度。行政區人口與工作資料是所屬行政區政策背景，不等於生活圈人口。"
     )
+    st.markdown("**點選生活圈，查看行政區政策背景、命中訊號與可評估工具。**")
+
+    default_popup_candidate = None
+    if not st.session_state.get("policy_default_popup_shown", False):
+        default_popup_candidate = _default_policy_popup_candidate(map_policy)
 
     map_col, detail_col = st.columns([2.65, 1.0], gap="medium")
     with map_col:
@@ -212,6 +218,7 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
             selected_view,
             str(selected_district_layer),
             str(selected_basemap),
+            default_popup_candidate=default_popup_candidate,
         )
         map_state = st_folium(
             map_obj,
@@ -220,27 +227,30 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
             returned_objects=["last_object_clicked"],
             key=f"policy_map_{selected_view}_{selected_district_layer}_{selected_basemap}",
         )
+    if default_popup_candidate is not None:
+        st.session_state.policy_default_popup_shown = True
     clicked_candidate = _candidate_from_click(map_policy, map_state)
     if clicked_candidate:
         st.session_state.policy_selected_candidate = clicked_candidate
-    if "policy_selected_candidate" not in st.session_state:
-        st.session_state.policy_selected_candidate = str(map_policy.sort_values(POLICY_VIEWS[selected_view]["field"], ascending=False).iloc[0]["candidate_name"])
-    selected_candidate = st.session_state.policy_selected_candidate
+        st.session_state.policy_case_candidate = clicked_candidate
+    candidate_names = map_policy["candidate_name"].tolist()
+    if st.session_state.get("policy_selected_candidate") not in candidate_names:
+        # Keep the initial card reproducible without deriving a score or priority order.
+        st.session_state.policy_selected_candidate = str(map_policy.iloc[0]["candidate_name"])
+    if st.session_state.get("policy_case_candidate") not in candidate_names:
+        st.session_state.policy_case_candidate = st.session_state.policy_selected_candidate
 
     with detail_col:
         render_view_explainer(selected_view)
         selected_candidate = st.selectbox(
-            "生活圈摘要",
-            map_policy["candidate_name"].tolist(),
-            index=map_policy["candidate_name"].tolist().index(selected_candidate)
-            if selected_candidate in map_policy["candidate_name"].tolist()
-            else 0,
+            "政策觀察案例",
+            candidate_names,
             format_func=lambda value: str(map_policy.loc[map_policy["candidate_name"] == value, "living_area"].iloc[0]),
+            key="policy_case_candidate",
         )
         st.session_state.policy_selected_candidate = selected_candidate
-        row = policy[policy["candidate_name"] == selected_candidate].iloc[0]
-        render_candidate_detail(row)
-        render_candidate_policy_signals(row, intervention_matrix, youth_job_data, policy)
+        row = map_policy[map_policy["candidate_name"] == selected_candidate].iloc[0]
+        render_policy_demo_case_card(row)
 
     st.markdown("## 青年工作機會 × 居住成本")
     st.markdown(
@@ -289,7 +299,7 @@ def _render_policy_district_layer_note(analysis_layer: str, towns: gpd.GeoDataFr
     if valid_count > 0:
         return
     st.markdown(
-        '<div class="qj-section-note">Phase 6 exact 18–35 青年人口目前只到新北市整體，沒有可 exact 對齊的行政區 18–35 資料；此行政區背景標示為 unresolved，不估算、不補值。</div>',
+        '<div class="qj-section-note">目前沒有可用的行政區 Exact 18–35 青年人口資料；不估算、不補值。</div>',
         unsafe_allow_html=True,
     )
 
@@ -316,14 +326,14 @@ def render_career_policy_observations(
         unsafe_allow_html=True,
     )
 
-    st.markdown("### 青年現況摘要")
+    st.markdown("### 職涯政策資料摘要（含歷史基準）")
     st.markdown(
         f"""
         <div class="qj-career-policy-grid">
             <div class="qj-career-policy-card">
                 <span>新北青年母體</span>
                 <b>{ntpc_population:,}</b>
-                <small>18–35｜{html.escape(str(context['ntpc_population_age_harmonization']))}｜{html.escape(str(context['ntpc_population_period']))}</small>
+                <small>歷史 snapshot｜18–35｜{html.escape(str(context['ntpc_population_age_harmonization']))}｜{html.escape(str(context['ntpc_population_period']))}</small>
             </div>
             <div class="qj-career-policy-card">
                 <span>有轉換工作打算</span>
@@ -346,7 +356,8 @@ def render_career_policy_observations(
     )
     st.caption(
         "年齡標籤：新北人口 = Exact 18–35；MOL 轉職 / 培訓指標 = Proxy 15–29；"
-        "教育與部分勞動資料的 Partial / unresolved 標籤保留在 Phase 6 QA，本頁不作強政策結論。"
+        "Career Phase 7 的新北人口為 109年10月歷史 snapshot，不與 Policy Map 的 RIS 2026-07 行政區資料作同期比較；"
+        "教育與部分勞動資料的 Partial / unresolved 標籤保留在既有 QA，本頁不作強政策結論。"
     )
 
     st.markdown("### 有資料支持的政策觀察")
@@ -885,6 +896,7 @@ def build_policy_map(
     view: str,
     district_analysis_layer: str = DISTRICT_ANALYSIS_LAYER_NONE,
     basemap: str = POLICY_BASEMAP_MINIMAL,
+    default_popup_candidate: str | None = None,
 ) -> folium.Map:
     view_config = POLICY_VIEWS[view]
     values = policy[view_config["field"]]
@@ -924,7 +936,10 @@ def build_policy_map(
             fill_opacity=0.90,
             opacity=0.95,
             tooltip=tooltip,
-            popup=_policy_popup(row),
+            popup=_policy_popup(
+                row,
+                show=str(row["candidate_name"]) == default_popup_candidate,
+            ),
         ).add_to(map_obj)
 
     _add_city_label(map_obj, 25.095, 121.405, "新北市")
@@ -968,6 +983,45 @@ def render_candidate_detail(row: pd.Series) -> None:
             <div class="qj-policy-mini-note">{html.escape(district_context)}</div>
             {sample_warning}
             <div class="qj-policy-description">{html.escape(_describe_candidate(row))}</div>
+        </div>
+        """
+    )
+
+
+def render_policy_demo_case_card(row: pd.Series) -> None:
+    """Render one existing living circle with its already-attached Matrix signals."""
+    def display(value: object, formatter) -> str:
+        return "資料不足" if pd.isna(value) else formatter(float(value))
+
+    rent = display(row.get("official_median_rent"), lambda value: f"NT${value:,.0f}／月")
+    commute = display(row.get("commute_accessibility_minutes"), lambda value: f"{value:.1f} 分鐘")
+    livability = display(row.get("livability_index"), lambda value: f"{value:.3f}")
+    youth_count = display(row.get("youth_18_35_count"), lambda value: f"{value:,.0f} 人")
+    youth_share = display(row.get("youth_18_35_share"), lambda value: f"{value:.1%}")
+    job_per_1000 = display(row.get("youth_job_opportunity_per_1000"), lambda value: f"{value:.2f}")
+    rule_names = html.escape(str(row.get("policy_signal_rule_names", "無")))
+    observations = html.escape(str(row.get("policy_signal_rule_observations", "無")))
+    tools = html.escape(str(row.get("policy_signal_rule_tools", "無")))
+
+    st.html(
+        f"""
+        <div class="qj-policy-detail">
+            <div class="qj-policy-eyebrow">政策觀察案例</div>
+            <div class="qj-policy-detail-title">{html.escape(str(row['living_area']))}</div>
+            <div class="qj-policy-detail-subtitle">{html.escape(str(row['candidate_name']))}｜所屬行政區 {html.escape(str(row['district']))}</div>
+            <div class="qj-policy-mini-note">示範案例，不代表政策優先順序</div>
+            <div class="qj-policy-metric-grid">
+                <div><span>租金</span><b>{rent}</b><small>行政區官方中位數</small></div>
+                <div><span>通勤</span><b>{commute}</b><small>公共運輸可達性</small></div>
+                <div><span>生活機能</span><b>{livability}</b><small>OSM 800m proxy</small></div>
+                <div><span>行政區青年人口</span><b>{youth_count}</b><small>Exact 18–35</small></div>
+                <div><span>行政區青年占比</span><b>{youth_share}</b><small>Exact 18–35</small></div>
+                <div><span>每千青年求才人數</span><b>{job_per_1000}</b><small>行政區背景</small></div>
+            </div>
+            <div class="qj-policy-description"><b>命中 rule 名稱：</b>{rule_names}</div>
+            <div class="qj-policy-description"><b>政策觀察：</b>{observations}</div>
+            <div class="qj-policy-description"><b>可評估工具：</b>{tools}</div>
+            <div class="qj-policy-description">行政區人口與工作資料是政策背景，不等於生活圈人口。</div>
         </div>
         """
     )
@@ -1200,6 +1254,29 @@ def _attach_policy_signal_fields(
     result["policy_signal_rule_observations"] = rule_observations
     result["policy_signal_rule_tools"] = rule_tools
     return result
+
+
+def _default_policy_popup_candidate(policy: pd.DataFrame) -> str | None:
+    """Choose one existing, complete Matrix example without creating a priority order."""
+    required_fields = [
+        "official_median_rent",
+        "commute_accessibility_minutes",
+        "livability_index",
+        "youth_18_35_count",
+        "youth_18_35_share",
+        "youth_job_opportunity_per_1000",
+    ]
+    complete_with_rule = policy.dropna(subset=required_fields).loc[
+        policy["policy_signal_rule_names"].ne("無")
+    ]
+    preferred = complete_with_rule[
+        complete_with_rule["candidate_name"].eq(DEFAULT_POLICY_POPUP_CANDIDATE)
+    ]
+    if not preferred.empty:
+        return str(preferred.iloc[0]["candidate_name"])
+    if complete_with_rule.empty:
+        return None
+    return str(complete_with_rule.iloc[0]["candidate_name"])
 
 
 def render_candidate_policy_signals(
@@ -1504,7 +1581,7 @@ def _integrated_policy_tooltip(row: pd.Series) -> str:
     )
 
 
-def _policy_popup(row: pd.Series) -> folium.Popup:
+def _policy_popup(row: pd.Series, show: bool = False) -> folium.Popup:
     warning = ""
     if int(row["total_rental_record_count"]) < SMALL_SAMPLE_THRESHOLD:
         warning = '<div style="color:#A15C2F;font-weight:700;margin-top:5px;">小樣本，請謹慎解讀</div>'
@@ -1537,7 +1614,18 @@ def _policy_popup(row: pd.Series) -> folium.Popup:
       {warning}
     </div>
     """
-    return folium.Popup(html_body, max_width=320)
+    popup = folium.Popup(
+        html_body,
+        max_width=320,
+        show=show,
+        auto_close=True,
+        auto_pan=True,
+        keep_in_view=True,
+    )
+    if show:
+        # Folium otherwise disables auto-close for a popup opened on load.
+        popup.options["autoClose"] = True
+    return popup
 
 
 def _livability_tooltip(row: pd.Series) -> str:
