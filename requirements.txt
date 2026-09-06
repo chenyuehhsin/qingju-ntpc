@@ -4,7 +4,7 @@ pypdf==6.16.1
 pdfplumber==0.11.8
 geopandas==1.0.1
 shapely==2.0.7
-streamlit==1.41.1
+streamlit==1.44.0
 folium==0.18.0
 streamlit-folium==0.24.0
 plotly==6.1.1
