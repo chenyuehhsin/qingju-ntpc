@@ -39,16 +39,25 @@ POLICY_BASEMAP_STREET = "街道地圖"
 POLICY_BASEMAP_OPTIONS = [POLICY_BASEMAP_MINIMAL, POLICY_BASEMAP_STREET]
 TRANSPARENT_TILE_DATA_URI = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
 POLICY_VIEWS = {
-    "租金": {
+    "綜合政策訊號": {
+        "field": "policy_signal_rule_count",
+        "title": "綜合政策訊號",
+        "unit": "rules",
+        "caption": "只顯示該生活圈所屬行政區命中的透明 policy rules 數量；不是 composite score 或 ranking。",
+        "low_color": "#E8EEF0",
+        "high_color": "#0F766E",
+        "higher_label": "命中規則越多",
+    },
+    "居住成本": {
         "field": "official_median_rent",
-        "title": "租金",
+        "title": "居住成本",
         "unit": "NTD/month",
         "caption": "MOI 行政區獨立套房官方租金 benchmark；不是即時房源價格或站點周邊租金。",
         "low_color": "#F8EBDD",
         "high_color": "#D97950",
         "higher_label": "租金越高",
     },
-    "公共運輸可達性": {
+    "交通可達": {
         "field": "commute_accessibility_minutes",
         "title": "公共運輸可達性",
         "unit": "min",
@@ -66,14 +75,14 @@ POLICY_VIEWS = {
         "high_color": "#5D9C7A",
         "higher_label": "生活機能 proxy 越高",
     },
-    "政策型租賃樣本": {
-        "field": "policy_linked_record_share",
-        "title": "政策型租賃相關登錄樣本占比",
-        "unit": "share",
-        "caption": "此比例僅反映目前清理後租賃登錄樣本結構，不是市場占比、供給率或青年租屋占比。",
-        "low_color": "#EFEAF4",
-        "high_color": "#8F78AD",
-        "higher_label": "樣本占比越高",
+    "青年人口": {
+        "field": "youth_18_35_count",
+        "title": "青年人口",
+        "unit": "people",
+        "caption": "Exact 18–35 行政區人口；人口多只代表影響規模較大，不等於政策優先。",
+        "low_color": "#E8F1EF",
+        "high_color": "#4F9E8D",
+        "higher_label": "青年人口多只代表影響規模較大",
     },
 }
 POLICY_DISTRICT_ANALYSIS_CONFIG = {
@@ -155,38 +164,49 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
         unsafe_allow_html=True,
     )
 
-    _, switch_col, _ = st.columns([0.55, 2.3, 0.55])
-    with switch_col:
+    youth_job_data = load_youth_job_opportunity_data()
+    intervention_matrix = build_policy_intervention_matrix(policy, youth_job_data)
+    map_policy = _attach_policy_signal_fields(policy, youth_job_data, intervention_matrix)
+
+    focus_col, district_col, basemap_col = st.columns([1.2, 1.2, 1.0], gap="medium")
+    with focus_col:
+        if st.session_state.get("policy_view") not in POLICY_VIEWS:
+            st.session_state["policy_view"] = "綜合政策訊號"
         selected_view = st.segmented_control(
-            "Policy Lens 視角",
+            "地圖強調焦點",
             options=list(POLICY_VIEWS.keys()),
-            default=st.session_state.get("policy_view", "租金"),
+            default=st.session_state.get("policy_view", "綜合政策訊號"),
             key="policy_view",
         )
+    with district_col:
         selected_district_layer = st.segmented_control(
             "行政區背景",
             options=DISTRICT_ANALYSIS_LAYER_OPTIONS,
-            default=st.session_state.get("policy_district_analysis_layer", DISTRICT_ANALYSIS_LAYER_NONE),
+            default=st.session_state.get("policy_district_analysis_layer", DISTRICT_ANALYSIS_LAYER_RENT),
             key="policy_district_analysis_layer",
         )
+    with basemap_col:
         selected_basemap = st.segmented_control(
             "底圖",
             options=POLICY_BASEMAP_OPTIONS,
             default=st.session_state.get("policy_basemap", POLICY_BASEMAP_MINIMAL),
             key="policy_basemap",
-        )
+    )
     if selected_view is None:
-        selected_view = "租金"
+        selected_view = "綜合政策訊號"
     if selected_district_layer is None:
-        selected_district_layer = DISTRICT_ANALYSIS_LAYER_NONE
+        selected_district_layer = DISTRICT_ANALYSIS_LAYER_RENT
     if selected_basemap is None:
         selected_basemap = POLICY_BASEMAP_MINIMAL
     _render_policy_district_layer_note(str(selected_district_layer), towns)
+    st.caption(
+        "圓圈固定代表生活圈；地圖強調焦點只改變視覺強調維度。行政區人口與工作資料是所屬行政區政策背景，不等於生活圈人口。"
+    )
 
     map_col, detail_col = st.columns([2.65, 1.0], gap="medium")
     with map_col:
         map_obj = build_policy_map(
-            policy,
+            map_policy,
             towns,
             cities,
             selected_view,
@@ -200,38 +220,58 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
             returned_objects=["last_object_clicked"],
             key=f"policy_map_{selected_view}_{selected_district_layer}_{selected_basemap}",
         )
-    clicked_candidate = _candidate_from_click(policy, map_state)
+    clicked_candidate = _candidate_from_click(map_policy, map_state)
     if clicked_candidate:
         st.session_state.policy_selected_candidate = clicked_candidate
     if "policy_selected_candidate" not in st.session_state:
-        st.session_state.policy_selected_candidate = str(policy.sort_values(POLICY_VIEWS[selected_view]["field"], ascending=False).iloc[0]["candidate_name"])
+        st.session_state.policy_selected_candidate = str(map_policy.sort_values(POLICY_VIEWS[selected_view]["field"], ascending=False).iloc[0]["candidate_name"])
     selected_candidate = st.session_state.policy_selected_candidate
 
     with detail_col:
         render_view_explainer(selected_view)
         selected_candidate = st.selectbox(
             "生活圈摘要",
-            policy["candidate_name"].tolist(),
-            index=policy["candidate_name"].tolist().index(selected_candidate)
-            if selected_candidate in policy["candidate_name"].tolist()
+            map_policy["candidate_name"].tolist(),
+            index=map_policy["candidate_name"].tolist().index(selected_candidate)
+            if selected_candidate in map_policy["candidate_name"].tolist()
             else 0,
-            format_func=lambda value: str(policy.loc[policy["candidate_name"] == value, "living_area"].iloc[0]),
+            format_func=lambda value: str(map_policy.loc[map_policy["candidate_name"] == value, "living_area"].iloc[0]),
         )
         st.session_state.policy_selected_candidate = selected_candidate
         row = policy[policy["candidate_name"] == selected_candidate].iloc[0]
         render_candidate_detail(row)
+        render_candidate_policy_signals(row, intervention_matrix, youth_job_data, policy)
 
     st.markdown("## 青年工作機會 × 居住成本")
     st.markdown(
         '<div class="qj-section-note">X = 官方行政區租金中位數，Y = 每千名青年求才人數，圓點大小 = 求才人數。僅呈現租金、Exact 18–35 青年人口與工作資料都有效的行政區；此指標不是就業率或就業機率。</div>',
         unsafe_allow_html=True,
     )
-    youth_job_data = load_youth_job_opportunity_data()
     if youth_job_data.empty:
         st.warning("目前沒有同時具備租金、Exact 18–35 青年人口與工作資料的行政區。")
     else:
         st.caption(f"有效行政區：{len(youth_job_data)} 區｜資料缺值不補值")
         st.plotly_chart(build_youth_job_scatter(youth_job_data), use_container_width=True)
+
+    st.markdown("## 政策介入矩陣")
+    st.caption(
+        "以目前有效行政區的 median 作為透明高低門檻；每列是資料訊號與可評估工具，"
+        "不是 ranking、政策 score、composite index 或政策成效預測。"
+    )
+    if intervention_matrix.empty:
+        st.info("目前沒有足夠的有效行政區資料建立政策介入矩陣。")
+    else:
+        st.dataframe(
+            intervention_matrix,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "資料訊號": st.column_config.TextColumn("資料訊號", width="large"),
+                "政策觀察": st.column_config.TextColumn("政策觀察", width="large"),
+                "可評估工具": st.column_config.TextColumn("可評估工具", width="large"),
+                "涉及行政區": st.column_config.TextColumn("涉及行政區", width="large"),
+            },
+        )
 
     with st.expander("資料、方法與限制", expanded=False):
         render_policy_method_notes()
@@ -870,22 +910,9 @@ def build_policy_map(
 
     for _, row in policy.iterrows():
         value = float(row[view_config["field"]])
-        radius = _scaled_radius(value, min_value, max_value)
+        radius = 9.0
         color = color_map(value)
-        if view == "生活機能":
-            tooltip = _livability_tooltip(row)
-        elif view == "政策型租賃樣本":
-            tooltip = _policy_sample_tooltip(row)
-        elif view == "公共運輸可達性":
-            tooltip = (
-                f"{row['living_area']}｜median {row['commute_accessibility_minutes']:.1f} min｜"
-                f"{int(row['commute_accessibility_workplace_count'])} workplaces"
-            )
-        else:
-            tooltip = (
-                f"{row['living_area']}｜{money(row['official_median_rent'])} NTD/month｜"
-                f"{int(row['official_contract_count'])} official contracts"
-            )
+        tooltip = _integrated_policy_tooltip(row)
 
         folium.CircleMarker(
             location=[float(row["lat"]), float(row["lon"])],
@@ -1009,8 +1036,11 @@ def load_youth_job_opportunity_data() -> pd.DataFrame:
     rent = rent[["district", "median_rent"]]
 
     youth = pd.read_csv(YOUTH_JOB_POPULATION_CSV, encoding="utf-8-sig")
-    youth = youth.loc[youth["city"].eq("新北市"), ["district", "youth_18_35_count"]].copy()
+    youth = youth.loc[
+        youth["city"].eq("新北市"), ["district", "youth_18_35_count", "youth_18_35_share"]
+    ].copy()
     youth["youth_18_35_count"] = pd.to_numeric(youth["youth_18_35_count"], errors="coerce")
+    youth["youth_18_35_share"] = pd.to_numeric(youth["youth_18_35_share"], errors="coerce")
 
     work = pd.read_csv(YOUTH_JOB_EMPLOYMENT_SUMMARY_CSV, encoding="utf-8-sig")
     work_columns = {"district", "job_postings", "hiring_count", "company_count", "median_salary", "top_job_category"}
@@ -1030,13 +1060,195 @@ def load_youth_job_opportunity_data() -> pd.DataFrame:
         result["hiring_count"] / result["youth_18_35_count"] * 1000
     )
     output_columns = [
-        "district", "median_rent", "youth_18_35_count", "hiring_count", "job_postings",
+        "district", "median_rent", "youth_18_35_count", "youth_18_35_share", "hiring_count", "job_postings",
         "company_count", "median_salary", "youth_job_opportunity_per_1000",
     ]
     required_xy = ["median_rent", "youth_18_35_count", "hiring_count", "youth_job_opportunity_per_1000"]
     result = result.dropna(subset=required_xy)
     result = result.loc[result["youth_18_35_count"].gt(0)].sort_values("district").reset_index(drop=True)
     return result[output_columns]
+
+
+def build_policy_intervention_matrix(policy: pd.DataFrame, youth_job_data: pd.DataFrame) -> pd.DataFrame:
+    """Create transparent policy observations from median-threshold rules only."""
+    if youth_job_data.empty:
+        return pd.DataFrame(columns=["資料訊號", "政策觀察", "可評估工具", "涉及行政區"])
+
+    context = youth_job_data.copy()
+    policy_context = (
+        policy.groupby("district", as_index=False)
+        .agg(
+            livability_index=("livability_index", "median"),
+            commute_accessibility_minutes=("commute_accessibility_minutes", "median"),
+        )
+    )
+    context = context.merge(policy_context, on="district", how="left", validate="one_to_one")
+    rent_median = float(context["median_rent"].median())
+    opportunity_median = float(context["youth_job_opportunity_per_1000"].median())
+    youth_median = float(context["youth_18_35_count"].median())
+    youth_share_values = context["youth_18_35_share"].dropna()
+    youth_share_median = float(youth_share_values.median()) if not youth_share_values.empty else None
+    livability_values = context["livability_index"].dropna()
+    livability_median = float(livability_values.median()) if not livability_values.empty else None
+    commute_values = context["commute_accessibility_minutes"].dropna()
+    commute_median = float(commute_values.median()) if not commute_values.empty else None
+
+    high_rent = context["median_rent"].ge(rent_median)
+    low_rent = context["median_rent"].lt(rent_median)
+    high_work = context["youth_job_opportunity_per_1000"].ge(opportunity_median)
+    low_work = context["youth_job_opportunity_per_1000"].lt(opportunity_median)
+    high_youth = context["youth_18_35_count"].ge(youth_median)
+    if livability_median is None:
+        low_livability = pd.Series(False, index=context.index)
+    else:
+        low_livability = context["livability_index"].lt(livability_median)
+
+    rules = [
+        (
+            "高工作機會＋高租金",
+            high_work & high_rent,
+            "高工作機會與較高居住成本同時出現，值得進一步檢視青年居住負擔。",
+            "租金支持、社宅、包租代管可評估",
+        ),
+        (
+            "低工作機會＋低租金",
+            low_work & low_rent,
+            "租金較低但每千名青年求才人數較低，值得進一步檢視交通與就業連結。",
+            "公共運輸、YouBike、轉乘、就業媒合可評估",
+        ),
+        (
+            "高青年人口＋高租金",
+            high_youth & high_rent,
+            "青年人口規模與居住成本都較高，值得進一步檢視青年居住支持需求。",
+            "青年住宅支持、社宅供給可評估",
+        ),
+        (
+            "高青年人口＋低生活機能",
+            high_youth & low_livability,
+            "青年人口規模較高但生活機能 proxy 較低，值得進一步檢視日常公共服務。",
+            "公園、文教、休閒、公共服務可評估",
+        ),
+        (
+            "高工作機會＋低租金",
+            high_work & low_rent,
+            "工作機會相對較高且租金較低，可作為潛在青年安居節點觀察。",
+            "生活圈與就業媒合可評估",
+        ),
+    ]
+    rows = []
+    for label, mask, observation, tools in rules:
+        matched = context.loc[mask].copy()
+        districts = "、".join(matched["district"].tolist()) if not matched.empty else "無"
+        signal = f"{label}（工作 median={opportunity_median:.2f}；租金 median=NT${rent_median:,.0f}"
+        if label.startswith("高青年人口"):
+            signal += f"；青年人口 median={youth_median:,.0f}"
+            if youth_share_median is not None:
+                signal += f"；青年占比 median={youth_share_median:.1%}"
+        if label == "高青年人口＋低生活機能" and livability_median is not None:
+            signal += f"；生活機能 median={livability_median:.3f}"
+        if label == "低工作機會＋低租金" and commute_median is not None:
+            signal += f"；可用通勤 median={commute_median:.1f} 分鐘"
+        signal += "）"
+        rows.append(
+            {
+                "資料訊號": signal,
+                "政策觀察": observation,
+                "可評估工具": tools,
+                "涉及行政區": districts,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _attach_policy_signal_fields(
+    policy: pd.DataFrame,
+    youth_job_data: pd.DataFrame,
+    intervention_matrix: pd.DataFrame,
+) -> pd.DataFrame:
+    result = policy.copy()
+    youth_columns = [
+        "district", "youth_18_35_count", "youth_18_35_share", "youth_job_opportunity_per_1000",
+    ]
+    result = result.merge(
+        youth_job_data[youth_columns], on="district", how="left", validate="many_to_one"
+    )
+    counts = []
+    rule_names = []
+    rule_observations = []
+    rule_tools = []
+    for district in result["district"]:
+        count = 0
+        names = []
+        observations = []
+        tools = []
+        if not intervention_matrix.empty:
+            matches = intervention_matrix[
+                intervention_matrix["涉及行政區"].map(
+                    lambda value: district in {part.strip() for part in str(value).split("、")}
+                )
+            ]
+            count = len(matches)
+            names = [str(value).split("（", 1)[0] for value in matches["資料訊號"]]
+            observations = matches["政策觀察"].astype(str).tolist()
+            tools = matches["可評估工具"].astype(str).tolist()
+        counts.append(count)
+        rule_names.append("、".join(names) if names else "無")
+        rule_observations.append("；".join(observations) if observations else "無")
+        rule_tools.append("；".join(tools) if tools else "無")
+    result["policy_signal_rule_count"] = counts
+    result["policy_signal_rule_names"] = rule_names
+    result["policy_signal_rule_observations"] = rule_observations
+    result["policy_signal_rule_tools"] = rule_tools
+    return result
+
+
+def render_candidate_policy_signals(
+    candidate: pd.Series,
+    intervention_matrix: pd.DataFrame,
+    youth_job_data: pd.DataFrame,
+    policy: pd.DataFrame,
+) -> None:
+    """Show rules for the candidate's district without treating it as living-area population."""
+    district = str(candidate["district"])
+    st.markdown("### 所屬行政區政策背景")
+    st.caption("以下政策訊號屬於行政區背景，不代表該生活圈的人口或生活機能範圍。")
+    if intervention_matrix.empty:
+        st.info("目前沒有可用的透明 policy rules。")
+        return
+
+    matches = intervention_matrix[
+        intervention_matrix["涉及行政區"].map(
+            lambda value: district in {part.strip() for part in str(value).split("、")}
+        )
+    ]
+    if matches.empty:
+        st.info("此行政區目前沒有命中的政策規則。")
+    else:
+        st.caption(f"命中透明 policy rules：{len(matches)} 條")
+        for _, match in matches.iterrows():
+            st.markdown(f"**{match['資料訊號'].split('（', 1)[0]}**")
+            st.caption(f"政策觀察：{match['政策觀察']}")
+            st.caption(f"可評估工具：{match['可評估工具']}")
+
+    values = youth_job_data[youth_job_data["district"].eq(district)]
+    policy_values = policy[policy["district"].eq(district)]
+    if values.empty:
+        st.caption("此行政區沒有同時有效的租金、青年人口與工作指標。")
+        return
+    value = values.iloc[0]
+    indicator_rows = [
+        {"指標": "官方行政區租金中位數", "實際值": f"NT${float(value['median_rent']):,.0f}／月"},
+        {"指標": "每千名青年求才人數", "實際值": f"{float(value['youth_job_opportunity_per_1000']):.2f}"},
+        {"指標": "Exact 18–35 青年人口", "實際值": f"{float(value['youth_18_35_count']):,.0f} 人"},
+        {"指標": "Exact 18–35 青年人口占比", "實際值": "資料不足" if pd.isna(value["youth_18_35_share"]) else f"{float(value['youth_18_35_share']):.1%}"},
+    ]
+    if not policy_values.empty:
+        policy_value = policy_values.iloc[0]
+        if not pd.isna(policy_value.get("livability_index")):
+            indicator_rows.append({"指標": "生活機能 proxy", "實際值": f"{float(policy_value['livability_index']):.3f}"})
+        if not pd.isna(policy_value.get("commute_accessibility_minutes")):
+            indicator_rows.append({"指標": "公共運輸可達性 median", "實際值": f"{float(policy_value['commute_accessibility_minutes']):.1f} 分鐘"})
+    st.dataframe(pd.DataFrame(indicator_rows), hide_index=True, use_container_width=True)
 
 
 def build_youth_job_scatter(data: pd.DataFrame) -> go.Figure:
@@ -1267,18 +1479,60 @@ def _scaled_radius(value: float, min_value: float, max_value: float) -> float:
     return 6.0 + ((value - min_value) / (max_value - min_value)) * 11.0
 
 
+def _integrated_policy_tooltip(row: pd.Series) -> str:
+    youth = row.get("youth_18_35_count")
+    youth_share = row.get("youth_18_35_share")
+    per_1000 = row.get("youth_job_opportunity_per_1000")
+    commute = row.get("commute_accessibility_minutes")
+    livability = row.get("livability_index")
+    youth_text = "資料不足" if pd.isna(youth) else f"{float(youth):,.0f} 人"
+    share_text = "資料不足" if pd.isna(youth_share) else f"{float(youth_share):.1%}"
+    per_1000_text = "資料不足" if pd.isna(per_1000) else f"{float(per_1000):.2f}"
+    commute_text = "資料不足" if pd.isna(commute) else f"{float(commute):.1f} 分鐘"
+    livability_text = "資料不足" if pd.isna(livability) else f"{float(livability):.3f}"
+    return (
+        f"{html.escape(str(row['living_area']))}｜所屬行政區 {html.escape(str(row['district']))}<br>"
+        f"租金：{money(row['official_median_rent'])} NTD／月<br>"
+        f"通勤：{commute_text}<br>"
+        f"生活機能 proxy：{livability_text}<br>"
+        f"行政區 Exact 18–35 人口：{youth_text}<br>"
+        f"行政區 Exact 18–35 占比：{share_text}<br>"
+        f"每千名青年求才人數：{per_1000_text}<br>"
+        f"命中 Policy Matrix rules：{html.escape(str(row.get('policy_signal_rule_names', '無')))}<br>"
+        f"政策觀察：{html.escape(str(row.get('policy_signal_rule_observations', '無')))}<br>"
+        f"可評估工具：{html.escape(str(row.get('policy_signal_rule_tools', '無')))}"
+    )
+
+
 def _policy_popup(row: pd.Series) -> folium.Popup:
     warning = ""
     if int(row["total_rental_record_count"]) < SMALL_SAMPLE_THRESHOLD:
         warning = '<div style="color:#A15C2F;font-weight:700;margin-top:5px;">小樣本，請謹慎解讀</div>'
+    youth = row.get("youth_18_35_count")
+    youth_share = row.get("youth_18_35_share")
+    per_1000 = row.get("youth_job_opportunity_per_1000")
+    commute = row.get("commute_accessibility_minutes")
+    livability = row.get("livability_index")
+    youth_text = "資料不足" if pd.isna(youth) else f"{float(youth):,.0f} 人"
+    share_text = "資料不足" if pd.isna(youth_share) else f"{float(youth_share):.1%}"
+    per_1000_text = "資料不足" if pd.isna(per_1000) else f"{float(per_1000):.2f}"
+    commute_text = "資料不足" if pd.isna(commute) else f"{float(commute):.1f} 分鐘"
+    livability_text = "資料不足" if pd.isna(livability) else f"{float(livability):.3f}"
     html_body = f"""
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-width:235px;">
       <div style="font-weight:850;font-size:16px;margin-bottom:2px;">{html.escape(str(row['living_area']))}</div>
-      <div style="color:#65747A;margin-bottom:8px;">{html.escape(str(row['candidate_name']))}｜{html.escape(str(row['district']))}</div>
+      <div style="color:#65747A;margin-bottom:8px;">{html.escape(str(row['candidate_name']))}｜所屬行政區 {html.escape(str(row['district']))}</div>
       <div>租金：<b>{money(row['official_median_rent'])} NTD/month</b></div>
-      <div>公共運輸可達性：<b>{float(row['commute_accessibility_minutes']):.1f} min</b></div>
-      <div>生活機能 proxy：<b>{float(row['livability_index']):.3f}</b></div>
+      <div>公共運輸可達性：<b>{commute_text}</b></div>
+      <div>生活機能 proxy：<b>{livability_text}</b></div>
+      <div>行政區 Exact 18–35 青年人口：<b>{youth_text}</b></div>
+      <div>行政區 Exact 18–35 占比：<b>{share_text}</b></div>
+      <div>每千名青年求才人數：<b>{per_1000_text}</b></div>
       <div>政策型租賃相關登錄樣本：<b>{float(row['policy_linked_record_share']) * 100:.1f}%</b> ({int(row['policy_linked_record_count'])} / {int(row['total_rental_record_count'])})</div>
+      <div style="margin-top:6px;"><b>命中 Policy Matrix rules</b>：{html.escape(str(row.get('policy_signal_rule_names', '無')))}</div>
+      <div><b>政策觀察</b>：{html.escape(str(row.get('policy_signal_rule_observations', '無')))}</div>
+      <div><b>可評估工具</b>：{html.escape(str(row.get('policy_signal_rule_tools', '無')))}</div>
+      <div style="color:#65747A;margin-top:6px;">行政區人口與工作資料是政策背景，不等於生活圈人口。</div>
       <div style="color:#65747A;margin-top:6px;">{html.escape(str(row['policy_quadrant']))}</div>
       {warning}
     </div>
@@ -1391,6 +1645,9 @@ def _add_policy_legend(map_obj: folium.Map, view_config: dict[str, str], min_val
     elif view_config["unit"] == "min":
         min_label = f"{min_value:.1f}"
         max_label = f"{max_value:.1f}"
+    elif view_config["unit"] in {"rules", "people"}:
+        min_label = f"{min_value:,.0f}"
+        max_label = f"{max_value:,.0f}"
     else:
         min_label = f"{min_value:.3f}"
         max_label = f"{max_value:.3f}"
