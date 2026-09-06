@@ -171,12 +171,10 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
 
     focus_col, district_col, basemap_col = st.columns([1.2, 1.2, 1.0], gap="medium")
     with focus_col:
-        if st.session_state.get("policy_view") not in POLICY_VIEWS:
-            st.session_state["policy_view"] = "綜合政策訊號"
         selected_view = st.segmented_control(
             "地圖強調焦點",
             options=list(POLICY_VIEWS.keys()),
-            default=st.session_state.get("policy_view", "綜合政策訊號"),
+            default="綜合政策訊號",
             key="policy_view",
         )
     with district_col:
@@ -225,7 +223,7 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
             height=650,
             use_container_width=True,
             returned_objects=["last_object_clicked"],
-            key=f"policy_map_{selected_view}_{selected_district_layer}_{selected_basemap}",
+            key="policy_map",
         )
     if default_popup_candidate is not None:
         st.session_state.policy_default_popup_shown = True
