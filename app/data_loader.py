@@ -42,7 +42,8 @@ CAREER_V35_CANDIDATES_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_te
 CAREER_V4_TRAINING_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_technology_training_v4.csv"
 CAREER_BEAUTY_PHASE5_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_beauty_candidates_phase5.csv"
 CAREER_TRAINING_MAPPING_CSV = PROJECT_ROOT / "data" / "processed" / "career" / "career_training_skill_mapping.csv"
-CAREER_TAIWANJOBS_RAW_CSV = PROJECT_ROOT / "data" / "raw" / "career" / "jobs" / "taiwanjobs_open_jobs_2026-09-01.csv"
+CAREER_DEMO_JOB_EVIDENCE_CSV = PROJECT_ROOT / "data" / "processed" / "career" / "demo_job_evidence.csv"
+CAREER_CRC_EXTERNAL_MARKET_CSV = PROJECT_ROOT / "data" / "processed" / "career" / "clinical_research_external_market_crosscheck.csv"
 NTPC_BOUNDARY_GEOJSON = PROJECT_ROOT / "data" / "processed" / "geography" / "ntpc_district_boundaries.geojson"
 
 MODE_ORDER = ["省租型", "平衡型", "通勤型", "生活品質型"]
@@ -1397,7 +1398,7 @@ def load_career_learning_ladder_phase8() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame | None, pd.DataFrame]:
+def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     missing_files = [
         path.relative_to(PROJECT_ROOT)
         for path in [
@@ -1405,6 +1406,8 @@ def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
             CAREER_V4_TRAINING_CSV,
             CAREER_BEAUTY_PHASE5_CSV,
             CAREER_TRAINING_MAPPING_CSV,
+            CAREER_DEMO_JOB_EVIDENCE_CSV,
+            CAREER_CRC_EXTERNAL_MARKET_CSV,
         ]
         if not path.exists()
     ]
@@ -1415,11 +1418,8 @@ def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
     training_v4 = pd.read_csv(CAREER_V4_TRAINING_CSV)
     beauty_phase5 = pd.read_csv(CAREER_BEAUTY_PHASE5_CSV)
     course_mapping = pd.read_csv(CAREER_TRAINING_MAPPING_CSV)
-    taiwanjobs_raw = (
-        pd.read_csv(CAREER_TAIWANJOBS_RAW_CSV, encoding="utf-8-sig")
-        if CAREER_TAIWANJOBS_RAW_CSV.exists()
-        else None
-    )
+    demo_job_evidence = pd.read_csv(CAREER_DEMO_JOB_EVIDENCE_CSV)
+    crc_external_market = pd.read_csv(CAREER_CRC_EXTERNAL_MARKET_CSV)
 
     required_v35 = {
         "target_occupation_code",
@@ -1472,18 +1472,30 @@ def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
         "mapping_confidence",
         "manual_review_needed",
     }
-    required_taiwanjobs = {
-        "OCCU_DESC（職務名稱）",
-        "CJOB_NAME1（職務大類別名稱）",
-        "CJOB_NAME2（職務小類別名稱）",
-        "JOB_PERSON（雇用人數）",
-        "JOB_DETAIL（工作內容）",
-        "CITYNAME（工作地點）",
-        "SALARYCD（核薪方式）",
-        "NT_L（薪資範圍下限）",
-        "NT_U（薪資範圍上限）",
-        "URL_QUERY（職缺資料URL）",
-        "COMPNAME（公司名稱）",
+    required_demo_job_evidence = {
+        "target_occupation_name",
+        "evidence_level",
+        "job_title",
+        "company",
+        "location",
+        "salary_display",
+        "job_detail_summary",
+        "qa_reason",
+        "target_gap",
+        "snapshot_date",
+    }
+    required_crc_external_market = {
+        "target_occupation_name",
+        "job_title",
+        "organization",
+        "location",
+        "salary_display",
+        "source_name",
+        "source_url",
+        "source_listing_date",
+        "checked_date",
+        "job_detail_summary",
+        "qa_reason",
     }
     required_beauty = {
         "target_occupation_code",
@@ -1519,14 +1531,11 @@ def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
         ("v4 training", training_v4, required_v4),
         ("Phase 5 beauty candidates", beauty_phase5, required_beauty),
         ("v4 course mapping", course_mapping, required_mapping),
+        ("Demo job evidence", demo_job_evidence, required_demo_job_evidence),
+        ("CRC external market cross-check", crc_external_market, required_crc_external_market),
     ]:
         missing = sorted(required - set(frame.columns))
         if missing:
             raise RuntimeError(f"Career {label} is missing required columns: {missing}")
 
-    if taiwanjobs_raw is not None:
-        missing = sorted(required_taiwanjobs - set(taiwanjobs_raw.columns))
-        if missing:
-            raise RuntimeError(f"Career TaiwanJobs raw jobs is missing required columns: {missing}")
-
-    return candidates_v35, training_v4, course_mapping, taiwanjobs_raw, beauty_phase5
+    return candidates_v35, training_v4, course_mapping, demo_job_evidence, beauty_phase5, crc_external_market

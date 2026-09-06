@@ -133,11 +133,11 @@ def main() -> None:
         page = "青年職涯探索"
     if page == "青年職涯探索":
         try:
-            candidates_v35, training_v4, course_mapping, taiwanjobs_raw, beauty_phase5 = load_career_evidence_data()
+            candidates_v35, training_v4, course_mapping, demo_job_evidence, beauty_phase5, crc_external_market = load_career_evidence_data()
         except Exception as exc:
             st.error(f"Career evidence data loading failed: {exc}")
             st.stop()
-        render_career_evidence_viewer(candidates_v35, training_v4, course_mapping, taiwanjobs_raw, beauty_phase5)
+        render_career_evidence_viewer(candidates_v35, training_v4, course_mapping, demo_job_evidence, beauty_phase5, crc_external_market)
         return
     if page == "青年局 Policy Lens":
         try:
