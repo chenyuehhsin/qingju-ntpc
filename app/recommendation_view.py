@@ -53,7 +53,13 @@ def render_dashboard_view(
     with right:
         st.markdown("### 推薦總覽地圖")
         map_obj = build_recommendation_map(mode, candidates, top3, destination, towns, cities)
-        st_folium(map_obj, height=470, use_container_width=True, returned_objects=[])
+        st_folium(
+            map_obj,
+            height=470,
+            use_container_width=True,
+            returned_objects=[],
+            key="housing_recommendation_map",
+        )
 
     _render_detail_section(mode, selected_row, destination, towns, cities)
 
@@ -210,7 +216,13 @@ def _render_detail_section(
             cities,
             mode,
         )
-        st_folium(detail_map, height=520, use_container_width=True, returned_objects=[])
+        st_folium(
+            detail_map,
+            height=520,
+            use_container_width=True,
+            returned_objects=[],
+            key="housing_detail_map",
+        )
 
 
 def _render_life_summary_card(mode: str, row: pd.Series, pois: pd.DataFrame) -> None:

@@ -55,7 +55,13 @@ def render_overview(
         unsafe_allow_html=True,
     )
     overview_map = build_overview_map(candidates, top3, destination, towns, cities, str(analysis_layer))
-    st_folium(overview_map, height=560, use_container_width=True, returned_objects=[])
+    st_folium(
+        overview_map,
+        height=560,
+        use_container_width=True,
+        returned_objects=[],
+        key="housing_overview_map",
+    )
 
     _render_comparison_bar(top1)
     st.markdown("---")
