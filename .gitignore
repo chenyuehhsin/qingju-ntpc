@@ -3,6 +3,7 @@
 __pycache__/
 *.pyc
 .env
+.codex/
 
 # Local/raw data should stay out of Git.
 data/raw/
