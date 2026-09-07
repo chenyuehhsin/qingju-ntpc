@@ -3,15 +3,39 @@ from __future__ import annotations
 import streamlit as st
 
 
-def apply_styles() -> None:
+PAGE_THEMES = {
+    "青年職涯探索": {
+        "primary": "#3BA7F5",
+        "primary_ink": "#257FBE",
+        "soft": "#EAF6FF",
+        "border": "#BDE7FF",
+    },
+    "青年安居推薦": {
+        "primary": "#27B88A",
+        "primary_ink": "#178965",
+        "soft": "#EAFBF4",
+        "border": "#BCEFDA",
+    },
+    "青年局 Policy Lens": {
+        "primary": "#F6C64A",
+        "primary_ink": "#9A7200",
+        "soft": "#FFF8E4",
+        "border": "#FFE6A6",
+    },
+}
+
+
+def apply_styles(page: str = "青年安居推薦") -> None:
+    """Apply the shared UI system and the accent theme for the active product page."""
+    theme = PAGE_THEMES.get(page, PAGE_THEMES["青年安居推薦"])
     st.markdown(
         """
         <style>
         :root {
-            --qj-bg: #f7f6f1;
-            --qj-text: #243238;
-            --qj-muted: #65747a;
-            --qj-line: #dde5e6;
+            --qj-bg: #F8FCFF;
+            --qj-text: #17324D;
+            --qj-muted: #64748B;
+            --qj-line: #DDEAF2;
         }
         .stApp {
             background: var(--qj-bg);
@@ -1040,22 +1064,238 @@ def apply_styles() -> None:
         """,
         unsafe_allow_html=True,
     )
-
-
-def apply_selected_radio_style(color: str, soft_color: str) -> None:
+    # Keep page colour distinct without coupling presentation to any data or view logic.
     st.markdown(
         f"""
         <style>
+        .stApp {{
+            --qj-bg: #F8FCFF;
+            --qj-surface: #ffffff;
+            --qj-text: #17324D;
+            --qj-muted: #64748B;
+            --qj-line: #DDEAF2;
+            --qj-primary: {theme['primary']};
+            --qj-primary-ink: {theme['primary_ink']};
+            --qj-primary-soft: {theme['soft']};
+            --qj-primary-border: {theme['border']};
+            --qj-accent-pink: #F58BA7;
+            --qj-accent-pink-soft: #FFF0F4;
+            --qj-accent-pink-ink: #9E3F59;
+            --qj-radius-card: 16px;
+            --qj-radius-control: 12px;
+            --qj-shadow: 0 3px 12px rgba(23, 50, 77, 0.055);
+            background:
+                radial-gradient(circle at 5% -10%, var(--qj-primary-soft) 0, transparent 22rem),
+                var(--qj-bg);
+        }}
+        .stApp [data-testid="stAppViewContainer"] .main .block-container,
+        .block-container {{
+            max-width: 1480px;
+            padding: clamp(1.4rem, 3.2vw, 2.75rem) clamp(1rem, 3.4vw, 3.5rem) 3.5rem;
+        }}
+        h1, h2, h3 {{
+            color: var(--qj-text);
+            letter-spacing: -0.018em;
+        }}
+        h2 {{ margin-top: 1.8rem; }}
+        h3 {{ margin-top: 1.25rem; }}
+        .qj-header-title {{
+            color: var(--qj-text);
+            font-size: clamp(2rem, 3vw, 3.15rem);
+            letter-spacing: -0.035em;
+            margin-top: 0.35rem;
+        }}
+        .qj-subtitle {{ max-width: 48rem; line-height: 1.55; }}
+
+        /* Navigation, selectors, and actions share the same quiet, rounded treatment. */
+        div[data-testid="stSegmentedControl"] {{ margin-bottom: 0.9rem; }}
+        div[data-testid="stSegmentedControl"] button {{
+            border-color: var(--qj-line);
+            border-radius: 999px;
+            min-height: 2.5rem;
+            padding-inline: 0.95rem;
+            transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+        }}
+        div[data-testid="stSegmentedControl"] button[aria-pressed="true"] {{
+            background: var(--qj-primary-soft) !important;
+            border-color: var(--qj-primary) !important;
+            color: var(--qj-text) !important;
+            box-shadow: 0 3px 10px rgba(23, 50, 77, 0.07);
+        }}
+        div[data-testid="stSegmentedControl"] button[data-checked="true"] {{
+            background: var(--qj-primary-soft) !important;
+            border-color: var(--qj-primary) !important;
+            color: var(--qj-text) !important;
+            box-shadow: 0 3px 10px rgba(23, 50, 77, 0.07);
+        }}
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
+        div[data-testid="stTextInput"] input {{
+            border-color: var(--qj-line);
+            border-radius: var(--qj-radius-control);
+            box-shadow: 0 1px 2px rgba(37, 61, 72, 0.035);
+        }}
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:focus-within,
+        div[data-testid="stTextInput"] input:focus {{
+            border-color: var(--qj-primary);
+            box-shadow: 0 0 0 3px var(--qj-primary-soft);
+        }}
+        div[data-testid="stButton"] button,
+        div[data-testid="stFormSubmitButton"] button {{
+            background: var(--qj-primary);
+            border-color: var(--qj-primary);
+            border-radius: var(--qj-radius-control);
+            color: #ffffff;
+            box-shadow: 0 4px 10px rgba(37, 61, 72, 0.10);
+        }}
+        div[data-testid="stButton"] button:hover,
+        div[data-testid="stFormSubmitButton"] button:hover {{
+            background: var(--qj-primary);
+            border-color: var(--qj-primary);
+            filter: brightness(0.94);
+        }}
+        div[data-testid="stButton"] button:focus-visible,
+        div[data-testid="stFormSubmitButton"] button:focus-visible {{
+            box-shadow: 0 0 0 3px var(--qj-primary-soft);
+        }}
+        div[data-testid="stRadio"] {{
+            margin-top: 0.7rem;
+            transform: none;
+            text-align: left;
+        }}
+        div[data-testid="stRadio"] div[role="radiogroup"] {{
+            background: rgba(255, 255, 255, 0.78);
+            border-color: var(--qj-line);
+            border-radius: 16px;
+        }}
+        div[data-testid="stRadio"] div[role="radiogroup"] label {{
+            border-color: var(--qj-line);
+            border-radius: 999px;
+        }}
         div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {{
-            background: {soft_color};
-            border-color: {color};
-            color: #243238;
-            box-shadow: 0 4px 12px rgba(36, 50, 56, 0.10);
+            background: var(--qj-primary-soft);
+            border-color: var(--qj-primary);
+            box-shadow: 0 3px 10px rgba(23, 50, 77, 0.07);
         }}
-        div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) p {{
-            color: #243238;
+
+        /* Shared surface system: cards, metrics, badges, and low-priority evidence notes. */
+        .qj-panel, .qj-card, .qj-top1-card, .qj-compact-card,
+        .qj-overview-card, .qj-comparison-bar, .qj-comparison-card,
+        .qj-life-detail-card, .qj-policy-panel, .qj-policy-detail,
+        .qj-career-preset, .qj-career-empty, .qj-career-card,
+        .qj-career-policy-card, .qj-transition-map, .qj-transition-node,
+        .qj-job-card {{
+            background: var(--qj-surface);
+            border-color: var(--qj-line);
+            border-radius: var(--qj-radius-card);
+            box-shadow: var(--qj-shadow);
+        }}
+        .qj-overview-card {{
+            background: var(--qj-surface) !important;
+            border-color: var(--qj-line) !important;
+        }}
+        .qj-panel, .qj-policy-panel, .qj-policy-detail, .qj-transition-map {{
+            padding: clamp(0.95rem, 1.8vw, 1.2rem);
+        }}
+        .qj-metric, .qj-top1-metrics div, .qj-life-metric-grid div,
+        .qj-policy-metric-grid div {{
+            background: var(--qj-primary-soft);
+            border-color: var(--qj-primary-border);
+            border-radius: 12px;
+        }}
+        .qj-summary-strip, .qj-life-detail-card, .qj-career-preset,
+        .qj-career-card, .qj-job-card {{ border-left-color: var(--qj-primary); }}
+        .qj-career-card, .qj-transition-node {{ border-top-color: var(--qj-primary); }}
+        .qj-career-card-high-reuse {{ border-top-color: var(--qj-primary-ink); }}
+        .qj-career-card-partial-reuse {{ border-top-color: var(--qj-primary); }}
+        .qj-career-card-major-reskilling, .qj-career-policy-card {{ border-top-color: var(--qj-primary); border-left-color: var(--qj-primary); }}
+        .qj-transition-origin, .qj-path-conclusion, .qj-skill-chip {{
+            background: var(--qj-primary-soft);
+            border-color: var(--qj-primary-border);
+            color: var(--qj-text);
+        }}
+        .qj-transition-target, .qj-job-source a {{ color: var(--qj-primary-ink); }}
+        .qj-transition-arrow {{ background: linear-gradient(90deg, var(--qj-primary), var(--qj-primary-border)); }}
+        .qj-transition-arrow::after {{ border-left-color: var(--qj-primary-border); }}
+        .qj-career-badge, .qj-job-review {{
+            background: var(--qj-accent-pink-soft);
+            border-color: var(--qj-accent-pink);
+            color: var(--qj-accent-pink-ink);
+        }}
+        .qj-note, .qj-section-note, .qj-geocode-note {{
+            color: var(--qj-muted);
+            font-size: 0.78rem;
+            line-height: 1.55;
+        }}
+        .qj-map-provenance {{
+            background: var(--qj-primary-soft);
+            border-color: var(--qj-primary-border);
+            border-left-color: var(--qj-primary);
+            border-radius: var(--qj-radius-control);
+            color: var(--qj-primary-ink);
+            font-size: 0.82rem;
+        }}
+        div[data-testid="stExpander"] {{
+            border: 1px solid var(--qj-line);
+            border-radius: var(--qj-radius-control);
+            background: rgba(255, 255, 255, 0.68);
+        }}
+        div[data-testid="stExpander"] summary {{
+            color: var(--qj-muted);
+            font-size: 0.88rem;
+            font-weight: 720;
+        }}
+        .stTabs [data-baseweb="tab"] {{
+            color: var(--qj-muted);
+        }}
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {{
+            color: var(--qj-text) !important;
+            border-bottom-color: var(--qj-primary) !important;
+        }}
+        .stTabs [data-baseweb="tab-highlight"] {{
+            background-color: var(--qj-primary) !important;
+        }}
+        div[data-testid="stMetric"] {{
+            background: var(--qj-surface);
+            border: 1px solid var(--qj-line);
+            border-radius: var(--qj-radius-card);
+            box-shadow: var(--qj-shadow);
+            padding: 0.8rem 0.9rem;
+        }}
+        div[data-testid="stMetric"] [data-testid="stMetricValue"] {{ color: var(--qj-primary); }}
+        .qj-policy-alert, .qj-policy-warning {{
+            background: var(--qj-primary-soft);
+            border-color: var(--qj-primary-border);
+            color: var(--qj-text);
+        }}
+        iframe {{ border-radius: var(--qj-radius-card); }}
+        @media (max-width: 720px) {{
+            .stApp [data-testid="stAppViewContainer"] .main .block-container,
+            .block-container {{ padding: 1.15rem 0.9rem 2.5rem; }}
+            .qj-header-title {{ font-size: 2rem; }}
+            div[data-testid="stSegmentedControl"] button {{ padding-inline: 0.7rem; }}
+            .qj-career-policy-grid {{ grid-template-columns: 1fr 1fr; }}
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def apply_selected_radio_style() -> None:
+    """Keep Housing mode navigation within the Housing page theme."""
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
+            background: var(--qj-primary-soft);
+            border-color: var(--qj-primary);
+            color: var(--qj-text);
+            box-shadow: 0 3px 10px rgba(23, 50, 77, 0.07);
+        }
+        div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) p {
+            color: var(--qj-text);
             font-weight: 850;
-        }}
+        }
         </style>
         """,
         unsafe_allow_html=True,

@@ -18,7 +18,6 @@ from data_loader import (
     MODE_COLORS,
     MODE_COPY,
     MODE_ORDER,
-    MODE_SOFT_COLORS,
     load_boundaries,
     load_career_evidence_data,
     load_career_learning_ladder_phase8,
@@ -111,8 +110,6 @@ def main() -> None:
         layout="wide",
         initial_sidebar_state="collapsed",
     )
-    apply_styles()
-
     page_options = ["青年職涯探索", "青年安居推薦", "青年局 Policy Lens"]
     current_page = st.session_state.get("app_page", "青年職涯探索")
     if current_page == "Career Evidence Viewer":
@@ -121,6 +118,7 @@ def main() -> None:
         current_page = "青年安居推薦"
     if current_page not in page_options:
         current_page = "青年職涯探索"
+    apply_styles(current_page)
 
     page = st.segmented_control(
         "頁面",
@@ -332,9 +330,7 @@ def main() -> None:
             label_visibility="collapsed",
             key="main_view",
         )
-        selected_color = MODE_COLORS.get(selected_view, "#78B995")
-        selected_soft_color = MODE_SOFT_COLORS.get(selected_view, "#EAF6EF")
-        apply_selected_radio_style(selected_color, selected_soft_color)
+        apply_selected_radio_style()
 
     if st.session_state.custom_workplace_data is None:
         st.info("請先輸入工作地址並按「開始推薦」，Dashboard 會在成功定位後更新推薦結果。")
