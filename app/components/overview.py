@@ -31,8 +31,8 @@ def render_overview(
         """
         <div class="qj-overview-section-head">
             <div class="qj-section-eyebrow">Recommendation snapshot</div>
-            <div class="qj-section-title">四模式推薦總覽</div>
-            <div class="qj-section-copy">先比較每種偏好的 Top 1，再切換單一模式查看 Top 1 / 2 / 3 的生活圈細節。</div>
+            <div class="qj-section-title">比較四種模式</div>
+            <div class="qj-section-copy">比較不同偏好下，各自推薦的 Top 1 生活圈。</div>
         </div>
         """,
         unsafe_allow_html=True,

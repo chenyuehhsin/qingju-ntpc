@@ -51,7 +51,7 @@ def render_dashboard_view(
             selected_candidate = str(mode_rows.iloc[0]["candidate_name"])
         selected_row = mode_rows[mode_rows["candidate_name"] == selected_candidate].iloc[0]
     with right:
-        st.markdown("### 推薦總覽地圖")
+        st.markdown("### 生活圈分布地圖")
         map_obj = build_recommendation_map(mode, candidates, top3, destination, towns, cities)
         st_folium(
             map_obj,
@@ -189,7 +189,7 @@ def _render_detail_section(
     towns,
     cities,
 ) -> None:
-    st.markdown("### Detail map｜約15分鐘核心生活圈 + 延伸生活圈")
+    st.markdown("### 生活圈細節地圖")
     st.markdown(
         '<div class="qj-section-note">「15分鐘」為近似探索範圍，實際步行時間依道路與步行速度而異，不代表精準步行 isochrone。生活機能密度依公開 POI 的餐飲、採買、休閒與文化設施空間密度計算，反映設施聚集程度，不代表實際人流或消費熱度。目前可用 OSM cache 半徑為 800m，heatmap 僅使用此範圍內且同時落在 2km 延伸生活圈內的點位。</div>',
         unsafe_allow_html=True,
@@ -202,6 +202,7 @@ def _render_detail_section(
     youbike_stations = load_detail_youbike_stations(candidate_name)
     detail_left, detail_right = st.columns([0.96, 2.74], gap="medium")
     with detail_left:
+        st.markdown("#### 選取生活圈摘要")
         _render_life_summary_card(mode, selected_row, pois)
     with detail_right:
         detail_map = build_detail_map(
