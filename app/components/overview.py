@@ -27,41 +27,59 @@ def render_overview(
 ) -> None:
     top1 = _top1_by_mode(top3)
 
-    st.markdown("## 四模式推薦總覽")
-    st.markdown(
-        '<div class="qj-section-note">先看每種偏好推薦住哪；切換單一模式後，可選 Top 1 / 2 / 3 查看約15分鐘核心生活圈與延伸生活圈。生活機能統計目前仍基於 800m 範圍。</div>',
-        unsafe_allow_html=True,
-    )
-    _render_summary_cards(top1)
-
-    st.markdown("### Overview map")
-    analysis_layer = st.segmented_control(
-        "行政區背景",
-        options=DISTRICT_ANALYSIS_LAYER_OPTIONS,
-        default=DISTRICT_ANALYSIS_LAYER_RENT,
-        key="overview_district_analysis_layer",
-    )
-    if analysis_layer is None:
-        analysis_layer = DISTRICT_ANALYSIS_LAYER_RENT
-    _render_analysis_layer_note(str(analysis_layer), towns)
     st.markdown(
         """
-        <div class="qj-map-provenance">
-            <b>行政區背景資料來源與期別</b>
-            <span>租金：MOI 2026-03</span>
-            <span>青年人口：RIS 2026-07・Exact 18–35</span>
+        <div class="qj-overview-section-head">
+            <div class="qj-section-eyebrow">Recommendation snapshot</div>
+            <div class="qj-section-title">四模式推薦總覽</div>
+            <div class="qj-section-copy">先比較每種偏好的 Top 1，再切換單一模式查看 Top 1 / 2 / 3 的生活圈細節。</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    overview_map = build_overview_map(candidates, top3, destination, towns, cities, str(analysis_layer))
-    st_folium(
-        overview_map,
-        height=560,
-        use_container_width=True,
-        returned_objects=[],
-        key="housing_overview_map",
-    )
+    _render_summary_cards(top1)
+
+    with st.container(border=True):
+        map_head, map_selector = st.columns([1.08, 1.32], gap="medium")
+        with map_head:
+            st.markdown(
+                """
+                <div class="qj-overview-map-head">
+                    <div class="qj-section-eyebrow">Explore the context</div>
+                    <div class="qj-section-title">推薦總覽地圖</div>
+                    <div class="qj-section-copy">查看工作地、推薦生活圈與行政區背景資料的相對位置。</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with map_selector:
+            analysis_layer = st.segmented_control(
+                "行政區背景",
+                options=DISTRICT_ANALYSIS_LAYER_OPTIONS,
+                default=DISTRICT_ANALYSIS_LAYER_RENT,
+                key="overview_district_analysis_layer",
+            )
+        if analysis_layer is None:
+            analysis_layer = DISTRICT_ANALYSIS_LAYER_RENT
+        _render_analysis_layer_note(str(analysis_layer), towns)
+        st.markdown(
+            """
+            <div class="qj-map-provenance">
+                <b>行政區背景資料來源與期別</b>
+                <span>租金：MOI 2026-03</span>
+                <span>青年人口：RIS 2026-07・Exact 18–35</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        overview_map = build_overview_map(candidates, top3, destination, towns, cities, str(analysis_layer))
+        st_folium(
+            overview_map,
+            height=560,
+            use_container_width=True,
+            returned_objects=[],
+            key="housing_overview_map",
+        )
 
     _render_comparison_bar(top1)
     st.markdown("---")
@@ -85,16 +103,20 @@ def _render_summary_cards(top1: pd.DataFrame) -> None:
         with column:
             st.markdown(
                 f"""
-                <div class="qj-overview-card" style="border-color: {color}; background: {_soft_background(mode)};">
-                    <div class="qj-overview-mode" style="color: {color};">
-                        <span class="qj-dot" style="background: {color};"></span>{mode}
+                <div class="qj-overview-card" style="--qj-mode-color: {color}; --qj-mode-soft: {_soft_background(mode)};">
+                    <div class="qj-overview-card-top">
+                        <div class="qj-overview-mode">
+                            <span class="qj-dot"></span>{mode}
+                        </div>
+                        <span class="qj-overview-rank">Top 1</span>
                     </div>
                     <div class="qj-overview-title">{row['living_area']}</div>
+                    <div class="qj-overview-location">{row['candidate_name']} · {row['district']}</div>
                     <div class="qj-overview-grid">
-                        <div><span>月租</span><b>{money(row['rent'])} NTD</b></div>
-                        <div><span>通勤</span><b>{minutes(row['commute_minutes'])}</b></div>
+                        <div class="qj-overview-primary-metric"><span>月租中位數</span><b>{money(row['rent'])}<small>NTD</small></b></div>
+                        <div><span>通勤時間</span><b>{minutes(row['commute_minutes'])}</b></div>
                     </div>
-                    <div class="qj-overview-copy">{MODE_COPY[mode]}</div>
+                    <div class="qj-overview-copy"><span>推薦重點</span>{MODE_COPY[mode]}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,

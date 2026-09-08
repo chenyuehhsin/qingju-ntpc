@@ -15,7 +15,6 @@ from components.career_evidence_viewer import render_career_evidence_viewer
 from components.overview import render_overview
 from components.policy_lens import render_policy_lens
 from data_loader import (
-    MODE_COLORS,
     MODE_COPY,
     MODE_ORDER,
     load_boundaries,
@@ -26,7 +25,7 @@ from data_loader import (
     load_policy_lens_data,
 )
 from recommendation_view import render_dashboard_view
-from styles import apply_selected_radio_style, apply_styles
+from styles import apply_styles
 
 
 NO_PRESET_LABEL = "無"
@@ -212,19 +211,24 @@ def main() -> None:
     if st.session_state.quick_preset not in preset_options:
         st.session_state.quick_preset = NO_PRESET_LABEL
 
-    header_left, header_right = st.columns([1.15, 0.85], gap="medium")
+    header_left, header_right = st.columns([1.65, 0.85], gap="large")
     with header_left:
         st.markdown(
             """
-            <div class="qj-header-title">青聚新北｜青年安居推薦</div>
-            <div class="qj-subtitle">輸入工作地址後，我住新北哪裡比較適合？</div>
+            <div class="qj-housing-page-intro">
+                <div class="qj-housing-eyebrow">Youth housing explorer · New Taipei City</div>
+                <div class="qj-header-title">青年安居推薦</div>
+                <div class="qj-subtitle">設定工作地點，從租金、通勤與生活機能找到適合自己的新北生活圈。</div>
+            </div>
+            <div class="qj-housing-workflow-title">先設定工作地點</div>
+            <div class="qj-housing-workflow-copy">可直接輸入地址，或從快速範例開始；送出後會更新地圖與四種偏好模式的排序。</div>
             """,
             unsafe_allow_html=True,
         )
-        first_row = st.columns([0.95, 0.48, 0.30, 1.35], gap="small")
+        first_row = st.columns([1.42, 0.78, 0.44], gap="small")
         with first_row[0]:
             st.text_input(
-                "我的工作地點（Beta）",
+                "工作地點",
                 key="workplace_address",
                 placeholder="例如：台北市內湖區瑞光路",
                 on_change=_mark_manual_address,
@@ -241,12 +245,11 @@ def main() -> None:
         with first_row[2]:
             submitted = st.button("開始推薦", use_container_width=True)
 
-        second_row = st.columns([0.44, 0.44, 2.20], gap="small")
-        with second_row[0]:
-            st.selectbox("交通方式", ["大眾運輸"], disabled=True)
-        with second_row[1]:
-            st.selectbox("租屋型態", ["獨立套房"], disabled=True)
-        note_slot = second_row[2].empty()
+        st.markdown(
+            '<div class="qj-housing-setting-note">推薦設定：大眾運輸 · 獨立套房 <span>（目前為固定 MVP 條件）</span></div>',
+            unsafe_allow_html=True,
+        )
+        note_slot = st.empty()
 
         if st.session_state.custom_workplace_data is None:
             try:
@@ -293,8 +296,7 @@ def main() -> None:
                 st.markdown(
                     f"""
                     <div class="qj-geocode-note">
-                        目前套用工作地：{active_address}<br>
-                        已定位：{float(geocode['lat']):.6f}, {float(geocode['lon']):.6f}｜來源：{st.session_state.active_workplace_source}
+                        <b>目前套用工作地：</b>{active_address}<span class="qj-geocode-detail">已定位：{float(geocode['lat']):.6f}, {float(geocode['lon']):.6f}｜來源：{st.session_state.active_workplace_source}</span>
                         {pending_note}
                     </div>
                     """,
@@ -309,28 +311,28 @@ def main() -> None:
     with header_right:
         hero_title = "推薦總覽"
         hero_copy = "比較四種偏好模式的 Top 1，快速掌握推薦生活圈差異。"
-        hero_color = "#52646B"
         if current_view in MODE_ORDER:
             hero_title = f"{current_view}推薦"
             hero_copy = MODE_COPY[current_view]
-            hero_color = MODE_COLORS[current_view]
         st.markdown(
             f"""
-            <div class="qj-mode-hero">
-                <div class="qj-mode-heading" style="color: {hero_color};">{hero_title}</div>
-                <div class="qj-mode-subtitle">{hero_copy}</div>
+            <div class="qj-housing-view-switch">
+                <div class="qj-housing-view-eyebrow">接著選擇想看的推薦方式</div>
+                <div class="qj-housing-view-title">{hero_title}</div>
+                <div class="qj-housing-view-copy">{hero_copy}</div>
             </div>
             """,
             unsafe_allow_html=True,
         )
-        selected_view = st.radio(
+        selected_view = st.segmented_control(
             "主畫面切換",
             nav_options,
-            horizontal=True,
+            default=current_view,
             label_visibility="collapsed",
             key="main_view",
         )
-        apply_selected_radio_style()
+        if selected_view is None:
+            selected_view = "四模式總覽"
 
     if st.session_state.custom_workplace_data is None:
         st.info("請先輸入工作地址並按「開始推薦」，Dashboard 會在成功定位後更新推薦結果。")

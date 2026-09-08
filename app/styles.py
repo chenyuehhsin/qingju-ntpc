@@ -11,10 +11,10 @@ PAGE_THEMES = {
         "border": "#BDE7FF",
     },
     "青年安居推薦": {
-        "primary": "#27B88A",
-        "primary_ink": "#178965",
-        "soft": "#EAFBF4",
-        "border": "#BCEFDA",
+        "primary": "#42C98E",
+        "primary_ink": "#187A59",
+        "soft": "#ECFBF3",
+        "border": "#C3EFD9",
     },
     "青年局 Policy Lens": {
         "primary": "#F6C64A",
@@ -1268,10 +1268,226 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             color: var(--qj-text);
         }}
         iframe {{ border-radius: var(--qj-radius-card); }}
+
+        /* Housing Phase 2A: a calmer, clearer entry flow and recommendation overview. */
+        .qj-housing-page-intro {{
+            margin: 0.2rem 0 1.15rem;
+        }}
+        .qj-housing-eyebrow,
+        .qj-section-eyebrow,
+        .qj-housing-view-eyebrow {{
+            color: var(--qj-primary-ink);
+            font-size: 0.74rem;
+            font-weight: 850;
+            letter-spacing: 0.075em;
+            text-transform: uppercase;
+        }}
+        .qj-housing-page-intro .qj-header-title {{
+            color: #245542;
+            font-size: clamp(2.15rem, 3.35vw, 3.4rem);
+            font-weight: 880;
+            line-height: 1.05;
+            margin: 0.3rem 0 0.45rem;
+        }}
+        .qj-housing-page-intro .qj-subtitle {{
+            color: #5d7469;
+            font-size: 1.02rem;
+            margin: 0;
+        }}
+        .qj-housing-workflow-title {{
+            color: var(--qj-text);
+            font-size: 1.1rem;
+            font-weight: 850;
+            margin: 0.1rem 0 0.16rem;
+        }}
+        .qj-housing-workflow-copy {{
+            color: var(--qj-muted);
+            font-size: 0.84rem;
+            line-height: 1.5;
+            margin-bottom: 0.15rem;
+        }}
+        .qj-housing-setting-note {{
+            color: #61766c;
+            font-size: 0.76rem;
+            line-height: 1.45;
+            margin: 0.08rem 0 0.18rem;
+        }}
+        .qj-housing-setting-note span {{
+            color: var(--qj-muted);
+        }}
+        .qj-geocode-note {{
+            align-items: baseline;
+            background: var(--qj-primary-soft);
+            border: 1px solid var(--qj-primary-border);
+            border-radius: var(--qj-radius-control);
+            color: #365e4d;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.2rem 0.48rem;
+            margin-top: 0.15rem;
+            padding: 0.52rem 0.68rem;
+        }}
+        .qj-geocode-detail {{
+            color: var(--qj-muted);
+            font-size: 0.72rem;
+        }}
+        .qj-housing-view-switch {{
+            background: rgba(255, 255, 255, 0.84);
+            border: 1px solid var(--qj-line);
+            border-radius: var(--qj-radius-card);
+            box-shadow: var(--qj-shadow);
+            margin: 0.25rem 0 0.1rem;
+            padding: 1rem 1.05rem;
+        }}
+        .qj-housing-view-title {{
+            color: #245542;
+            font-size: clamp(1.45rem, 2.05vw, 2.05rem);
+            font-weight: 880;
+            line-height: 1.15;
+            margin: 0.28rem 0 0.22rem;
+        }}
+        .qj-housing-view-copy {{
+            color: var(--qj-muted);
+            font-size: 0.86rem;
+            line-height: 1.5;
+        }}
+        .qj-overview-section-head {{
+            margin: 2.25rem 0 0.3rem;
+        }}
+        .qj-section-title {{
+            color: var(--qj-text);
+            font-size: clamp(1.45rem, 2.1vw, 1.85rem);
+            font-weight: 880;
+            letter-spacing: -0.022em;
+            line-height: 1.18;
+            margin-top: 0.22rem;
+        }}
+        .qj-section-copy {{
+            color: var(--qj-muted);
+            font-size: 0.88rem;
+            line-height: 1.55;
+            margin-top: 0.32rem;
+        }}
+        .qj-overview-card {{
+            background: #ffffff !important;
+            border: 1px solid var(--qj-line) !important;
+            border-top: 4px solid var(--qj-mode-color) !important;
+            box-shadow: 0 5px 16px rgba(23, 50, 77, 0.055);
+            min-height: 236px;
+            padding: 1.05rem;
+        }}
+        .qj-overview-card-top {{
+            align-items: center;
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }}
+        .qj-overview-mode {{
+            color: var(--qj-mode-color);
+            font-size: 0.84rem;
+            margin: 0;
+        }}
+        .qj-overview-mode .qj-dot {{
+            background: var(--qj-mode-color);
+            height: 0.62rem;
+            width: 0.62rem;
+        }}
+        .qj-overview-rank {{
+            background: var(--qj-mode-soft);
+            border-radius: 999px;
+            color: var(--qj-mode-color);
+            font-size: 0.7rem;
+            font-weight: 850;
+            line-height: 1;
+            padding: 0.3rem 0.48rem;
+        }}
+        .qj-overview-title {{
+            font-size: 1.28rem;
+            line-height: 1.2;
+            margin: 0.68rem 0 0.14rem;
+        }}
+        .qj-overview-location {{
+            color: var(--qj-muted);
+            font-size: 0.75rem;
+            line-height: 1.35;
+            min-height: 1.05rem;
+        }}
+        .qj-overview-grid {{
+            align-items: stretch;
+            border-top: 1px solid #edf2ef;
+            gap: 0;
+            margin: 0.78rem 0 0.7rem;
+            padding-top: 0.7rem;
+        }}
+        .qj-overview-grid > div {{
+            min-width: 0;
+        }}
+        .qj-overview-grid > div + div {{
+            border-left: 1px solid #e8efeb;
+            padding-left: 0.65rem;
+        }}
+        .qj-overview-grid span {{
+            font-size: 0.7rem;
+        }}
+        .qj-overview-grid b {{
+            font-size: 1rem;
+            line-height: 1.25;
+            margin-top: 0.1rem;
+        }}
+        .qj-overview-primary-metric b {{
+            color: #245542;
+            font-size: 1.22rem;
+        }}
+        .qj-overview-grid small {{
+            color: var(--qj-muted);
+            font-size: 0.65rem;
+            font-weight: 720;
+            margin-left: 0.14rem;
+        }}
+        .qj-overview-copy {{
+            border-top: 1px solid #f0f4f2;
+            color: #5b6d64;
+            font-size: 0.76rem;
+            line-height: 1.48;
+            padding-top: 0.55rem;
+        }}
+        .qj-overview-copy span {{
+            color: var(--qj-muted);
+            display: block;
+            font-size: 0.67rem;
+            font-weight: 820;
+            letter-spacing: 0.045em;
+            margin-bottom: 0.08rem;
+            text-transform: uppercase;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-overview-map-head) {{
+            background: rgba(255, 255, 255, 0.9);
+            border-color: var(--qj-line);
+            border-radius: var(--qj-radius-card);
+            box-shadow: var(--qj-shadow);
+            margin-top: 1.55rem;
+            padding: 0.25rem;
+        }}
+        .qj-overview-map-head {{
+            padding: 0.2rem 0 0.35rem;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-overview-map-head) div[data-testid="stSegmentedControl"] {{
+            margin: 0.5rem 0 0;
+        }}
+        .qj-map-provenance {{
+            font-size: 0.76rem;
+            margin: 0.35rem 0 0.72rem;
+            padding: 0.56rem 0.7rem;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-overview-map-head) iframe {{
+            border: 1px solid var(--qj-line);
+        }}
         @media (max-width: 720px) {{
             .stApp [data-testid="stAppViewContainer"] .main .block-container,
             .block-container {{ padding: 1.15rem 0.9rem 2.5rem; }}
             .qj-header-title {{ font-size: 2rem; }}
+            .qj-housing-view-switch {{ margin-top: 0.9rem; }}
+            .qj-overview-card {{ min-height: auto; }}
             div[data-testid="stSegmentedControl"] button {{ padding-inline: 0.7rem; }}
             .qj-career-policy-grid {{ grid-template-columns: 1fr 1fr; }}
         }}
