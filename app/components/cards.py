@@ -62,6 +62,7 @@ def _render_selected_card(
         second_metric_row = st.columns(2, gap="small")
         second_metric_row[0].metric("相較內湖租金", f"省 {money(row['rent_saving_vs_neihu'])}")
         second_metric_row[1].metric("生活機能", livability)
+        st.caption("租金：MOI 2026-03 行政區獨立套房 benchmark")
         st.caption(reason_for(mode, row))
 
 
@@ -79,7 +80,7 @@ def _render_compact_card(
         with action_col:
             _render_card_select_button(mode, row, False, on_select)
         st.caption(
-            f"{money(row['rent'])} NTD｜{minutes(row['commute_minutes'])}｜"
+            f"月租中位數 {money(row['rent'])} NTD｜{minutes(row['commute_minutes'])}｜"
             f"省 {money(row['rent_saving_vs_neihu'])}｜{reason_for(mode, row)}"
         )
 

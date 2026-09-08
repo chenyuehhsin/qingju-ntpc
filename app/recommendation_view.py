@@ -26,6 +26,26 @@ from data_loader import (
 HOUSING_PAGE_OVERVIEW = "overview"
 HOUSING_PAGE_DETAIL = "detail"
 
+# TODO: move these editorial hints to data/config/housing/lifestyle_area_profiles.json.
+LIFESTYLE_AREA_PROFILE_HINTS = {
+    "三峽北大特區": "預算與較長通勤取捨的使用者",
+    "三重站": "重視雙北通勤連結的使用者",
+    "五股區公所": "優先考量租金節省的使用者",
+    "土城站": "尋找租金與通勤平衡的使用者",
+    "大坪林站": "重視通勤效率與生活機能的使用者",
+    "新莊站": "重視大眾運輸與日常採買的使用者",
+    "景安站": "重視跨區通勤選擇的使用者",
+    "板橋站": "重視交通整合與生活機能的使用者",
+    "林口站": "可接受較長通勤以換取不同租金取向的使用者",
+    "樹林車站": "優先考量租金節省與在地生活機能的使用者",
+    "汐止車站": "重視通勤路徑與租金取捨的使用者",
+    "泰山站": "尋找租金與通勤折衷的使用者",
+    "淡水站": "可接受較長通勤、優先考量租金的使用者",
+    "蘆洲站": "重視生活機能與大眾運輸的使用者",
+    "頂溪站": "重視跨區通勤與生活機能的使用者",
+    "鶯歌車站": "優先考量租金節省的使用者",
+}
+
 
 def render_dashboard_view(
     mode: str,
@@ -94,21 +114,21 @@ def _render_single_mode_overview_page(
                 <style>
                 div[data-testid="stButton"] button[kind="primary"],
                 div[data-testid="stButton"] button[data-testid="stBaseButton-primary"] {
-                    background: #0F9F7A !important;
-                    border-color: #0F9F7A !important;
-                    color: white !important;
+                    background: #FFE8A3 !important;
+                    border-color: #F6C64A !important;
+                    color: #17324D !important;
                 }
                 div[data-testid="stButton"] button[kind="primary"]:hover,
                 div[data-testid="stButton"] button[data-testid="stBaseButton-primary"]:hover {
-                    background: #087A5D !important;
-                    border-color: #087A5D !important;
+                    background: #FFD96B !important;
+                    border-color: #F6C64A !important;
                 }
                 </style>
                 """,
                 unsafe_allow_html=True,
             )
             st.button(
-                "🧭 查看生活圈詳情",
+                "🌱 查看生活圈詳情",
                 key=f"housing_open_detail_{mode}",
                 use_container_width=True,
                 type="primary",
@@ -123,6 +143,7 @@ def _render_single_mode_overview_page(
             towns,
             cities,
         )
+        _enable_rent_context_layer(map_obj)
         _highlight_selected_candidate(map_obj, selected_row, mode)
         st_folium(
             map_obj,
@@ -131,7 +152,7 @@ def _render_single_mode_overview_page(
             returned_objects=[],
             key="housing_recommendation_map",
         )
-        _render_compact_selected_summary(mode, selected_row)
+        _render_lifestyle_insight_card(selected_row)
 
 
 def _render_living_area_detail_page(
@@ -143,12 +164,6 @@ def _render_living_area_detail_page(
 ) -> None:
     st.markdown(
         f"青年安居推薦 &gt; {html.escape(mode)} &gt; {html.escape(str(selected_row['living_area']))}"
-    )
-    st.button(
-        "← 返回生活圈列表",
-        key=f"housing_return_to_overview_{mode}",
-        on_click=_return_to_living_area_list,
-        args=(mode,),
     )
 
     candidate_name = str(selected_row["candidate_name"])
@@ -165,8 +180,7 @@ def _render_living_area_detail_page(
         st.markdown("**通勤方式**：大眾運輸")
         st.markdown("**房型**：獨立套房")
         st.markdown(f"**推薦偏好**：{html.escape(mode)}")
-        st.markdown("### 目前選擇的生活圈摘要")
-        _render_life_summary_card(mode, selected_row, pois)
+        _render_living_area_insights(selected_row, pois, destination)
     with middle:
         st.markdown("### 生活圈細節地圖")
         detail_map = build_detail_map(
@@ -190,7 +204,15 @@ def _render_living_area_detail_page(
             key="housing_detail_map",
         )
     with right:
-        _render_living_area_insights(selected_row, pois, destination)
+        st.markdown("### 目前選擇的生活圈摘要")
+        _render_life_summary_card(mode, selected_row, pois)
+        st.button(
+            "返回生活圈列表",
+            key=f"housing_return_to_overview_{mode}",
+            use_container_width=True,
+            on_click=_return_to_living_area_list,
+            args=(mode,),
+        )
 
 
 def _highlight_selected_candidate(map_obj, row: pd.Series, mode: str) -> None:
@@ -202,8 +224,26 @@ def _highlight_selected_candidate(map_obj, row: pd.Series, mode: str) -> None:
         weight=3.5,
         fill=False,
         opacity=0.98,
-        tooltip=f"目前查看｜{row['living_area']}",
+        tooltip=f"目前選擇｜{row['living_area']}",
     ).add_to(map_obj)
+    folium.Marker(
+        location=[float(row["lat"]), float(row["lon"])],
+        icon=folium.DivIcon(
+            html=(
+                '<div style="background:#0F9F7A;color:#FFFFFF;border-radius:999px;padding:2px 6px;'
+                'font-size:11px;font-weight:800;white-space:nowrap;box-shadow:0 1px 3px rgba(15,159,122,0.35);">'
+                '目前選擇</div>'
+            ),
+            icon_size=(58, 20),
+            icon_anchor=(29, 28),
+        ),
+    ).add_to(map_obj)
+
+
+def _enable_rent_context_layer(map_obj) -> None:
+    for layer in map_obj._children.values():
+        if getattr(layer, "layer_name", None) == "行政區租金背景":
+            layer.show = True
 
 
 def _housing_page_key(mode: str) -> str:
@@ -231,15 +271,38 @@ def _render_market_overview(candidates: pd.DataFrame, destination: dict[str, flo
     st.caption("租金採 MOI 2026-03 行政區獨立套房 benchmark，非即時房源。通勤為 TDX MaaS 平日 08:00 情境。")
 
 
-def _render_compact_selected_summary(mode: str, row: pd.Series) -> None:
+def _render_lifestyle_insight_card(row: pd.Series) -> None:
     youth_share = _district_youth_share(row)
+    top_categories = _top_livability_categories(row)
+    scenario = LIFESTYLE_AREA_PROFILE_HINTS.get(
+        str(row["candidate_name"]),
+        "重視租金、通勤與生活機能取捨的使用者",
+    )
     with st.container(border=True):
-        st.markdown(f"#### {html.escape(str(row['living_area']))}")
-        metrics = st.columns(4, gap="small")
-        metrics[0].metric("月租", money(row["rent"]))
-        metrics[1].metric("通勤", minutes(row["commute_minutes"]))
-        metrics[2].metric("生活機能", f"{float(row['livability_index']):.3f}")
-        metrics[3].metric("青年占比", youth_share)
+        st.markdown("#### 生活圈特色")
+        st.markdown(
+            f"- **租金與通勤取向**：資料顯示，月租中位數約 {money(row['rent'])} NTD，通勤約 {minutes(row['commute_minutes'])}。"
+        )
+        st.markdown(
+            f"- **周邊生活機能**：目前樣本中的生活機能指數為 {float(row['livability_index']):.3f}；"
+            f"POI 類別以 {top_categories} 為主。"
+        )
+        st.markdown(f"- **適合情境**：適合偏好 {scenario}；行政區青年人口占比為 {youth_share}。")
+        st.caption("租金：MOI 2026-03；生活機能：OSM 800m 範圍的 proxy。")
+
+
+def _top_livability_categories(row: pd.Series) -> str:
+    categories = [
+        ("餐飲", _count(row, "food_count")),
+        ("採買", _count(row, "shopping_count")),
+        ("醫療", _count(row, "medical_count")),
+        ("休閒", _count(row, "recreation_count")),
+        ("文化", _count(row, "culture_count")),
+    ]
+    valid_categories = [(label, int(count)) for label, count in categories if isinstance(count, int)]
+    if not valid_categories:
+        return "可用 OSM 類別"
+    return "、".join(label for label, _ in sorted(valid_categories, key=lambda item: item[1], reverse=True)[:2])
 
 
 def _district_youth_share(row: pd.Series) -> str:
@@ -410,7 +473,7 @@ def _render_life_summary_card(mode: str, row: pd.Series, pois: pd.DataFrame) -> 
             <div class="qj-station">{html.escape(str(row['candidate_name']))}｜{html.escape(str(row['district']))}</div>
             <div class="qj-life-poi-note">{html.escape(district_context)}</div>
             <div class="qj-life-metric-grid">
-                <div><span>月租</span><b>{money(row['rent'])}</b><small>NTD/month</small></div>
+                <div><span>月租中位數</span><b>{money(row['rent'])}</b><small>MOI 2026-03</small></div>
                 <div><span>通勤</span><b>{minutes(row['commute_minutes'])}</b><small>public transit</small></div>
                 <div><span>food</span><b>{food}</b><small>OSM 800m 統計</small></div>
                 <div><span>shopping</span><b>{shopping}</b><small>OSM 800m 統計</small></div>
