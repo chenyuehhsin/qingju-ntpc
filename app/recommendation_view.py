@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+from collections.abc import Callable
 
 import pandas as pd
 import streamlit as st
@@ -21,6 +22,9 @@ from data_loader import (
     money,
 )
 
+HOUSING_PAGE_OVERVIEW = "overview"
+HOUSING_PAGE_DETAIL = "detail"
+
 
 def render_dashboard_view(
     mode: str,
@@ -30,42 +34,202 @@ def render_dashboard_view(
     destination: dict[str, float | str],
     towns,
     cities,
+    render_controls: Callable[[], None],
 ) -> None:
     mode_rows = top3[top3["preference_mode"] == mode].sort_values("rank").copy()
     selected_candidate = _selected_top3_candidate(mode, mode_rows)
     selected_row = mode_rows[mode_rows["candidate_name"] == selected_candidate].iloc[0]
+    page_key = _housing_page_key(mode)
+    if st.session_state.get(page_key) not in {HOUSING_PAGE_OVERVIEW, HOUSING_PAGE_DETAIL}:
+        st.session_state[page_key] = HOUSING_PAGE_OVERVIEW
 
-    left, right = st.columns([0.92, 2.78], gap="medium")
+    if st.session_state[page_key] == HOUSING_PAGE_DETAIL:
+        _render_living_area_detail_page(mode, selected_row, destination, towns, cities)
+        return
+
+    _render_single_mode_overview_page(
+        mode,
+        candidates,
+        top3,
+        mode_rows,
+        selected_row,
+        destination,
+        towns,
+        cities,
+        render_controls,
+    )
+
+
+def _render_single_mode_overview_page(
+    mode: str,
+    candidates: pd.DataFrame,
+    top3: pd.DataFrame,
+    mode_rows: pd.DataFrame,
+    selected_row: pd.Series,
+    destination: dict[str, float | str],
+    towns,
+    cities,
+    render_controls: Callable[[], None],
+) -> None:
+    left, middle, right = st.columns([24, 30, 46], gap="medium")
     with left:
-        st.markdown("### Top 3 推薦")
+        render_controls()
+        _render_market_overview(candidates, destination)
+    with middle:
+        st.markdown("### 推薦生活圈 Top 3")
         render_recommendation_cards(mode, mode_rows)
-        st.markdown("### 查看生活圈")
-        selected_candidate = st.segmented_control(
-            "選擇 Top 3 生活圈",
-            options=mode_rows["candidate_name"].tolist(),
-            format_func=lambda candidate_name: _top3_option_label(mode_rows, str(candidate_name)),
-            key=f"housing_detail_candidate_{mode}",
-            label_visibility="collapsed",
-        )
-        if selected_candidate is None:
-            selected_candidate = str(mode_rows.iloc[0]["candidate_name"])
-        selected_row = mode_rows[mode_rows["candidate_name"] == selected_candidate].iloc[0]
+        selection_columns = st.columns(3, gap="small")
+        for column, (_, row) in zip(selection_columns, mode_rows.iterrows()):
+            with column:
+                st.button(
+                    f"選取 Top {int(row['rank'])}",
+                    key=f"housing_select_candidate_{mode}_{int(row['rank'])}",
+                    use_container_width=True,
+                    on_click=_select_living_area,
+                    args=(mode, str(row["candidate_name"])),
+                )
     with right:
         st.markdown("### 生活圈分布地圖")
         map_obj = build_recommendation_map(mode, candidates, top3, destination, towns, cities)
         st_folium(
             map_obj,
-            height=470,
+            height=550,
             use_container_width=True,
             returned_objects=[],
             key="housing_recommendation_map",
         )
+        _render_compact_selected_summary(mode, selected_row)
+        st.button(
+            "查看生活圈詳情",
+            key=f"housing_open_detail_{mode}",
+            use_container_width=True,
+            on_click=_open_living_area_detail,
+            args=(mode,),
+        )
 
-    _render_detail_section(mode, selected_row, destination, towns, cities)
 
-    _render_mode_summary(mode, mode_rows, str(destination["destination"]))
-    with st.expander("查看全部 16 個候選生活圈", expanded=False):
-        render_all_candidates_table(mode, candidates, recommendations)
+def _render_living_area_detail_page(
+    mode: str,
+    selected_row: pd.Series,
+    destination: dict[str, float | str],
+    towns,
+    cities,
+) -> None:
+    st.markdown(
+        f"青年安居推薦 &gt; {html.escape(mode)} &gt; {html.escape(str(selected_row['living_area']))}"
+    )
+    st.button(
+        "← 返回生活圈列表",
+        key=f"housing_return_to_overview_{mode}",
+        on_click=_return_to_living_area_list,
+        args=(mode,),
+    )
+
+    candidate_name = str(selected_row["candidate_name"])
+    pois = load_representative_pois(candidate_name)
+    livability_density_pois = load_livability_density_pois(candidate_name)
+    metro_lines = load_detail_metro_lines(candidate_name)
+    metro_stations = load_detail_metro_stations(candidate_name)
+    youbike_stations = load_detail_youbike_stations(candidate_name)
+
+    left, middle, right = st.columns([22, 52, 26], gap="medium")
+    with left:
+        st.markdown("### 我的條件")
+        st.markdown(f"**工作地點**：{html.escape(str(destination['destination']))}")
+        st.markdown("**通勤方式**：大眾運輸")
+        st.markdown("**房型**：獨立套房")
+        st.markdown(f"**推薦偏好**：{html.escape(mode)}")
+        st.markdown("### 目前選擇的生活圈摘要")
+        _render_life_summary_card(mode, selected_row, pois)
+    with middle:
+        st.markdown("### 生活圈細節地圖")
+        detail_map = build_detail_map(
+            selected_row,
+            pois,
+            livability_density_pois,
+            metro_lines,
+            metro_stations,
+            youbike_stations,
+            destination,
+            towns,
+            cities,
+            mode,
+        )
+        _prefer_street_basemap(detail_map)
+        st_folium(
+            detail_map,
+            height=620,
+            use_container_width=True,
+            returned_objects=[],
+            key="housing_detail_map",
+        )
+    with right:
+        _render_living_area_insights(selected_row, pois, destination)
+
+
+def _housing_page_key(mode: str) -> str:
+    return f"housing_page_state_{mode}"
+
+
+def _select_living_area(mode: str, candidate_name: str) -> None:
+    st.session_state[f"housing_detail_candidate_{mode}"] = candidate_name
+
+
+def _open_living_area_detail(mode: str) -> None:
+    st.session_state[_housing_page_key(mode)] = HOUSING_PAGE_DETAIL
+
+
+def _return_to_living_area_list(mode: str) -> None:
+    st.session_state[_housing_page_key(mode)] = HOUSING_PAGE_OVERVIEW
+
+
+def _render_market_overview(candidates: pd.DataFrame, destination: dict[str, float | str]) -> None:
+    rents = pd.to_numeric(candidates["rent"], errors="coerce").dropna()
+    st.markdown("### 新北租屋市場概況")
+    if not rents.empty:
+        st.markdown(f"**候選生活圈租金範圍**：{money(rents.min())}–{money(rents.max())} NTD/月")
+    st.markdown(f"**目前工作地參考**：{html.escape(str(destination['destination']))}")
+    st.caption("租金採 MOI 2026-03 行政區獨立套房 benchmark，非即時房源。通勤為 TDX MaaS 平日 08:00 情境。")
+
+
+def _render_compact_selected_summary(mode: str, row: pd.Series) -> None:
+    youth_share = _district_youth_share(row)
+    with st.container(border=True):
+        st.markdown(f"#### {html.escape(str(row['living_area']))}")
+        metrics = st.columns(4, gap="small")
+        metrics[0].metric("月租", money(row["rent"]))
+        metrics[1].metric("通勤", minutes(row["commute_minutes"]))
+        metrics[2].metric("生活機能", f"{float(row['livability_index']):.3f}")
+        metrics[3].metric("青年占比", youth_share)
+
+
+def _district_youth_share(row: pd.Series) -> str:
+    district_analysis = load_district_analysis_table()
+    matches = district_analysis[
+        (district_analysis["city"] == "新北市") & (district_analysis["district"] == str(row["district"]))
+    ]
+    if matches.empty:
+        return "unresolved"
+    return str(matches.iloc[0].get("youth_population_share_display", "unresolved"))
+
+
+def _render_living_area_insights(
+    row: pd.Series,
+    pois: pd.DataFrame,
+    destination: dict[str, float | str],
+) -> None:
+    st.markdown("### 生活圈特色")
+    st.write(life_summary(row))
+    st.markdown("### 交通優勢")
+    st.write(f"至 {destination['destination']} 約 {minutes(row['commute_minutes'])}；轉乘 {int(row['transfer_count'])} 次。")
+    st.markdown("### 周邊機能")
+    st.write(
+        f"800m OSM 統計：餐飲 {_count(row, 'food_count')}、採買 {_count(row, 'shopping_count')}、"
+        f"醫療 {_count(row, 'medical_count')}、休閒 {_count(row, 'recreation_count')}、文化 {_count(row, 'culture_count')}。"
+    )
+    st.caption(_representative_poi_note(pois))
+    st.markdown("### 資料依據摘要")
+    st.caption("租金：MOI 2026-03；通勤：TDX MaaS 平日 08:00 情境；生活機能：OSM 2026-08-22 snapshot；青年人口：RIS 2026-07。")
 
 
 def render_all_candidates_table(mode: str, candidates: pd.DataFrame, recommendations: pd.DataFrame) -> None:
@@ -182,48 +346,12 @@ def _top3_option_label(mode_rows: pd.DataFrame, candidate_name: str) -> str:
     return f"Top {int(row['rank'])} {row['living_area']}"
 
 
-def _render_detail_section(
-    mode: str,
-    selected_row: pd.Series,
-    destination: dict[str, float | str],
-    towns,
-    cities,
-) -> None:
-    st.markdown("### 生活圈細節地圖")
-    st.markdown(
-        '<div class="qj-section-note">「15分鐘」為近似探索範圍，實際步行時間依道路與步行速度而異，不代表精準步行 isochrone。生活機能密度依公開 POI 的餐飲、採買、休閒與文化設施空間密度計算，反映設施聚集程度，不代表實際人流或消費熱度。目前可用 OSM cache 半徑為 800m，heatmap 僅使用此範圍內且同時落在 2km 延伸生活圈內的點位。</div>',
-        unsafe_allow_html=True,
-    )
-    candidate_name = str(selected_row["candidate_name"])
-    pois = load_representative_pois(candidate_name)
-    livability_density_pois = load_livability_density_pois(candidate_name)
-    metro_lines = load_detail_metro_lines(candidate_name)
-    metro_stations = load_detail_metro_stations(candidate_name)
-    youbike_stations = load_detail_youbike_stations(candidate_name)
-    detail_left, detail_right = st.columns([0.96, 2.74], gap="medium")
-    with detail_left:
-        st.markdown("#### 選取生活圈摘要")
-        _render_life_summary_card(mode, selected_row, pois)
-    with detail_right:
-        detail_map = build_detail_map(
-            selected_row,
-            pois,
-            livability_density_pois,
-            metro_lines,
-            metro_stations,
-            youbike_stations,
-            destination,
-            towns,
-            cities,
-            mode,
-        )
-        st_folium(
-            detail_map,
-            height=520,
-            use_container_width=True,
-            returned_objects=[],
-            key="housing_detail_map",
-        )
+def _prefer_street_basemap(map_obj) -> None:
+    for layer in map_obj._children.values():
+        if getattr(layer, "layer_name", None) == "街道地圖":
+            layer.show = True
+        elif getattr(layer, "layer_name", None) == "極簡生活圈底圖":
+            layer.show = False
 
 
 def _render_life_summary_card(mode: str, row: pd.Series, pois: pd.DataFrame) -> None:
