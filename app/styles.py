@@ -1284,6 +1284,23 @@ def apply_styles(page: str = "青年安居推薦") -> None:
         div[data-testid="stFormSubmitButton"] button:focus-visible {{
             box-shadow: 0 0 0 3px var(--qj-primary-soft);
         }}
+        .st-key-career_explore_button button,
+        [class*="st-key-career_evidence_button_"] button {{
+            background: #EAF6FF !important;
+            border-color: #BDE7FF !important;
+            color: #257FBE !important;
+            box-shadow: none !important;
+        }}
+        .st-key-career_explore_button button:hover,
+        [class*="st-key-career_evidence_button_"] button:hover {{
+            background: #D7F0FF !important;
+            border-color: #93D6FF !important;
+            filter: none;
+        }}
+        .st-key-career_explore_button button:focus-visible,
+        [class*="st-key-career_evidence_button_"] button:focus-visible {{
+            box-shadow: 0 0 0 3px rgba(59, 167, 245, 0.22) !important;
+        }}
         div[data-testid="stRadio"] {{
             margin-top: 0.7rem;
             transform: none;
