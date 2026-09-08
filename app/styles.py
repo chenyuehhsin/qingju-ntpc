@@ -1089,9 +1089,12 @@ def apply_styles(page: str = "青年安居推薦") -> None:
                 var(--qj-bg);
         }}
         .stApp [data-testid="stAppViewContainer"] .main .block-container,
-        .block-container {{
-            max-width: 1480px;
-            padding: clamp(1.4rem, 3.2vw, 2.75rem) clamp(1rem, 3.4vw, 3.5rem) 3.5rem;
+        .block-container {{ 
+            width: min(1840px, calc(100vw - 24px)) !important;
+            max-width: min(1840px, calc(100vw - 24px)) !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            padding-inline: 12px !important;
         }}
         h1, h2, h3 {{
             color: var(--qj-text);
