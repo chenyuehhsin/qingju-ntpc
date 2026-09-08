@@ -89,8 +89,26 @@ def _render_single_mode_overview_page(
         with map_title:
             st.markdown("### 生活圈分布地圖")
         with map_cta:
+            st.markdown(
+                """
+                <style>
+                div[data-testid="stButton"] button[kind="primary"],
+                div[data-testid="stButton"] button[data-testid="stBaseButton-primary"] {
+                    background: #0F9F7A !important;
+                    border-color: #0F9F7A !important;
+                    color: white !important;
+                }
+                div[data-testid="stButton"] button[kind="primary"]:hover,
+                div[data-testid="stButton"] button[data-testid="stBaseButton-primary"]:hover {
+                    background: #087A5D !important;
+                    border-color: #087A5D !important;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
             st.button(
-                "查看生活圈詳情 →",
+                "🧭 查看生活圈詳情",
                 key=f"housing_open_detail_{mode}",
                 use_container_width=True,
                 type="primary",

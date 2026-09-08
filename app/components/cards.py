@@ -46,17 +46,22 @@ def _render_selected_card(
     rank = int(row["rank"])
     livability = f"{float(row['livability_index']):.3f}"
     with st.container(border=True):
+        st.markdown(
+            f'<div style="background:#ECFBF3;border-left:4px solid {color};border-radius:6px;padding:0.28rem 0.5rem;font-size:0.78rem;font-weight:800;color:#187A59;">目前查看</div>',
+            unsafe_allow_html=True,
+        )
         title_col, action_col = st.columns([0.72, 0.28], gap="small")
         with title_col:
-            st.markdown(f"**Top {rank}｜{row['living_area']} · 目前查看**")
+            st.markdown(f"**Top {rank}｜{row['living_area']}**")
             st.caption(f"{row['candidate_name']}｜{row['district']}")
         with action_col:
             _render_card_select_button(mode, row, True, on_select)
-        metrics = st.columns(4, gap="small")
-        metrics[0].caption(f"月租\n\n{money(row['rent'])} NTD")
-        metrics[1].caption(f"通勤\n\n{minutes(row['commute_minutes'])}")
-        metrics[2].caption(f"較內湖\n\n省 {money(row['rent_saving_vs_neihu'])}")
-        metrics[3].caption(f"生活機能\n\n{livability}")
+        first_metric_row = st.columns(2, gap="small")
+        first_metric_row[0].metric("月租中位數", f"{money(row['rent'])} NTD")
+        first_metric_row[1].metric("通勤時間", minutes(row["commute_minutes"]))
+        second_metric_row = st.columns(2, gap="small")
+        second_metric_row[0].metric("相較內湖租金", f"省 {money(row['rent_saving_vs_neihu'])}")
+        second_metric_row[1].metric("生活機能", livability)
         st.caption(reason_for(mode, row))
 
 
@@ -85,7 +90,7 @@ def _render_card_select_button(
     is_selected: bool,
     on_select: Callable[[str], None],
 ) -> None:
-    label = "已選取" if is_selected else "查看"
+    label = "目前查看" if is_selected else "查看"
     if st.button(
         label,
         key=f"housing_select_candidate_{mode}_{int(row['rank'])}",
