@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pandas as pd
 import streamlit as st
 from streamlit_folium import st_folium
@@ -83,6 +85,82 @@ def render_overview(
 
     _render_comparison_bar(top1)
     st.markdown("---")
+
+
+def render_comparison_dashboard(
+    candidates: pd.DataFrame,
+    top3: pd.DataFrame,
+    destination: dict[str, float | str],
+    towns,
+    cities,
+    render_controls: Callable[[], None],
+) -> None:
+    top1 = _top1_by_mode(top3)
+    left, middle, right = st.columns([23, 27, 50], gap="medium")
+    with left:
+        render_controls()
+        _render_comparison_market_overview(candidates, destination)
+    with middle:
+        st.markdown("### 四種偏好下的 Top 1")
+        _render_comparison_mode_cards(top1)
+    with right:
+        st.markdown("### 推薦總覽地圖")
+        analysis_layer = st.segmented_control(
+            "行政區背景",
+            options=DISTRICT_ANALYSIS_LAYER_OPTIONS,
+            default=DISTRICT_ANALYSIS_LAYER_RENT,
+            key="comparison_district_analysis_layer",
+        )
+        if analysis_layer is None:
+            analysis_layer = DISTRICT_ANALYSIS_LAYER_RENT
+        _render_analysis_layer_note(str(analysis_layer), towns)
+        overview_map = build_overview_map(candidates, top3, destination, towns, cities, str(analysis_layer))
+        st_folium(
+            overview_map,
+            height=590,
+            use_container_width=True,
+            returned_objects=[],
+            key="housing_overview_map",
+        )
+        st.caption("比較不同偏好下的 Top 1 生活圈，協助理解租金、通勤與生活機能之間的取捨。")
+
+
+def _render_comparison_market_overview(candidates: pd.DataFrame, destination: dict[str, float | str]) -> None:
+    rents = pd.to_numeric(candidates["rent"], errors="coerce").dropna()
+    st.markdown("### 新北租屋市場概況")
+    if not rents.empty:
+        st.markdown(f"**候選生活圈租金範圍**：{money(rents.min())}–{money(rents.max())} NTD/月")
+    st.markdown(f"**目前工作地參考**：{destination['destination']}")
+    st.caption("租金採 MOI 2026-03 行政區獨立套房 benchmark，非即時房源。")
+
+
+def _render_comparison_mode_cards(top1: pd.DataFrame) -> None:
+    rows_by_mode = {row["preference_mode"]: row for _, row in top1.iterrows()}
+    for mode in MODE_ORDER:
+        row = rows_by_mode[mode]
+        with st.container(border=True):
+            title_col, action_col = st.columns([0.68, 0.32], gap="small")
+            with title_col:
+                st.markdown(f"### {mode}")
+            with action_col:
+                st.button(
+                    f"查看{mode}",
+                    key=f"housing_open_mode_{mode}",
+                    use_container_width=False,
+                    on_click=_open_single_mode,
+                    args=(mode,),
+                )
+            st.markdown(f"**{row['living_area']}**")
+            st.caption(
+                f"月租中位數 {money(row['rent'])} NTD｜通勤 {minutes(row['commute_minutes'])}｜"
+                f"生活機能 {float(row['livability_index']):.3f}"
+            )
+            st.caption(MODE_COPY[mode])
+
+
+def _open_single_mode(mode: str) -> None:
+    st.session_state.housing_view_mode = "查看單一模式"
+    st.session_state.housing_recommendation_mode = mode
 
 
 def _top1_by_mode(top3: pd.DataFrame) -> pd.DataFrame:

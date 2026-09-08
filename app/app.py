@@ -12,7 +12,7 @@ if str(APP_DIR) not in sys.path:
 
 from custom_workplace import GEOCODING_SOURCE, build_custom_dashboard_data, geocode_address
 from components.career_evidence_viewer import render_career_evidence_viewer
-from components.overview import render_overview
+from components.overview import render_comparison_dashboard
 from components.policy_lens import render_policy_lens
 from data_loader import (
     MODE_ORDER,
@@ -106,6 +106,7 @@ def _render_housing_control_center(
     preset_addresses: dict[str, str],
     preset_options: list[str],
     preset_workplaces: dict[str, dict[str, Any]],
+    show_recommendation_mode: bool = True,
 ) -> None:
     st.markdown("### 設定我的條件")
     st.segmented_control(
@@ -114,12 +115,15 @@ def _render_housing_control_center(
         label_visibility="visible",
         key="housing_view_mode",
     )
-    st.segmented_control(
-        "推薦模式",
-        MODE_ORDER,
-        label_visibility="visible",
-        key="housing_recommendation_mode",
-    )
+    if show_recommendation_mode:
+        st.segmented_control(
+            "推薦模式",
+            MODE_ORDER,
+            label_visibility="visible",
+            key="housing_recommendation_mode",
+        )
+    else:
+        st.caption("比較模式會同時呈現四種偏好。")
     st.text_input(
         "工作地點",
         key="workplace_address",
@@ -320,11 +324,14 @@ def main() -> None:
         st.stop()
 
     if selected_view == "比較四種模式":
-        control_col, overview_col = st.columns([24, 76], gap="medium")
-        with control_col:
-            _render_housing_control_center(*control_args)
-        with overview_col:
-            render_overview(candidates, top3, destination, towns, cities)
+        render_comparison_dashboard(
+            candidates,
+            top3,
+            destination,
+            towns,
+            cities,
+            render_controls=lambda: _render_housing_control_center(*control_args, show_recommendation_mode=False),
+        )
     else:
         render_dashboard_view(
             selected_mode,
