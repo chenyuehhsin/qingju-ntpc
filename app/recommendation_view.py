@@ -3,6 +3,7 @@ from __future__ import annotations
 import html
 from collections.abc import Callable
 
+import folium
 import pandas as pd
 import streamlit as st
 from streamlit_folium import st_folium
@@ -77,20 +78,34 @@ def _render_single_mode_overview_page(
         _render_market_overview(candidates, destination)
     with middle:
         st.markdown("### 推薦生活圈 Top 3")
-        render_recommendation_cards(mode, mode_rows)
-        selection_columns = st.columns(3, gap="small")
-        for column, (_, row) in zip(selection_columns, mode_rows.iterrows()):
-            with column:
-                st.button(
-                    f"選取 Top {int(row['rank'])}",
-                    key=f"housing_select_candidate_{mode}_{int(row['rank'])}",
-                    use_container_width=True,
-                    on_click=_select_living_area,
-                    args=(mode, str(row["candidate_name"])),
-                )
+        render_recommendation_cards(
+            mode,
+            mode_rows,
+            selected_candidate=str(selected_row["candidate_name"]),
+            on_select=lambda candidate_name: _select_living_area(mode, candidate_name),
+        )
     with right:
-        st.markdown("### 生活圈分布地圖")
-        map_obj = build_recommendation_map(mode, candidates, top3, destination, towns, cities)
+        map_title, map_cta = st.columns([0.57, 0.43], gap="small")
+        with map_title:
+            st.markdown("### 生活圈分布地圖")
+        with map_cta:
+            st.button(
+                "查看生活圈詳情 →",
+                key=f"housing_open_detail_{mode}",
+                use_container_width=True,
+                type="primary",
+                on_click=_open_living_area_detail,
+                args=(mode,),
+            )
+        map_obj = build_recommendation_map(
+            mode,
+            candidates,
+            top3,
+            destination,
+            towns,
+            cities,
+        )
+        _highlight_selected_candidate(map_obj, selected_row, mode)
         st_folium(
             map_obj,
             height=550,
@@ -99,13 +114,6 @@ def _render_single_mode_overview_page(
             key="housing_recommendation_map",
         )
         _render_compact_selected_summary(mode, selected_row)
-        st.button(
-            "查看生活圈詳情",
-            key=f"housing_open_detail_{mode}",
-            use_container_width=True,
-            on_click=_open_living_area_detail,
-            args=(mode,),
-        )
 
 
 def _render_living_area_detail_page(
@@ -165,6 +173,19 @@ def _render_living_area_detail_page(
         )
     with right:
         _render_living_area_insights(selected_row, pois, destination)
+
+
+def _highlight_selected_candidate(map_obj, row: pd.Series, mode: str) -> None:
+    color = MODE_COLORS[mode]
+    folium.CircleMarker(
+        location=[float(row["lat"]), float(row["lon"])],
+        radius=20,
+        color=color,
+        weight=3.5,
+        fill=False,
+        opacity=0.98,
+        tooltip=f"目前查看｜{row['living_area']}",
+    ).add_to(map_obj)
 
 
 def _housing_page_key(mode: str) -> str:

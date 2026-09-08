@@ -114,6 +114,12 @@ def _render_housing_control_center(
         label_visibility="visible",
         key="housing_view_mode",
     )
+    st.segmented_control(
+        "推薦模式",
+        MODE_ORDER,
+        label_visibility="visible",
+        key="housing_recommendation_mode",
+    )
     st.text_input(
         "工作地點",
         key="workplace_address",
@@ -129,12 +135,6 @@ def _render_housing_control_center(
         args=(preset_addresses,),
     )
     st.markdown("固定條件：`大眾運輸`　`獨立套房`")
-    st.segmented_control(
-        "推薦模式",
-        MODE_ORDER,
-        label_visibility="visible",
-        key="housing_recommendation_mode",
-    )
     if not st.button("開始 / 更新推薦", use_container_width=True, key="housing_submit_recommendation"):
         return
 

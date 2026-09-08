@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pandas as pd
 import streamlit as st
 
@@ -19,52 +21,79 @@ def render_mode_intro(mode: str) -> None:
     )
 
 
-def render_recommendation_cards(mode: str, rows: pd.DataFrame) -> None:
+def render_recommendation_cards(
+    mode: str,
+    rows: pd.DataFrame,
+    selected_candidate: str,
+    on_select: Callable[[str], None],
+) -> None:
     color = MODE_COLORS[mode]
     sorted_rows = rows.sort_values("rank")
-    top1 = sorted_rows.iloc[0]
-    _render_top1_card(mode, top1, color)
-    for _, row in sorted_rows.iloc[1:].iterrows():
-        _render_compact_card(mode, row, color)
+    for _, row in sorted_rows.iterrows():
+        is_selected = str(row["candidate_name"]) == selected_candidate
+        if is_selected:
+            _render_selected_card(mode, row, color, on_select)
+        else:
+            _render_compact_card(mode, row, color, on_select)
 
 
-def _render_top1_card(mode: str, row: pd.Series, color: str) -> None:
-    livability = f"{float(row['livability_index']):.3f}"
-    livability_style = f"color: {color}; font-weight: 900;" if mode == "生活品質型" else ""
-    st.markdown(
-        f"""
-        <div class="qj-top1-card" style="border-color: {color};">
-            <div class="qj-top1-rank" style="background: {color};">#1</div>
-            <div class="qj-top1-title">{row['living_area']}</div>
-            <div class="qj-station">{row['candidate_name']}｜{row['district']}</div>
-            <div class="qj-top1-metrics">
-                <div><span>月租中位數</span><b>{money(row['rent'])} NTD</b></div>
-                <div><span>通勤時間</span><b>{minutes(row['commute_minutes'])}</b></div>
-                <div><span>相較內湖省租</span><b>省 {money(row['rent_saving_vs_neihu'])}</b></div>
-                <div><span>生活機能</span><b style="{livability_style}">{livability}</b></div>
-            </div>
-            <div class="qj-top1-reason">{reason_for(mode, row)}</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def _render_compact_card(mode: str, row: pd.Series, color: str) -> None:
+def _render_selected_card(
+    mode: str,
+    row: pd.Series,
+    color: str,
+    on_select: Callable[[str], None],
+) -> None:
     rank = int(row["rank"])
-    st.markdown(
-        f"""
-        <div class="qj-compact-card">
-            <div class="qj-compact-rank" style="color: {color};">#{rank}</div>
-            <div class="qj-compact-body">
-                <div class="qj-compact-title">{row['living_area']}</div>
-                <div class="qj-compact-meta">{money(row['rent'])} NTD｜{minutes(row['commute_minutes'])}｜省 {money(row['rent_saving_vs_neihu'])}</div>
-                <div class="qj-compact-reason">{reason_for(mode, row)}</div>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    livability = f"{float(row['livability_index']):.3f}"
+    with st.container(border=True):
+        title_col, action_col = st.columns([0.72, 0.28], gap="small")
+        with title_col:
+            st.markdown(f"**Top {rank}｜{row['living_area']} · 目前查看**")
+            st.caption(f"{row['candidate_name']}｜{row['district']}")
+        with action_col:
+            _render_card_select_button(mode, row, True, on_select)
+        metrics = st.columns(4, gap="small")
+        metrics[0].caption(f"月租\n\n{money(row['rent'])} NTD")
+        metrics[1].caption(f"通勤\n\n{minutes(row['commute_minutes'])}")
+        metrics[2].caption(f"較內湖\n\n省 {money(row['rent_saving_vs_neihu'])}")
+        metrics[3].caption(f"生活機能\n\n{livability}")
+        st.caption(reason_for(mode, row))
+
+
+def _render_compact_card(
+    mode: str,
+    row: pd.Series,
+    color: str,
+    on_select: Callable[[str], None],
+) -> None:
+    rank = int(row["rank"])
+    with st.container(border=True):
+        title_col, action_col = st.columns([0.72, 0.28], gap="small")
+        with title_col:
+            st.markdown(f"**Top {rank}｜{row['living_area']}**")
+        with action_col:
+            _render_card_select_button(mode, row, False, on_select)
+        st.caption(
+            f"{money(row['rent'])} NTD｜{minutes(row['commute_minutes'])}｜"
+            f"省 {money(row['rent_saving_vs_neihu'])}｜{reason_for(mode, row)}"
+        )
+
+
+def _render_card_select_button(
+    mode: str,
+    row: pd.Series,
+    is_selected: bool,
+    on_select: Callable[[str], None],
+) -> None:
+    label = "已選取" if is_selected else "查看"
+    if st.button(
+        label,
+        key=f"housing_select_candidate_{mode}_{int(row['rank'])}",
+        use_container_width=False,
+        disabled=is_selected,
+    ):
+        on_select(str(row["candidate_name"]))
+        st.rerun()
 
 
 def render_recommendation_cards_legacy(mode: str, rows: pd.DataFrame) -> None:
