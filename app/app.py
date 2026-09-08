@@ -15,7 +15,6 @@ from components.career_evidence_viewer import render_career_evidence_viewer
 from components.overview import render_overview
 from components.policy_lens import render_policy_lens
 from data_loader import (
-    MODE_COPY,
     MODE_ORDER,
     load_boundaries,
     load_career_evidence_data,
@@ -151,8 +150,16 @@ def main() -> None:
     if page != "青年安居推薦":
         page = "青年安居推薦"
 
-    nav_options = ["四模式總覽", *MODE_ORDER]
-    current_view = st.session_state.get("main_view", "四模式總覽")
+    view_options = ["比較四種模式", "查看單一模式"]
+    legacy_view = st.session_state.get("main_view")
+    if "housing_view_mode" not in st.session_state:
+        st.session_state.housing_view_mode = "查看單一模式" if legacy_view in MODE_ORDER else "比較四種模式"
+    if "housing_recommendation_mode" not in st.session_state:
+        st.session_state.housing_recommendation_mode = legacy_view if legacy_view in MODE_ORDER else MODE_ORDER[0]
+    if st.session_state.housing_view_mode not in view_options:
+        st.session_state.housing_view_mode = "比較四種模式"
+    if st.session_state.housing_recommendation_mode not in MODE_ORDER:
+        st.session_state.housing_recommendation_mode = MODE_ORDER[0]
 
     preset_workplaces = {
         "港墘站｜內湖": {
@@ -309,15 +316,15 @@ def main() -> None:
                     unsafe_allow_html=True,
                 )
     with header_right:
-        hero_title = "推薦總覽"
-        hero_copy = "比較四種偏好模式的 Top 1，快速掌握推薦生活圈差異。"
-        if current_view in MODE_ORDER:
-            hero_title = f"{current_view}推薦"
-            hero_copy = MODE_COPY[current_view]
+        current_view_mode = st.session_state.housing_view_mode
+        hero_title = current_view_mode
+        hero_copy = "比較不同偏好下，各自推薦的 Top 1 生活圈。"
+        if current_view_mode == "查看單一模式":
+            hero_copy = "深入查看此偏好下的 Top 1 / 2 / 3 生活圈。"
         st.markdown(
             f"""
             <div class="qj-housing-view-switch">
-                <div class="qj-housing-view-eyebrow">接著選擇想看的推薦方式</div>
+                <div class="qj-housing-view-eyebrow">先選擇查看方式</div>
                 <div class="qj-housing-view-title">{hero_title}</div>
                 <div class="qj-housing-view-copy">{hero_copy}</div>
             </div>
@@ -325,14 +332,23 @@ def main() -> None:
             unsafe_allow_html=True,
         )
         selected_view = st.segmented_control(
-            "主畫面切換",
-            nav_options,
-            default=current_view,
+            "查看方式",
+            view_options,
             label_visibility="collapsed",
-            key="main_view",
+            key="housing_view_mode",
         )
         if selected_view is None:
-            selected_view = "四模式總覽"
+            selected_view = "比較四種模式"
+        selected_mode = st.session_state.housing_recommendation_mode
+        if selected_view == "查看單一模式":
+            selected_mode = st.segmented_control(
+                "推薦模式",
+                MODE_ORDER,
+                label_visibility="visible",
+                key="housing_recommendation_mode",
+            )
+            if selected_mode is None:
+                selected_mode = MODE_ORDER[0]
 
     if st.session_state.custom_workplace_data is None:
         st.info("請先輸入工作地址並按「開始推薦」，Dashboard 會在成功定位後更新推薦結果。")
@@ -345,11 +361,10 @@ def main() -> None:
         st.error(f"Dashboard data loading failed: {exc}")
         st.stop()
 
-    if selected_view == "四模式總覽":
+    if selected_view == "比較四種模式":
         render_overview(candidates, top3, destination, towns, cities)
     else:
-        mode = selected_view
-        render_dashboard_view(mode, candidates, recommendations, top3, destination, towns, cities)
+        render_dashboard_view(selected_mode, candidates, recommendations, top3, destination, towns, cities)
 
     st.markdown("---")
     with st.expander("資料與方法說明", expanded=False):
