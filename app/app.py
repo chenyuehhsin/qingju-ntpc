@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import sys
 from pathlib import Path
 from typing import Any
@@ -7,6 +8,7 @@ from typing import Any
 import streamlit as st
 
 APP_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = APP_DIR.parent
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
@@ -107,8 +109,11 @@ def _render_housing_control_center(
     preset_options: list[str],
     preset_workplaces: dict[str, dict[str, Any]],
     show_recommendation_mode: bool = True,
+    show_heading: bool = True,
 ) -> None:
-    st.markdown("### 設定我的條件")
+    if show_heading:
+        st.markdown("### 青年安居｜設定我的條件")
+        st.caption("從租金、通勤與生活機能，找到適合自己的新北生活圈。")
     st.segmented_control(
         "查看方式",
         view_options,
@@ -165,6 +170,60 @@ def _render_housing_control_center(
     st.rerun()
 
 
+def render_top_nav(page_options: list[str], current_page: str) -> str:
+    with st.container(border=True):
+        brand_col, nav_col = st.columns([0.78, 1.22], gap="medium")
+        with brand_col:
+            st.markdown(
+                """
+                <div class="qj-top-nav-brand">
+                    <div class="qj-top-nav-title">青聚新北｜青年安居 × 就業 × 交通</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with nav_col:
+            nav_links = st.columns(len(page_options), gap="small")
+            for nav_col, option in zip(nav_links, page_options):
+                with nav_col:
+                    if st.button(
+                        option,
+                        key=f"top_nav_{option}",
+                        type="primary" if option == current_page else "secondary",
+                        use_container_width=True,
+                    ):
+                        st.session_state.app_page = option
+                        st.rerun()
+    return current_page
+
+
+def render_page_hero(page_name: str) -> None:
+    """Render the page-specific banner from the repository's local assets."""
+    hero_images = {
+        "青年職涯探索": "hero_career.png",
+        "青年安居推薦": "hero_housing.png",
+        "青年局 Policy Lens": "hero_policy.png",
+    }
+    hero_name = hero_images.get(page_name)
+    hero_path = PROJECT_ROOT / "assets" / "illustrations" / str(hero_name)
+
+    if hero_path.is_file():
+        image_data = base64.b64encode(hero_path.read_bytes()).decode("ascii")
+        st.markdown(
+            '<div class="qj-page-hero">'
+            f'<img src="data:image/png;base64,{image_data}" alt="" />'
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        return
+
+    st.markdown(
+        '<div class="qj-page-hero qj-page-hero-fallback" role="img" '
+        'aria-label="頁面橫幅"></div>',
+        unsafe_allow_html=True,
+    )
+
+
 def main() -> None:
     st.set_page_config(
         page_title="青聚新北",
@@ -180,17 +239,12 @@ def main() -> None:
         current_page = "青年安居推薦"
     if current_page not in page_options:
         current_page = "青年職涯探索"
+    if st.session_state.get("app_page") != current_page:
+        st.session_state.app_page = current_page
     apply_styles(current_page)
 
-    page = st.segmented_control(
-        "頁面",
-        options=page_options,
-        default=current_page,
-        key="app_page",
-        label_visibility="collapsed",
-    )
-    if page is None:
-        page = "青年職涯探索"
+    page = render_top_nav(page_options, current_page)
+    render_page_hero(page)
     if page == "青年職涯探索":
         try:
             candidates_v35, training_v4, course_mapping, demo_job_evidence, beauty_phase5, crc_external_market = load_career_evidence_data()
@@ -297,8 +351,7 @@ def main() -> None:
     st.markdown(
         """
         <div class="qj-housing-page-intro">
-            <div class="qj-header-title">青年安居推薦</div>
-            <div class="qj-subtitle">從租金、通勤與生活機能找到適合自己的新北生活圈。</div>
+            <h1 class="qj-visually-hidden">青年安居推薦</h1>
         </div>
         """,
         unsafe_allow_html=True,
@@ -330,7 +383,11 @@ def main() -> None:
             destination,
             towns,
             cities,
-            render_controls=lambda: _render_housing_control_center(*control_args, show_recommendation_mode=False),
+            render_controls=lambda: _render_housing_control_center(
+                *control_args,
+                show_recommendation_mode=False,
+                show_heading=False,
+            ),
         )
     else:
         render_dashboard_view(

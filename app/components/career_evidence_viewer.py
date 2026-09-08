@@ -279,8 +279,8 @@ def render_career_evidence_viewer(
     _html(
         f"""
         <div class="qj-career-header">
-            <div class="qj-header-title">青年職涯探索</div>
-            <div class="qj-subtitle">護理師 → {escape(_current_domain_label())} 的職涯可能性探索</div>
+            <h1 class="qj-visually-hidden">青年職涯探索</h1>
+            <div class="qj-page-intro">從背景、技能與市場訊號，探索可能的職涯方向。</div>
         </div>
         """
     )

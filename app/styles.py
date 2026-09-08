@@ -1110,6 +1110,130 @@ def apply_styles(page: str = "青年安居推薦") -> None:
         }}
         .qj-subtitle {{ max-width: 48rem; line-height: 1.55; }}
 
+        /* Global top navigation: a light website header, not a dashboard card. */
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) {{
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 0 !important;
+            border-bottom: 1px solid #DDEAF2 !important;
+            border-radius: 0 !important;
+            box-shadow: 0 1px 3px rgba(23, 50, 77, 0.035) !important;
+            margin: 0 0 0.875rem !important;
+            padding: 0 0.15rem !important;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) > div {{
+            padding: 0 !important;
+        }}
+        .qj-top-nav-brand {{
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 60px;
+        }}
+        .qj-top-nav-title {{
+            color: var(--qj-text);
+            font-size: clamp(1rem, 1.25vw, 1.28rem);
+            font-weight: 900;
+            letter-spacing: -0.025em;
+            line-height: 1.1;
+            white-space: nowrap;
+        }}
+        .qj-top-nav-subtitle {{
+            color: var(--qj-muted);
+            font-size: 0.72rem;
+            font-weight: 720;
+            margin-top: 0.18rem;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [data-testid="stHorizontalBlock"]:has(button) {{
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            min-height: 60px;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) button {{
+            min-height: 2.15rem;
+            padding: 0.35rem 0.5rem;
+            background: transparent !important;
+            border: 0 !important;
+            border-radius: 6px !important;
+            box-shadow: none !important;
+            color: var(--qj-muted) !important;
+            font-size: 0.88rem;
+            font-weight: 780;
+            white-space: nowrap;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) button:hover {{
+            color: var(--qj-text) !important;
+            background: rgba(23, 50, 77, 0.04) !important;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) button[data-testid="stBaseButton-primary"] {{
+            color: var(--qj-text) !important;
+            background: var(--qj-primary-soft) !important;
+            border-bottom: 2px solid var(--qj-primary) !important;
+        }}
+
+        /* Each supplied illustration is a complete banner, with no text overlaid. */
+        .qj-page-hero {{
+            width: 100%;
+            height: 160px;
+            margin: 0 0 1.5rem;
+            overflow: hidden;
+            border-radius: 20px;
+            box-shadow: 0 3px 12px rgba(23, 50, 77, 0.07);
+        }}
+        .qj-page-hero img {{
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover;
+            object-position: center;
+            border-radius: 20px;
+        }}
+        .qj-page-hero-fallback {{
+            background:
+                radial-gradient(circle at 82% 22%, rgba(255, 255, 255, 0.72), transparent 28%),
+                linear-gradient(112deg, var(--qj-primary-soft), rgba(255, 255, 255, 0.9));
+        }}
+        .qj-visually-hidden {{
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }}
+        .qj-career-header,
+        .qj-policy-header,
+        .qj-housing-page-intro {{
+            margin: 0 0 0.7rem;
+        }}
+        .qj-page-intro {{
+            max-width: 48rem;
+            color: var(--qj-muted);
+            font-size: 0.98rem;
+            line-height: 1.5;
+        }}
+        .qj-column-heading {{
+            min-height: 0;
+            display: flex;
+            align-items: flex-end;
+            margin: 0;
+            padding: 0;
+        }}
+        .qj-column-heading h2,
+        .qj-column-heading h3 {{
+            margin: 0;
+            padding: 0;
+            line-height: 1.15;
+        }}
+        @media (max-width: 1440px) {{
+            .qj-page-hero {{ height: 150px; }}
+        }}
+
         /* Navigation, selectors, and actions share the same quiet, rounded treatment. */
         div[data-testid="stSegmentedControl"] {{ margin-bottom: 0.9rem; }}
         div[data-testid="stSegmentedControl"] button {{
@@ -1274,7 +1398,7 @@ def apply_styles(page: str = "青年安居推薦") -> None:
 
         /* Housing Phase 2A: a calmer, clearer entry flow and recommendation overview. */
         .qj-housing-page-intro {{
-            margin: 0.2rem 0 1.15rem;
+            margin: 0 0 0.7rem;
         }}
         .qj-housing-eyebrow,
         .qj-section-eyebrow,
@@ -1489,8 +1613,17 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             .stApp [data-testid="stAppViewContainer"] .main .block-container,
             .block-container {{ padding: 1.15rem 0.9rem 2.5rem; }}
             .qj-header-title {{ font-size: 2rem; }}
+            .qj-page-hero {{
+                height: 130px;
+                margin-bottom: 1.25rem;
+                border-radius: 18px;
+            }}
+            .qj-page-hero img {{ border-radius: 18px; }}
             .qj-housing-view-switch {{ margin-top: 0.9rem; }}
             .qj-overview-card {{ min-height: auto; }}
+            div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [data-testid="stHorizontalBlock"] {{ flex-wrap: wrap; }}
+            div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [data-testid="column"] {{ min-width: 100% !important; }}
+            div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [data-testid="stHorizontalBlock"]:has(button) {{ justify-content: flex-start; min-height: auto; padding-bottom: 0.55rem; }}
             div[data-testid="stSegmentedControl"] button {{ padding-inline: 0.7rem; }}
             .qj-career-policy-grid {{ grid-template-columns: 1fr 1fr; }}
         }}

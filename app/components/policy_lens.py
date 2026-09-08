@@ -136,8 +136,8 @@ def render_policy_lens(
     st.markdown(
         """
         <div class="qj-policy-header">
-            <div class="qj-header-title">青聚新北｜青年局 Policy Lens</div>
-            <div class="qj-subtitle">分開觀察青年職涯與安居資料訊號，作為政策端快速掃描工具</div>
+            <h1 class="qj-visually-hidden">青年局 Policy Lens</h1>
+            <div class="qj-page-intro">分開觀察青年職涯與安居資料訊號，作為政策端快速掃描工具。</div>
             <div class="qj-policy-alert">Policy v0 為政策篩選與探索工具，不代表正式政策優先順序。</div>
         </div>
         """,

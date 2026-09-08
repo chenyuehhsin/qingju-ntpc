@@ -96,15 +96,30 @@ def render_comparison_dashboard(
     render_controls: Callable[[], None],
 ) -> None:
     top1 = _top1_by_mode(top3)
-    left, middle, right = st.columns([23, 27, 50], gap="medium")
+    heading_left, heading_middle, heading_right = st.columns([0.23, 0.28, 0.49], gap="large")
+    with heading_left:
+        st.markdown(
+            '<div class="qj-column-heading"><h3>設定我的條件</h3></div>',
+            unsafe_allow_html=True,
+        )
+    with heading_middle:
+        st.markdown(
+            '<div class="qj-column-heading"><h3>四種偏好下的 Top 1</h3></div>',
+            unsafe_allow_html=True,
+        )
+    with heading_right:
+        st.markdown(
+            '<div class="qj-column-heading"><h3>推薦總覽地圖</h3></div>',
+            unsafe_allow_html=True,
+        )
+
+    left, middle, right = st.columns([0.23, 0.28, 0.49], gap="large")
     with left:
         render_controls()
         _render_comparison_market_overview(candidates, destination)
     with middle:
-        st.markdown("### 四種偏好下的 Top 1")
         _render_comparison_mode_cards(top1)
     with right:
-        st.markdown("### 推薦總覽地圖")
         analysis_layer = st.segmented_control(
             "行政區背景",
             options=DISTRICT_ANALYSIS_LAYER_OPTIONS,
