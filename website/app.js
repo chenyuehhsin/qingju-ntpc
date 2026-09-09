@@ -1707,7 +1707,7 @@ loadSiteData()
     renderMap(geojsonCache);
     selectDistrict(selectedDistrict, false);
     setupAssistant();
-    import("./policy-assistant.js").then(module => module.setupPolicyAssistant(policyDatasetText)).catch(() => {
+    import("./policy-assistant.js?v=20260909-policy-pet").then(module => module.setupPolicyAssistant(policyDatasetText)).catch(() => {
       document.querySelector("#policy-status").textContent = "政策助理暫時無法載入";
     });
     document.querySelector("#metric-select").addEventListener("change", () => renderMap(geojsonCache));

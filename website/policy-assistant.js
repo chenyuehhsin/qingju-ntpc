@@ -81,11 +81,30 @@ export function renderPolicyResult(result, catalog, output) {
 }
 
 export async function setupPolicyAssistant(datasetText) {
+  const panel = document.querySelector("#policy-panel");
+  const launcher = document.querySelector("#policy-launcher");
+  const close = document.querySelector("#policy-close");
   const form = document.querySelector("#policy-form");
   const input = document.querySelector("#policy-query");
   const button = document.querySelector("#policy-submit");
   const output = document.querySelector("#policy-output");
   const status = document.querySelector("#policy-status");
+  const setOpen = open => {
+    panel.hidden = !open;
+    launcher.setAttribute("aria-expanded", String(open));
+    launcher.setAttribute("aria-label", open ? "收起青聚 AI 政策助理" : "開啟青聚 AI 政策助理");
+    if (open) input.focus({ preventScroll: true });
+    else launcher.focus({ preventScroll: true });
+  };
+  launcher.disabled = false;
+  launcher.addEventListener("click", () => setOpen(panel.hidden));
+  close.addEventListener("click", () => setOpen(false));
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && !panel.hidden) {
+      event.preventDefault();
+      setOpen(false);
+    }
+  });
   let catalog;
   try {
     const response = await fetch("./data/policy_catalog.json", { cache: "no-store" });
@@ -126,6 +145,8 @@ export async function setupPolicyAssistant(datasetText) {
     } catch { status.textContent = "API 暫時無法使用，已使用經驗證的本地資料"; }
     renderPolicyResult(result, catalog, output);
     button.disabled = false;
+    const body = panel.querySelector(".policy-panel-body");
+    body.scrollTop += output.getBoundingClientRect().top - body.getBoundingClientRect().top - 12;
   });
   document.querySelectorAll("#policy-panel [data-policy-query]").forEach(item => {
     item.addEventListener("click", () => {

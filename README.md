@@ -287,7 +287,7 @@ python scripts/test_monthly_pipeline.py
 
 ## 青聚 AI 政策助理 MVP
 
-Dashboard 新增政策助理入口，支援行政區資料查詢、二區／多區比較、指標解釋及政策觀察。既有求職助理保留。數值、Index、可靠度與排序由既有 Python decision layer 提供；不使用外部 LLM API。
+點擊網頁右下角的「青聚小幫手」浮動角色即可展開政策助理；按 × 或 Esc 收起，問題與回答會保留。支援行政區資料查詢、二區／多區比較、指標解釋及政策觀察。既有求職助理保留。數值、Index、可靠度與排序由既有 Python decision layer 提供；不使用外部 LLM API。
 
 資料更新並完成原有 validation 後，請更新政策助理衍生資料：
 

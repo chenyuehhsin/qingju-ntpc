@@ -1100,10 +1100,68 @@ footer {
 /* Policy assistant reuses dashboard panels, tables and answer typography. */
 #policy-form { display: grid; gap: 12px; margin-bottom: 16px; }
 #policy-query { width: 100%; box-sizing: border-box; font: inherit; padding: 12px; border: 1px solid #a9bdb3; border-radius: 10px; resize: vertical; }
-#policy-submit { justify-self: start; }
+#policy-submit { justify-self: start; border: 0; border-radius: 12px; padding: 10px 18px; background: var(--teal); color: white; font: inherit; font-weight: 600; cursor: pointer; }
+#policy-submit:hover { background: #0c625b; }
+#policy-submit:disabled { opacity: .55; cursor: wait; }
 .policy-suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
 #policy-panel button { min-height: 44px; }
 #policy-panel { min-width: 0; }
 #policy-output { overflow-wrap: anywhere; }
 #policy-output pre { max-height: 400px; overflow: auto; white-space: pre-wrap; }
 .policy-sources li { margin-block: 12px; }
+
+/* The pet stays in the viewport; only its answer panel scrolls. */
+#policy-launcher {
+  position: fixed; z-index: 1100;
+  right: max(24px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom));
+  display: grid; justify-items: center; gap: 0;
+  width: 124px; padding: 0; background: transparent; border: 0;
+  color: #244c3a; box-shadow: none; cursor: pointer;
+}
+#policy-launcher:hover { background: transparent; transform: none; }
+#policy-launcher:focus-visible { outline: 3px solid #297452; outline-offset: 5px; border-radius: 22px; }
+.policy-pet { width: 92px; height: 103px; overflow: visible; filter: drop-shadow(0 5px 8px #244c3a18); }
+.policy-pet-label { background: #fffdf7; border: 1px solid #d1e2d4; border-radius: 14px 14px 3px 14px; padding: 7px 10px; font-size: 12px; box-shadow: 0 3px 14px #244c3a10; }
+.policy-pet-name { font-size: 12px; font-weight: 700; background: #e9f3e6; border: 1px solid #c4dac9; border-radius: 20px; padding: 4px 10px; }
+.policy-pet-body { animation: policy-pet-bob 3.5s ease-in-out infinite; }
+.policy-pet-eyes { transform-box: fill-box; transform-origin: center; animation: policy-pet-blink 6s infinite; }
+#policy-launcher:hover .policy-pet-body { animation-duration: 1.2s; }
+#policy-launcher[aria-expanded="true"] .policy-pet-label { visibility: hidden; }
+@keyframes policy-pet-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px) rotate(2deg); } }
+@keyframes policy-pet-blink { 0%, 43%, 47%, 100% { transform: scaleY(1); } 45% { transform: scaleY(.12); } }
+#policy-panel[hidden] { display: none; }
+#policy-panel {
+  position: fixed; z-index: 1090;
+  right: max(24px, env(safe-area-inset-right)); bottom: calc(170px + env(safe-area-inset-bottom));
+  width: min(540px, calc(100vw - 32px)); max-height: min(710px, calc(100dvh - 194px));
+  display: flex; flex-direction: column; padding: 0; margin: 0;
+  border: 1px solid #bfd5c6; border-radius: 22px; background: #fffdf8;
+  box-shadow: 0 18px 64px #173e362e, 0 2px 8px #173e3612;
+  overflow: hidden; box-sizing: border-box;
+}
+.policy-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 20px; background: #edf5e9; border-bottom: 1px solid #d8e5d5; flex-shrink: 0; }
+#policy-panel h2 { margin: 4px 0 0; font-size: 20px; }
+.policy-eyebrow { color: #567463; font-size: 11px; letter-spacing: .08em; }
+#policy-close { min-width: 44px; width: 44px; height: 44px; padding: 0; border: 1px solid #ccdccc; border-radius: 50%; background: #fffdf8; color: #244c3a; font-size: 26px; line-height: 1; flex-shrink: 0; }
+.policy-panel-body { padding: 18px 20px 24px; overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+.policy-intro { margin: 0 0 10px; color: #617165; font-size: 13px; line-height: 1.7; }
+#policy-panel #policy-form { margin-top: 16px; }
+#policy-panel .policy-suggestions button { white-space: normal; text-align: left; font: inherit; font-size: 12px; padding: 8px 10px; border: 1px solid #cbded1; border-radius: 12px; background: #f4f8f0; color: #345944; cursor: pointer; }
+#policy-panel .policy-suggestions button:hover { background: #e5f0df; border-color: #93b8a0; }
+#policy-panel .assistant-answer p { white-space: normal; }
+#policy-panel .assistant-evidence-table { max-width: 100%; overflow-x: auto; }
+#policy-output table { min-width: 1200px; }
+#policy-output th, #policy-output td { white-space: nowrap; overflow-wrap: normal; word-break: normal; }
+@media (max-width: 600px), (max-height: 600px) {
+  #policy-launcher { right: max(12px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); width: 100px; }
+  .policy-pet { width: 68px; height: 76px; }
+  .policy-pet-label { font-size: 11px; padding: 6px 8px; }
+  #policy-panel { right: 12px; bottom: calc(120px + env(safe-area-inset-bottom)); width: calc(100vw - 24px); max-height: calc(100dvh - 140px - env(safe-area-inset-bottom)); border-radius: 18px; }
+  .policy-panel-header { padding: 12px 14px; }
+  .policy-panel-body { padding: 14px; }
+  #policy-panel h2 { font-size: 18px; }
+  #policy-launcher[aria-expanded="true"] .policy-pet-label { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .policy-pet-body, .policy-pet-eyes { animation: none; }
+}

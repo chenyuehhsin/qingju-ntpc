@@ -9,7 +9,7 @@
       content="整合新北市 29 行政區青年人口、台灣就業通職缺與公部門職缺的互動式青年就業地圖。"
     />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=20260831-demo-ready-v2" />
+    <link rel="stylesheet" href="./styles.css?v=20260909-policy-pet" />
   </head>
   <body>
     <header class="app-header">
@@ -90,11 +90,14 @@
         </aside>
       </section>
 
-      <section class="panel ai-panel" id="policy-panel" aria-labelledby="policy-title">
-        <div class="section-title">
-          <div><h2 id="policy-title">青聚 AI 政策助理</h2><p>用自然語言查詢新北青年就業資料。回答使用最新正式資料，與地圖篩選條件分開。</p></div>
-          <span id="policy-status" class="assistant-status" role="status">正在核對資料</span>
+      <section class="panel ai-panel policy-floating-panel" id="policy-panel" role="dialog" aria-modal="false" aria-labelledby="policy-title" hidden>
+        <div class="policy-panel-header">
+          <div><span class="policy-eyebrow">青聚小幫手 · 有依據的回答</span><h2 id="policy-title">青聚 AI 政策助理</h2></div>
+          <button id="policy-close" type="button" aria-label="收起政策助理">×</button>
         </div>
+        <div class="policy-panel-body">
+        <p class="policy-intro">想了解新北青年就業？問我吧。使用最新正式資料，與地圖篩選條件分開。</p>
+        <span id="policy-status" class="assistant-status" role="status">正在核對資料</span>
         <form id="policy-form">
           <label for="policy-query">想了解哪個行政區或指標？</label>
           <textarea id="policy-query" rows="2" maxlength="500" required placeholder="例如：板橋目前青年人口有多少？"></textarea>
@@ -107,7 +110,27 @@
           <button type="button" data-policy-query="哪些行政區值得進一步觀察？">哪些行政區值得進一步觀察？</button>
         </div>
         <div id="policy-output" class="assistant-output" aria-live="polite"><p>可查詢行政區資料、比較行政區、解釋指標與查看政策觀察。</p></div>
+        </div>
       </section>
+
+      <button id="policy-launcher" type="button" aria-label="開啟青聚 AI 政策助理" aria-expanded="false" aria-controls="policy-panel" disabled>
+        <span class="policy-pet-label">有問題，問青聚</span>
+        <svg class="policy-pet" viewBox="0 0 100 112" aria-hidden="true" focusable="false">
+          <ellipse class="policy-pet-shadow" cx="50" cy="103" rx="29" ry="5" fill="#143f3224"/>
+          <g class="policy-pet-body">
+            <path d="M49 31C32 31 24 21 27 12c15-1 25 7 24 18M51 29C50 12 62 5 76 9c-1 14-11 22-25 20" fill="#54a980" stroke="#226347" stroke-width="2.5" stroke-linejoin="round"/>
+            <path d="M24 74c-14-9-17 3-8 11l13 3M76 74c14-9 17 3 8 11l-13 3" fill="#b5e3c5" stroke="#226347" stroke-width="2.5"/>
+            <path d="M37 91l-6 9c-2 5 12 6 16-3M63 91l6 9c2 5-12 6-16-3" fill="#226347"/>
+            <path d="M50 28c-24 0-34 21-32 43 1 19 14 27 32 27s31-8 32-27c2-22-8-43-32-43Z" fill="#d3f0ce" stroke="#226347" stroke-width="3"/>
+            <path d="M31 38c-6 5-9 13-9 21" fill="none" stroke="#f7fff1" stroke-width="5" stroke-linecap="round"/>
+            <g class="policy-pet-eyes" fill="#244c3a"><ellipse cx="37" cy="60" rx="3.2" ry="4.3"/><ellipse cx="63" cy="60" rx="3.2" ry="4.3"/></g>
+            <ellipse cx="28" cy="70" rx="6" ry="3" fill="#f0b7a5"/><ellipse cx="72" cy="70" rx="6" ry="3" fill="#f0b7a5"/>
+            <path d="M44 70q6 7 12 0" fill="none" stroke="#244c3a" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M43 86h14" stroke="#84bf91" stroke-width="3" stroke-linecap="round"/>
+          </g>
+        </svg>
+        <span class="policy-pet-name">青聚小幫手 <span aria-hidden="true">✦</span></span>
+      </button>
 
       <section class="panel ai-panel">
         <div class="section-title">
@@ -231,6 +254,6 @@
       <span>未授權的民間求職網站不進行爬取；可用匯出檔或正式 API 接入。</span>
     </footer>
 
-    <script src="./app.js?v=20260831-demo-ready-v2"></script>
+    <script src="./app.js?v=20260909-policy-pet"></script>
   </body>
 </html>

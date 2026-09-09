@@ -1,5 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { openDashboard, readJson, expectNoConsoleErrors } from "./helpers.js";
+import { openDashboard as openBaseDashboard, readJson, expectNoConsoleErrors } from "./helpers.js";
+
+async function openDashboard(page, url = "/") {
+  const errors = await openBaseDashboard(page, url);
+  await expect(page.locator("#policy-launcher")).toBeEnabled();
+  await page.locator("#policy-launcher").click();
+  return errors;
+}
 
 async function ask(page, question) {
   await expect(page.locator("#policy-submit")).toBeEnabled();
@@ -76,4 +83,39 @@ test("policy assistant works at mobile width without page overflow", async ({ pa
   await ask(page, "比較板橋與淡水");
   const width = await page.evaluate(() => ({ content: document.documentElement.scrollWidth, viewport: innerWidth }));
   expect(width.content).toBeLessThanOrEqual(width.viewport + 1);
+  const panel = await page.locator("#policy-panel").boundingBox();
+  expect(panel.x).toBeGreaterThanOrEqual(0);
+  expect(panel.y).toBeGreaterThanOrEqual(0);
+  expect(panel.x + panel.width).toBeLessThanOrEqual(390);
+  expect(panel.y + panel.height).toBeLessThanOrEqual(844);
+  await page.screenshot({ path: test.info().outputPath("policy-pet-mobile.png") });
+});
+
+test("pet stays bottom-right and preserves answers when collapsed", async ({ page }) => {
+  const errors = await openBaseDashboard(page);
+  const launcher = page.locator("#policy-launcher");
+  const panel = page.locator("#policy-panel");
+  await expect(launcher).toBeEnabled();
+  await expect(panel).toBeHidden();
+  const before = await launcher.boundingBox();
+  const viewport = page.viewportSize();
+  expect(before.x).toBeGreaterThan(viewport.width - 180);
+  expect(before.y).toBeGreaterThan(viewport.height - 200);
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  const after = await launcher.boundingBox();
+  expect(after.x).toBe(before.x);
+  expect(after.y).toBe(before.y);
+  await launcher.click();
+  await expect(page.locator("#policy-query")).toBeFocused();
+  await ask(page, "比較板橋與淡水");
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(launcher).toBeFocused();
+  await expect(launcher).toHaveAttribute("aria-expanded", "false");
+  await launcher.click();
+  await expect(page.locator("#policy-output tbody tr")).toHaveCount(2);
+  await page.screenshot({ path: test.info().outputPath("policy-pet-desktop.png") });
+  await page.locator("#policy-close").click();
+  await expect(panel).toBeHidden();
+  await expectNoConsoleErrors(errors);
 });
