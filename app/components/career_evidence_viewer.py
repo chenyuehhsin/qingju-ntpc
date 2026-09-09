@@ -468,6 +468,7 @@ def _render_path_cards(evidence: pd.DataFrame) -> None:
     cols = st.columns(len(evidence), gap="medium")
     for col, (_, row) in zip(cols, evidence.iterrows()):
         occupation_name = str(row["target_occupation_name"])
+        occupation_class = "qj-career-card-data-scientists" if occupation_name == "Data Scientists" else ""
         note = PATH_NOTES.get(str(row["target_occupation_name"]), "")
         if row["target_occupation_name"] == "Health Informatics Specialists" and float(row["training_coverage_ratio"]) >= 0.5:
             note = ""
@@ -475,7 +476,7 @@ def _render_path_cards(evidence: pd.DataFrame) -> None:
         with col:
             _html(
                 f"""
-                <div class="qj-career-card {_span_class(row)}">
+                <div class="qj-career-card {_span_class(row)} {occupation_class}">
                     {_occupation_title_html(occupation_name)}
                     {badge}
                     <div class="qj-career-intro">{escape(PATH_INTROS.get(occupation_name, ""))}</div>

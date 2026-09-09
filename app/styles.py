@@ -1218,10 +1218,10 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             line-height: 1.5;
         }}
         .qj-column-heading {{
-            min-height: 0;
+            min-height: 44px;
             display: flex;
             align-items: flex-end;
-            margin: 0;
+            margin: 0 0 12px 0;
             padding: 0;
         }}
         .qj-column-heading h2,
@@ -1352,6 +1352,19 @@ def apply_styles(page: str = "青年安居推薦") -> None:
         .qj-career-card-high-reuse {{ border-top-color: var(--qj-primary-ink); }}
         .qj-career-card-partial-reuse {{ border-top-color: var(--qj-primary); }}
         .qj-career-card-major-reskilling, .qj-career-policy-card {{ border-top-color: var(--qj-primary); border-left-color: var(--qj-primary); }}
+        .qj-career-card-data-scientists {{
+            border-color: #B99A58;
+            border-top-color: #B99A58;
+            border-left-color: #B99A58;
+        }}
+        .st-key-housing_mode_card_0,
+        .st-key-housing_mode_card_0 [data-testid="stVerticalBlockBorderWrapper"] {{ border-color: #78B995 !important; }}
+        .st-key-housing_mode_card_1,
+        .st-key-housing_mode_card_1 [data-testid="stVerticalBlockBorderWrapper"] {{ border-color: #6EA7C7 !important; }}
+        .st-key-housing_mode_card_2,
+        .st-key-housing_mode_card_2 [data-testid="stVerticalBlockBorderWrapper"] {{ border-color: #E8A05A !important; }}
+        .st-key-housing_mode_card_3,
+        .st-key-housing_mode_card_3 [data-testid="stVerticalBlockBorderWrapper"] {{ border-color: #A98BC8 !important; }}
         .qj-transition-origin, .qj-path-conclusion, .qj-skill-chip {{
             background: var(--qj-primary-soft);
             border-color: var(--qj-primary-border);

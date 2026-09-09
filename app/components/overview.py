@@ -96,30 +96,16 @@ def render_comparison_dashboard(
     render_controls: Callable[[], None],
 ) -> None:
     top1 = _top1_by_mode(top3)
-    heading_left, heading_middle, heading_right = st.columns([0.23, 0.28, 0.49], gap="large")
-    with heading_left:
-        st.markdown(
-            '<div class="qj-column-heading"><h3>設定我的條件</h3></div>',
-            unsafe_allow_html=True,
-        )
-    with heading_middle:
-        st.markdown(
-            '<div class="qj-column-heading"><h3>四種偏好下的 Top 1</h3></div>',
-            unsafe_allow_html=True,
-        )
-    with heading_right:
-        st.markdown(
-            '<div class="qj-column-heading"><h3>推薦總覽地圖</h3></div>',
-            unsafe_allow_html=True,
-        )
-
-    left, middle, right = st.columns([0.23, 0.28, 0.49], gap="large")
-    with left:
+    left_col, middle_col, right_col = st.columns([0.23, 0.28, 0.49], gap="large", vertical_alignment="top")
+    with left_col:
+        _render_column_heading("設定我的條件")
         render_controls()
         _render_comparison_market_overview(candidates, destination)
-    with middle:
+    with middle_col:
+        _render_column_heading("四種偏好下的 Top 1")
         _render_comparison_mode_cards(top1)
-    with right:
+    with right_col:
+        _render_column_heading("推薦總覽地圖")
         analysis_layer = st.segmented_control(
             "行政區背景",
             options=DISTRICT_ANALYSIS_LAYER_OPTIONS,
@@ -140,6 +126,10 @@ def render_comparison_dashboard(
         st.caption("比較不同偏好下的 Top 1 生活圈，協助理解租金、通勤與生活機能之間的取捨。")
 
 
+def _render_column_heading(title: str) -> None:
+    st.markdown(f'<div class="qj-column-heading"><h3>{title}</h3></div>', unsafe_allow_html=True)
+
+
 def _render_comparison_market_overview(candidates: pd.DataFrame, destination: dict[str, float | str]) -> None:
     rents = pd.to_numeric(candidates["rent"], errors="coerce").dropna()
     st.markdown("### 新北租屋市場概況")
@@ -151,9 +141,9 @@ def _render_comparison_market_overview(candidates: pd.DataFrame, destination: di
 
 def _render_comparison_mode_cards(top1: pd.DataFrame) -> None:
     rows_by_mode = {row["preference_mode"]: row for _, row in top1.iterrows()}
-    for mode in MODE_ORDER:
+    for index, mode in enumerate(MODE_ORDER):
         row = rows_by_mode[mode]
-        with st.container(border=True):
+        with st.container(border=True, key=f"housing_mode_card_{index}"):
             title_col, action_col = st.columns([0.68, 0.32], gap="small")
             with title_col:
                 st.markdown(f"### {mode}")
