@@ -283,7 +283,7 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
                 column_config={
                     "資料訊號": st.column_config.TextColumn("資料訊號", width="large"),
                     "政策觀察": st.column_config.TextColumn("政策觀察", width="large"),
-                    "可評估工具": st.column_config.TextColumn("可評估工具", width="large"),
+                    "可評估工具": st.column_config.TextColumn("可評估政策方向", width="large"),
                     "涉及行政區": st.column_config.TextColumn("涉及行政區", width="large"),
                 },
             )
@@ -316,7 +316,7 @@ def _render_policy_intervention_compact_matrix(intervention_matrix: pd.DataFrame
         <div class="qj-policy-matrix-wrap">
             <table class="qj-policy-compact-matrix">
                 <thead>
-                    <tr><th>資料訊號</th><th>政策觀察</th><th>可評估工具</th><th>命中區域</th></tr>
+                    <tr><th>資料訊號</th><th>政策觀察</th><th>可評估政策方向</th><th>命中區域</th></tr>
                 </thead>
                 <tbody>
         """
