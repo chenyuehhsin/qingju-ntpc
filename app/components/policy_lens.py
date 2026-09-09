@@ -307,6 +307,25 @@ def render_career_policy_observations(
     career_policy_md: str,
     career_ladder: pd.DataFrame | None = None,
 ) -> None:
+    paths = _career_policy_paths(career_policy, career_ladder)
+    path_names = paths["target_occupation_name"].dropna().astype(str).tolist()
+    if "policy_career_view" not in st.session_state:
+        st.session_state.policy_career_view = "overview"
+    if "selected_policy_path" not in st.session_state:
+        st.session_state.selected_policy_path = None
+    if st.session_state.selected_policy_path not in path_names:
+        st.session_state.selected_policy_path = None
+
+    if st.session_state.policy_career_view == "detail" and st.session_state.selected_policy_path:
+        selected = paths.loc[paths["target_occupation_name"].eq(st.session_state.selected_policy_path)]
+        if not selected.empty:
+            _render_career_policy_detail(selected.iloc[0], career_policy, paths)
+            return
+        st.session_state.policy_career_view = "overview"
+
+    _render_career_policy_overview(career_policy, career_policy_md, paths)
+    return
+
     context = career_policy.iloc[0]
     ntpc_population = int(float(context["ntpc_population_18_35"]))
     transition_pct = float(context["mol_transition_intention_percent"])
@@ -481,6 +500,278 @@ def render_career_policy_observations(
             - 不產生轉職成功率、ranking、career score 或政策補助金額。
             """
         )
+
+
+def _render_career_policy_overview(
+    career_policy: pd.DataFrame,
+    career_policy_md: str,
+    paths: pd.DataFrame,
+) -> None:
+    context = career_policy.iloc[0]
+    st.markdown(
+        """
+        <div class="qj-policy-section-head">
+            <div class="qj-policy-section-title">職涯政策觀察</div>
+            <div class="qj-policy-section-copy">整合青年統計、轉職 feasibility、TaiwanJobs 市場訊號與職訓課程證據；不產生成功率、排名或補助金額。</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        f"""
+        <div class="qj-career-policy-grid">
+            <div class="qj-career-policy-card"><span>新北青年母體</span><b>{int(float(context['ntpc_population_18_35'])):,}</b><small>歷史 snapshot｜Exact 18–35｜{html.escape(str(context['ntpc_population_age_harmonization']))}</small></div>
+            <div class="qj-career-policy-card"><span>有轉換工作打算</span><b>{float(context['mol_transition_intention_percent']):.1f}%</b><small>Proxy 15–29｜{html.escape(str(context['mol_transition_age_harmonization']))}</small></div>
+            <div class="qj-career-policy-card"><span>近一年參加教育訓練</span><b>{float(context['mol_training_participation_percent']):.1f}%</b><small>Proxy 15–29｜{html.escape(str(context['mol_training_age_harmonization']))}</small></div>
+            <div class="qj-career-policy-card"><span>訓練資訊 / 費用障礙</span><b>{float(context['mol_no_course_info_percent']):.1f}% / {float(context['mol_fee_barrier_percent']):.1f}%</b><small>未參訓者｜單選主因｜Proxy</small></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.caption("年齡範圍不同：新北人口為 Exact 18–35；MOL 勞動與培訓指標為全台 15–29 Proxy。人口資料為歷史 snapshot，不作同期比較。")
+
+    st.markdown("### 有資料支持的政策觀察")
+    observations = _extract_policy_observations(career_policy_md) or [
+        "青年人口母體可精準掌握，但勞動與培訓訊號為全台 15–29 Proxy，應分開解讀。",
+        "部分轉職路徑在結構上可行，但市場證據強度不同；科技路徑多需先補 job-level 市場驗證。",
+        "跨域常見缺口集中在科技／資料能力與商業面能力，需逐一路徑檢視。",
+        "潛在課程覆蓋可作為課程供給訊號，不代表完整 curriculum 或技能已補足。",
+        "High=0 應解讀為公開市場證據不足，不代表職涯不存在。",
+    ]
+    _render_policy_observation_cards(observations)
+
+    st.markdown("### 可進一步檢視的轉職與培訓路徑")
+    st.caption("摘要僅呈現既有證據訊號；不代表轉職成功率、政策優先順序或補助金額。")
+    _render_policy_path_cards(paths)
+
+    with st.expander("查看常見 Skill Gap", expanded=False):
+        _render_skill_gap_table(career_policy)
+    with st.expander("查看 Market evidence 明細", expanded=False):
+        _render_market_evidence_table(career_policy)
+    with st.expander("查看潛在課程覆蓋 / Training Gap 明細", expanded=False):
+        _render_training_gap_table(career_policy)
+    with st.expander("查看完整 path 與 technical fields", expanded=False):
+        _render_all_paths_technical_table(paths)
+    with st.expander("查看方法與資料限制", expanded=False):
+        _render_career_policy_limitations()
+
+
+def _render_policy_observation_cards(observations: list[str]) -> None:
+    card_meta = [
+        ("青年統計的證據範圍", "Exact / Proxy"),
+        ("部分路徑結構可行，但市場證據強度不同", "Aggregate / Job-level evidence"),
+        ("跨域能力缺口需要分開檢視", "Skill gap"),
+        ("潛在課程覆蓋不等於完整訓練", "Potential course coverage"),
+        ("公開市場證據不足不等於市場不存在", "Market evidence"),
+    ]
+    for start in range(0, min(len(observations), len(card_meta)), 2):
+        columns = st.columns(2, gap="medium")
+        for offset, column in enumerate(columns):
+            index = start + offset
+            if index >= len(observations) or index >= len(card_meta):
+                continue
+            title, badge = card_meta[index]
+            with column:
+                st.markdown(
+                    f"""
+                    <div class="qj-policy-insight-card">
+                        <span class="qj-policy-evidence-badge">{html.escape(badge)}</span>
+                        <div class="qj-policy-insight-title">{html.escape(title)}</div>
+                        <div class="qj-policy-insight-copy">{html.escape(observations[index])}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+
+def _render_policy_path_cards(paths: pd.DataFrame) -> None:
+    if paths.empty:
+        st.info("尚未載入可檢視的職涯路徑資料。")
+        return
+    for start in range(0, len(paths), 3):
+        columns = st.columns(3, gap="medium")
+        for offset, (_, row) in enumerate(paths.iloc[start : start + 3].iterrows()):
+            index = start + offset
+            title = str(row["target_occupation_name"])
+            with columns[offset]:
+                with st.container(border=True, key=f"policy_career_path_{index}"):
+                    st.markdown(f"**{_occupation_zh(title)}**")
+                    st.caption(title)
+                    st.caption(f"政策介入：{_intervention_zh(str(row.get('policy_intervention_types', '')))}")
+                    st.caption(f"市場訊號：{_market_status_label(row)}｜學習負擔：{_learning_burden_zh(row.get('learning_burden'))}")
+                    st.caption(
+                        f"候選課程 {_format_count(row.get('matched_course_candidate_count', row.get('matched_course_count')))} 門"
+                        f"｜時數 {_format_single_course_hours(row)}"
+                    )
+                    st.caption(f"單門課程費用：{_format_single_course_fee(row)}")
+                    st.caption(_short_reason(row.get("policy_intervention_evidence_reasons")))
+                    if st.button("查看完整分析", key=f"policy_career_detail_{index}", use_container_width=True):
+                        st.session_state.selected_policy_path = title
+                        st.session_state.policy_career_view = "detail"
+                        st.rerun()
+
+
+def _render_career_policy_detail(row: pd.Series, career_policy: pd.DataFrame, paths: pd.DataFrame) -> None:
+    title = str(row["target_occupation_name"])
+    if st.button("← 返回政策掃描總覽", key="policy_career_back_overview"):
+        st.session_state.policy_career_view = "overview"
+        st.session_state.selected_policy_path = None
+        st.rerun()
+
+    st.markdown(
+        f"""
+        <div class="qj-policy-detail">
+            <div class="qj-policy-detail-title">{html.escape(_occupation_zh(title))}</div>
+            <div class="qj-policy-detail-subtitle">{html.escape(title)}</div>
+            <div class="qj-policy-detail-summary">
+                <span>政策介入：{html.escape(_intervention_zh(str(row.get('policy_intervention_types', ''))))}</span>
+                <span>市場訊號：{html.escape(_market_status_label(row))}</span>
+                <span>學習負擔：{html.escape(_learning_burden_zh(row.get('learning_burden')))}</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    metric_cols = st.columns(4, gap="small")
+    metrics = [
+        ("候選課程數", _format_count(row.get("matched_course_candidate_count", row.get("matched_course_count"))), "候選課程集合"),
+        ("單門課程時數", *_format_single_course_parts(row, "hours")),
+        ("單門課程費用", *_format_single_course_parts(row, "fee")),
+        ("學習負擔", _learning_burden_zh(row.get("learning_burden")), "既有輸出標記"),
+    ]
+    for column, (label, value, note) in zip(metric_cols, metrics):
+        with column:
+            _render_policy_metric_card(label, value, note)
+    st.caption("候選課程未證明為 sequential learning pathway；不顯示累計時數 / 累計費用，也不把它解讀為轉職總成本。")
+
+    left, right = st.columns(2, gap="medium")
+    with left:
+        _render_policy_analysis_card("探索方向", row.get("exploration_direction"))
+        _render_policy_analysis_card("基礎能力補強", row.get("foundation_skill_boost"))
+        _render_policy_analysis_card("學習里程碑", row.get("learning_milestone_or_validation"))
+    with right:
+        _render_policy_analysis_card("進階訓練", row.get("advanced_training"))
+        _render_policy_analysis_card("市場職缺銜接", row.get("market_job_linkage"))
+        _render_policy_evidence_reason(row.get("policy_intervention_evidence_reasons"))
+
+    with st.expander("查看完整 path 與 technical fields", expanded=False):
+        _render_path_technical_table(row)
+    with st.expander("查看常見 Skill Gap", expanded=False):
+        _render_skill_gap_table(career_policy)
+    with st.expander("查看 Market evidence 明細", expanded=False):
+        _render_market_evidence_table(career_policy)
+    with st.expander("查看 Training Gap 明細", expanded=False):
+        _render_training_gap_table(career_policy)
+    with st.expander("查看方法與資料限制", expanded=False):
+        _render_career_policy_limitations()
+
+
+def _career_policy_paths(career_policy: pd.DataFrame, career_ladder: pd.DataFrame | None) -> pd.DataFrame:
+    if career_ladder is not None and not career_ladder.empty:
+        return career_ladder.copy().reset_index(drop=True)
+    return career_policy.copy().reset_index(drop=True)
+
+
+def _render_policy_analysis_card(title: str, value: object) -> None:
+    st.markdown(
+        f'<div class="qj-policy-analysis-card"><div class="qj-policy-analysis-title">{html.escape(title)}</div><div class="qj-policy-analysis-copy">{html.escape(_compact_ladder_text(value))}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _render_policy_metric_card(label: str, value: str, note: str) -> None:
+    st.markdown(
+        f'<div class="qj-policy-compact-metric"><span>{html.escape(label)}</span><b>{html.escape(value)}</b><small>{html.escape(note)}</small></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _render_policy_evidence_reason(value: object) -> None:
+    reasons = [_reason_zh(reason) for reason in _reason_lines(value)]
+    st.markdown("#### 證據理由")
+    for reason in reasons[:4]:
+        st.caption(f"- {reason}")
+    if len(reasons) > 4:
+        with st.expander("查看證據理由", expanded=False):
+            for reason in reasons[4:]:
+                st.caption(f"- {reason}")
+
+
+def _render_skill_gap_table(career_policy: pd.DataFrame) -> None:
+    skill_gap = _common_skill_gaps(career_policy).head(8)
+    if skill_gap.empty:
+        st.info("目前 Phase 7 output 沒有可整理的 missing skill。")
+        return
+    display = skill_gap.copy()
+    display.insert(0, "skill_zh", display["skill"].map(_skill_zh))
+    st.dataframe(display[["skill_zh", "path_count"]], hide_index=True, use_container_width=True)
+
+
+def _render_market_evidence_table(career_policy: pd.DataFrame) -> None:
+    st.dataframe(_market_summary(career_policy), hide_index=True, use_container_width=True)
+
+
+def _render_training_gap_table(career_policy: pd.DataFrame) -> None:
+    display = career_policy[["target_domain", "target_occupation_name", "number_of_missing_skills", "potential_training_coverage_ratio", "matched_course_count", "training_gap_status", "learning_burden"]].copy()
+    display["potential_training_coverage_ratio"] = display["potential_training_coverage_ratio"].map(_format_ratio)
+    st.caption("潛在課程覆蓋只表示缺口技能是否找到可能相關課程，不代表課程深度足夠、完整 curriculum 或技能已補足。")
+    st.dataframe(display, hide_index=True, use_container_width=True)
+
+
+def _render_path_technical_table(row: pd.Series) -> None:
+    columns = _technical_columns(row.index)
+    st.dataframe(pd.DataFrame([row[columns].to_dict()]), hide_index=True, use_container_width=True)
+
+
+def _render_all_paths_technical_table(paths: pd.DataFrame) -> None:
+    columns = _technical_columns(paths.columns)
+    st.dataframe(paths[columns], hide_index=True, use_container_width=True)
+
+
+def _technical_columns(available_columns: object) -> list[str]:
+    fields = [
+        "target_domain", "target_occupation_name", "transition_span", "policy_intervention_types", "market_evidence_status",
+        "high_relevance_job_count", "medium_relevance_job_count", "potential_training_coverage_ratio", "matched_course_candidate_count",
+        "single_course_hours_median", "single_course_hours_min", "single_course_hours_max", "single_course_fee_median",
+        "single_course_fee_min", "single_course_fee_max", "sequential_learning_pathway_evidence",
+        "training_evidence_potential_course_found", "training_evidence_course_depth", "training_evidence_complete_pathway",
+        "learning_burden", "training_gap_status", "phase7_data_limitations", "conservative_note",
+    ]
+    return [field for field in fields if field in available_columns]
+
+
+def _render_career_policy_limitations() -> None:
+    st.markdown(
+        """
+        - 新北人口為歷史 snapshot；MOL 勞動與培訓指標為全台 15–29 Proxy，Exact / Partial / Proxy 標籤應分開解讀。
+        - TaiwanJobs 市場訊號受職稱 mapping 與 job-level evidence 限制；High=0 是公開市場證據不足，不是市場不存在。
+        - potential training coverage 只表示缺口技能可能有相關課程；不是完整 curriculum，也不代表技能已補足。
+        - 候選課程未建立 sequential learning pathway evidence，因此不加總時數或費用。
+        - 本工具不產生轉職成功率、政策 ranking、career score、補助金額或 AI 政策處方。
+        """
+    )
+
+
+def _market_status_label(row: pd.Series) -> str:
+    return "先補市場驗證" if _needs_market_validation(row) else "已有高相關市場證據"
+
+
+def _short_reason(value: object) -> str:
+    text = _reason_zh(_reason_lines(value)[0])
+    return text if len(text) <= 120 else f"{text[:117]}…"
+
+
+def _format_single_course_parts(row: pd.Series, kind: str) -> tuple[str, str]:
+    if kind == "hours":
+        raw = [row.get("single_course_hours_median"), row.get("single_course_hours_min"), row.get("single_course_hours_max")]
+        prefix, suffix = "", " 小時"
+    else:
+        raw = [row.get("single_course_fee_median"), row.get("single_course_fee_min"), row.get("single_course_fee_max")]
+        prefix, suffix = "NT$ ", ""
+    median, low, high = [pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0] for value in raw]
+    if any(pd.isna(value) for value in [median, low, high]):
+        return "未知", "單門課程資料未提供"
+    return f"{prefix}{median:,.0f}{suffix}", f"範圍 {prefix}{low:,.0f}–{prefix}{high:,.0f}{suffix}"
 
 
 def render_career_learning_ladder(career_ladder: pd.DataFrame | None) -> None:

@@ -759,6 +759,88 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             line-height: 1.05;
             margin: 0.24rem 0;
         }
+        .qj-policy-insight-card,
+        .qj-policy-analysis-card,
+        .qj-policy-compact-metric {
+            background: #ffffff;
+            border: 1px solid #F3D98B;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(23, 50, 77, 0.045);
+        }
+        .qj-policy-insight-card {
+            min-height: 128px;
+            padding: 0.82rem 0.9rem;
+            margin-bottom: 0.72rem;
+        }
+        .qj-policy-evidence-badge {
+            display: inline-flex;
+            background: #FFF4C7;
+            border: 1px solid #F3D98B;
+            border-radius: 999px;
+            color: #17324D;
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 0.18rem 0.42rem;
+        }
+        .qj-policy-insight-title,
+        .qj-policy-analysis-title {
+            color: #17324D;
+            font-size: 0.94rem;
+            font-weight: 850;
+            line-height: 1.35;
+            margin-top: 0.48rem;
+        }
+        .qj-policy-insight-copy,
+        .qj-policy-analysis-copy {
+            color: #52646B;
+            font-size: 0.82rem;
+            line-height: 1.48;
+            margin-top: 0.28rem;
+        }
+        .qj-policy-analysis-card {
+            padding: 0.82rem 0.9rem;
+            margin-bottom: 0.68rem;
+        }
+        .qj-policy-compact-metric {
+            min-height: 104px;
+            padding: 0.7rem 0.75rem;
+        }
+        .qj-policy-compact-metric span,
+        .qj-policy-compact-metric small {
+            display: block;
+            color: #64748B;
+            font-size: 0.73rem;
+            line-height: 1.3;
+        }
+        .qj-policy-compact-metric b {
+            display: block;
+            color: #17324D;
+            font-size: 1.05rem;
+            font-weight: 900;
+            line-height: 1.15;
+            margin: 0.24rem 0;
+            overflow-wrap: anywhere;
+        }
+        .qj-policy-detail-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.42rem;
+        }
+        .qj-policy-detail-summary span {
+            background: #FFF8E4;
+            border: 1px solid #F3D98B;
+            border-radius: 999px;
+            color: #17324D;
+            font-size: 0.78rem;
+            font-weight: 720;
+            padding: 0.26rem 0.5rem;
+        }
+        [class*="st-key-policy_career_path_"] {
+            background: #ffffff;
+            border-color: #F3D98B !important;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(23, 50, 77, 0.045);
+        }
         .qj-career-header {
             margin-top: 0.3rem;
             margin-bottom: 0.7rem;
