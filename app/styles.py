@@ -740,9 +740,9 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             border: 1px solid var(--qj-line);
             border-left: 5px solid #78B995;
             border-radius: 12px;
-            padding: 0.86rem 0.9rem;
+            padding: 0.7rem 0.78rem;
             box-shadow: 0 1px 2px rgba(36, 50, 56, 0.04);
-            min-height: 112px;
+            min-height: 96px;
         }
         .qj-career-policy-card span,
         .qj-career-policy-card small {
@@ -754,7 +754,7 @@ def apply_styles(page: str = "青年安居推薦") -> None:
         .qj-career-policy-card b {
             display: block;
             color: #243238;
-            font-size: 1.6rem;
+            font-size: 1.45rem;
             font-weight: 920;
             line-height: 1.05;
             margin: 0.24rem 0;
@@ -768,9 +768,9 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             box-shadow: 0 2px 8px rgba(23, 50, 77, 0.045);
         }
         .qj-policy-insight-card {
-            min-height: 128px;
-            padding: 0.82rem 0.9rem;
-            margin-bottom: 0.72rem;
+            min-height: 96px;
+            padding: 0.64rem 0.74rem;
+            margin-bottom: 0.5rem;
         }
         .qj-policy-evidence-badge {
             display: inline-flex;
@@ -788,12 +788,23 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             font-size: 0.94rem;
             font-weight: 850;
             line-height: 1.35;
+        }
+        .qj-policy-insight-title {
+            margin-top: 0.35rem;
+        }
+        .qj-policy-analysis-title {
             margin-top: 0.48rem;
         }
         .qj-policy-insight-copy,
         .qj-policy-analysis-copy {
             color: #52646B;
             font-size: 0.82rem;
+        }
+        .qj-policy-insight-copy {
+            line-height: 1.35;
+            margin-top: 0.18rem;
+        }
+        .qj-policy-analysis-copy {
             line-height: 1.48;
             margin-top: 0.28rem;
         }
@@ -840,6 +851,14 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             border-color: #F3D98B !important;
             border-radius: 16px;
             box-shadow: 0 2px 8px rgba(23, 50, 77, 0.045);
+        }
+        [class*="st-key-policy_career_path_"] div[data-testid="stButton"] {
+            margin-top: 0.5rem;
+        }
+        [class*="st-key-policy_career_path_"] div[data-testid="stButton"] button {
+            min-height: 2.15rem;
+            padding: 0.38rem 0.72rem;
+            font-size: 0.86rem;
         }
         .qj-career-header {
             margin-top: 0.3rem;

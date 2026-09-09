@@ -530,7 +530,6 @@ def _render_career_policy_overview(
     )
     st.caption("年齡範圍不同：新北人口為 Exact 18–35；MOL 勞動與培訓指標為全台 15–29 Proxy。人口資料為歷史 snapshot，不作同期比較。")
 
-    st.markdown("### 有資料支持的政策觀察")
     observations = _extract_policy_observations(career_policy_md) or [
         "青年人口母體可精準掌握，但勞動與培訓訊號為全台 15–29 Proxy，應分開解讀。",
         "部分轉職路徑在結構上可行，但市場證據強度不同；科技路徑多需先補 job-level 市場驗證。",
@@ -538,20 +537,28 @@ def _render_career_policy_overview(
         "潛在課程覆蓋可作為課程供給訊號，不代表完整 curriculum 或技能已補足。",
         "High=0 應解讀為公開市場證據不足，不代表職涯不存在。",
     ]
-    _render_policy_observation_cards(observations)
-
-    st.markdown("### 可進一步檢視的轉職與培訓路徑")
-    st.caption("摘要僅呈現既有證據訊號；不代表轉職成功率、政策優先順序或補助金額。")
+    st.markdown("### 可檢視的轉職與培訓路徑")
+    st.caption(
+        "結合轉職可行性、培訓課程與市場訊號，協助青年局判斷哪些路徑值得先補資料或設計支持工具。"
+    )
     _render_policy_path_cards(paths)
 
+    st.markdown("### 有資料支持的政策觀察")
+    st.caption("作為路徑判讀的背景脈絡，不代表政策優先順序。")
+    _render_policy_observation_cards(observations[:4])
+
+    with st.expander("資料來源與其他資料支持的觀察", expanded=False):
+        st.caption(
+            "新北人口為歷史 snapshot 的 Exact 18–35；MOL 勞動與培訓指標為全台 15–29 Proxy。"
+        )
+        for observation in observations[4:]:
+            st.caption(f"- {observation}")
     with st.expander("查看常見 Skill Gap", expanded=False):
         _render_skill_gap_table(career_policy)
     with st.expander("查看 Market evidence 明細", expanded=False):
         _render_market_evidence_table(career_policy)
     with st.expander("查看潛在課程覆蓋 / Training Gap 明細", expanded=False):
         _render_training_gap_table(career_policy)
-    with st.expander("查看完整 path 與 technical fields", expanded=False):
-        _render_all_paths_technical_table(paths)
     with st.expander("查看方法與資料限制", expanded=False):
         _render_career_policy_limitations()
 
@@ -564,7 +571,7 @@ def _render_policy_observation_cards(observations: list[str]) -> None:
         ("潛在課程覆蓋不等於完整訓練", "Potential course coverage"),
         ("公開市場證據不足不等於市場不存在", "Market evidence"),
     ]
-    for start in range(0, min(len(observations), len(card_meta)), 2):
+    for start in range(0, min(len(observations), 4, len(card_meta)), 2):
         columns = st.columns(2, gap="medium")
         for offset, column in enumerate(columns):
             index = start + offset
@@ -605,7 +612,7 @@ def _render_policy_path_cards(paths: pd.DataFrame) -> None:
                     )
                     st.caption(f"單門課程費用：{_format_single_course_fee(row)}")
                     st.caption(_short_reason(row.get("policy_intervention_evidence_reasons")))
-                    if st.button("查看完整分析", key=f"policy_career_detail_{index}", use_container_width=True):
+                    if st.button("查看完整分析 →", key=f"policy_career_detail_{index}", type="primary"):
                         st.session_state.selected_policy_path = title
                         st.session_state.policy_career_view = "detail"
                         st.rerun()
