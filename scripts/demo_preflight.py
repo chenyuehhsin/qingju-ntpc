@@ -107,8 +107,10 @@ def main() -> int:
 
     ai = run([sys.executable, "scripts/test_ai_decision_engine.py"])
     results.append(check("AI deterministic engine valid", ai.returncode == 0))
-    fallback = run([sys.executable, "scripts/test_openai_fallback.py"])
-    results.append(check("OpenAI fallback valid", fallback.returncode == 0))
+    policy = run([sys.executable, "scripts/test_policy_assistant.py"])
+    results.append(check("Policy assistant valid", policy.returncode == 0))
+    catalog = run([sys.executable, "scripts/export_policy_catalog.py", "--check"])
+    results.append(check("Policy catalog current", catalog.returncode == 0))
     findings = secret_findings()
     results.append(check("no secret exposed", not findings, "; ".join(findings[:3])))
     results.append(check("backend health optional", True, backend_health()))

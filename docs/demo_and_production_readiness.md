@@ -28,12 +28,12 @@ python scripts/run_demo.py
 - 產生 `website/data/build_info.json`。
 - 啟動 static website server。
 - 視環境啟動 FastAPI backend。
-- 顯示 frontend URL、backend health、OpenAI explanation 狀態。
+- 顯示 frontend URL、backend health、政策助理 deterministic 狀態。
 
-沒有 `OPENAI_API_KEY` 時：
+預設不需任何 LLM credentials：
 
 ```text
-OpenAI explanation: disabled
+Policy assistant: deterministic
 Deterministic assistant: enabled
 ```
 
@@ -56,19 +56,12 @@ Deterministic assistant: enabled
 
 外部職缺 URL 只有在使用者點「查看職缺」時才會連到外部網站，不影響核心展示。
 
-## 4. OpenAI Fallback
+## 4. 政策助理與 AWS 擴充
 
-後端永遠先執行 deterministic recommendation，再嘗試 optional LLM explanation。
-
-Fallback scenarios：
-
-- 沒有 `OPENAI_API_KEY`：回 deterministic template。
-- OpenAI package 未安裝：回 deterministic template。
-- API timeout：回 deterministic template。
-- API HTTP error：回 deterministic template。
-- LLM response invalid 或空白：回 deterministic template。
-
-使用者不會看到 traceback。
+後端與靜態網站均使用 deterministic explanation。OpenAI 正式依賴與呼叫已移除。
+政策助理支援 `?policyApi=1`；API 異常或證據不同時回到經 SHA-256 核對的本地資料。
+AWS Bedrock renderer 目前只是停用的 interface，尚未進行真實模型呼叫。
+執行 `python scripts/test_policy_assistant.py` 驗證 grounding 與 fallback。
 
 ## 5. Backend Failure Handling
 
@@ -108,7 +101,7 @@ python scripts/validate_all.py
 - data validation
 - history validation
 - AI deterministic tests
-- OpenAI fallback tests
+- Policy assistant tests
 - trend tests
 - monthly pipeline tests
 - build info generation
@@ -163,7 +156,7 @@ DEMO NOT READY
 內容只保留：
 
 ```text
-OPENAI_API_KEY=
+DEMO_MODE=1
 ```
 
 不要把真實 API key、token、password、secret 放入 repository。
@@ -204,5 +197,5 @@ python scripts/run_demo.py
 
 - 目前只有 `2026-08` 一個真實 snapshot，不能顯示 MoM 趨勢或 forecast。
 - `2026-09` 真實來源尚未發布時，pipeline 只允許 dry run，不建立假 snapshot。
-- OpenAI explanation 是 optional enhancement，不是核心 recommendation。
+- AWS 語言解釋僅為未來擴充，deterministic evidence 是核心。
 - 外部職缺網站 URL 需網路才能開啟，但不影響本地 Dashboard Demo。

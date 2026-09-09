@@ -53,18 +53,21 @@ def main() -> int:
         "scripts/validate_all.py",
         "scripts/run_monthly_pipeline.py",
         "scripts/test_monthly_pipeline.py",
-        "scripts/test_openai_fallback.py",
+        "src/policy_assistant.py",
+        "scripts/test_policy_assistant.py",
     ]
     steps: list[tuple[str, bool]] = []
     steps.append(run_step("data validation", [sys.executable, "scripts/validate_youth_employment_data.py"]))
     steps.append(run_step("history validation", [sys.executable, "scripts/validate_historical_data.py"]))
     steps.append(run_step("AI deterministic tests", [sys.executable, "scripts/test_ai_decision_engine.py"]))
-    steps.append(run_step("OpenAI fallback tests", [sys.executable, "scripts/test_openai_fallback.py"]))
+    steps.append(run_step("Policy assistant tests", [sys.executable, "scripts/test_policy_assistant.py"]))
+    steps.append(run_step("Policy catalog freshness", [sys.executable, "scripts/export_policy_catalog.py", "--check"]))
     steps.append(run_step("trend tests", [sys.executable, "scripts/test_trend_pipeline.py"]))
     steps.append(run_step("monthly pipeline tests", [sys.executable, "scripts/test_monthly_pipeline.py"]))
     steps.append(run_step("write build info", [sys.executable, "scripts/write_build_info.py"]))
     steps.append(run_step("Python compile check", [sys.executable, "-m", "py_compile", *python_files]))
     steps.append(run_step("JavaScript syntax check", ["node", "--check", "website/app.js"]))
+    steps.append(run_step("Policy JavaScript syntax check", ["node", "--check", "website/policy-assistant.js"]))
     if playwright_available():
         npx = shutil.which("npx") or shutil.which("npx.cmd")
         steps.append(run_step("Playwright E2E", [npx, "playwright", "test"]))

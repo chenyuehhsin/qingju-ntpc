@@ -26,6 +26,7 @@ let reliabilityBadgeLayer;
 let layerByDistrict = new Map();
 let geojsonCache;
 let payloadCache;
+let policyDatasetText;
 let historyCache = null;
 let buildInfo = null;
 let activeSnapshotMonth = null;
@@ -186,7 +187,8 @@ async function loadSiteData() {
   ]);
   if (!dataResponse.ok || !geoResponse.ok) throw new Error("資料檔載入失敗");
 
-  payloadCache = await dataResponse.json();
+  policyDatasetText = await dataResponse.text();
+  payloadCache = JSON.parse(policyDatasetText);
   geojsonCache = await geoResponse.json();
   const historyResponse = await fetch(`./data/youth_employment_history.json${cacheBust}`, { cache: "no-store" }).catch(() => null);
   historyCache = historyResponse?.ok ? await historyResponse.json() : null;
@@ -1670,7 +1672,7 @@ function setupAssistant() {
     status.textContent = "分析中";
     try {
       const result = USE_ASSISTANT_API ? await runAssistant(query) : buildLocalAssistantResult(query);
-      status.textContent = result.answer_source === "openai" ? "API + Evidence" : "本地資料驅動模式";
+      status.textContent = "資料驅動模式";
       renderAssistantResult(result);
     } catch (_error) {
       const result = buildLocalAssistantResult(query);
@@ -1705,6 +1707,9 @@ loadSiteData()
     renderMap(geojsonCache);
     selectDistrict(selectedDistrict, false);
     setupAssistant();
+    import("./policy-assistant.js").then(module => module.setupPolicyAssistant(policyDatasetText)).catch(() => {
+      document.querySelector("#policy-status").textContent = "政策助理暫時無法載入";
+    });
     document.querySelector("#metric-select").addEventListener("change", () => renderMap(geojsonCache));
     setAppStatus("資料已載入：新北市 29 行政區、職缺、歷史快照與本地 AI 分析可用。", "ready");
   })

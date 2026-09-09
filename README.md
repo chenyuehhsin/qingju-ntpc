@@ -174,13 +174,13 @@ python -m http.server 8080
 
 打開 `http://localhost:8080`。
 
-啟動 AI 決策助理後端（可選）。API key 只從環境變數 `OPENAI_API_KEY` 讀取，不放在 frontend：
+啟動助理後端（可選）。求職與政策助理預設均使用 deterministic mode，不需 API key：
 
 ```bash
 uvicorn server.app:app --host 127.0.0.1 --port 8000
 ```
 
-沒有 `OPENAI_API_KEY` 時，後端仍會回傳 deterministic template-based explanation。
+政策助理 API：`POST /api/policy-assistant`，body 為 `{"query":"比較板橋與淡水"}`。靜態網站無後端也可使用；加上 `?policyApi=1` 可核對 API 結果。
 
 執行 AI deterministic tests：
 
@@ -188,10 +188,10 @@ uvicorn server.app:app --host 127.0.0.1 --port 8000
 python scripts/test_ai_decision_engine.py
 ```
 
-執行 OpenAI graceful fallback tests：
+執行政策助理 grounding、拒答與 AWS placeholder fallback tests：
 
 ```bash
-python scripts/test_openai_fallback.py
+python scripts/test_policy_assistant.py
 ```
 
 建立每月歷史 snapshot。預設不覆蓋既有月份：
@@ -284,3 +284,20 @@ python scripts/test_monthly_pipeline.py
 - 青年就業機會指數 v1 是 prototype composite indicator，不是官方政府指標、官方排名或 AI 預測。
 - `jobs_per_1000_youth` 目前表示「每千名青年的台灣就業通與公部門事求人工作機會」，仍不是所有民間求職網站的完整市場。
 - 目前歷史資料只有 `2026-08` 一個 snapshot period，尚不足以計算 MoM、連續下降或任何 forecast；系統不會用 synthetic data 補缺失月份。
+
+## 青聚 AI 政策助理 MVP
+
+Dashboard 新增政策助理入口，支援行政區資料查詢、二區／多區比較、指標解釋及政策觀察。既有求職助理保留。數值、Index、可靠度與排序由既有 Python decision layer 提供；不使用外部 LLM API。
+
+資料更新並完成原有 validation 後，請更新政策助理衍生資料：
+
+```bash
+python scripts/export_policy_catalog.py
+python scripts/export_policy_catalog.py --check
+python scripts/test_policy_assistant.py
+npm run build
+```
+
+`npm run build` 需要 Python 與專案 Python 依賴，會拒絕部署過期 catalog。可用 `PYTHON` 指定 Python 執行檔。靜態網站使用 HTTPS 或 localhost（來源核對使用 Web Crypto）。政策助理固定使用正式 current dataset，並明示自己的資料期間，不跟隨地圖篩選或歷史月份切換。
+
+完整 audit、實作架構、測試結果與 AWS 接入邊界見 [政策助理報告](docs/policy_assistant_mvp.md)。

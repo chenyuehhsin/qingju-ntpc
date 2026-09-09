@@ -91,7 +91,7 @@ def main() -> int:
     health = http_json(f"http://127.0.0.1:{BACKEND_PORT}/health")
     print("")
     print(f"DEMO_MODE: {env.get('DEMO_MODE')}")
-    print(f"OpenAI explanation: {'enabled' if env.get('OPENAI_API_KEY') else 'disabled'}")
+    print("Policy assistant: deterministic; AWS Bedrock adapter not configured")
     print("Deterministic assistant: enabled")
     print(f"Backend health: {health or 'unavailable'}")
     print("")

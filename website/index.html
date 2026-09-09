@@ -90,6 +90,25 @@
         </aside>
       </section>
 
+      <section class="panel ai-panel" id="policy-panel" aria-labelledby="policy-title">
+        <div class="section-title">
+          <div><h2 id="policy-title">青聚 AI 政策助理</h2><p>用自然語言查詢新北青年就業資料。回答使用最新正式資料，與地圖篩選條件分開。</p></div>
+          <span id="policy-status" class="assistant-status" role="status">正在核對資料</span>
+        </div>
+        <form id="policy-form">
+          <label for="policy-query">想了解哪個行政區或指標？</label>
+          <textarea id="policy-query" rows="2" maxlength="500" required placeholder="例如：板橋目前青年人口有多少？"></textarea>
+          <button id="policy-submit" type="submit" disabled>查詢政策資料</button>
+        </form>
+        <div class="policy-suggestions" aria-label="政策助理推薦問題">
+          <button type="button" data-policy-query="哪些區青年就業機會較高？">哪些區青年就業機會較高？</button>
+          <button type="button" data-policy-query="比較板橋與新莊">比較板橋與新莊</button>
+          <button type="button" data-policy-query="Opportunity Index 是什麼？">Opportunity Index 是什麼？</button>
+          <button type="button" data-policy-query="哪些行政區值得進一步觀察？">哪些行政區值得進一步觀察？</button>
+        </div>
+        <div id="policy-output" class="assistant-output" aria-live="polite"><p>可查詢行政區資料、比較行政區、解釋指標與查看政策觀察。</p></div>
+      </section>
+
       <section class="panel ai-panel">
         <div class="section-title">
           <div>

@@ -1097,3 +1097,13 @@ footer {
     padding-left: 12px;
   }
 }
+/* Policy assistant reuses dashboard panels, tables and answer typography. */
+#policy-form { display: grid; gap: 12px; margin-bottom: 16px; }
+#policy-query { width: 100%; box-sizing: border-box; font: inherit; padding: 12px; border: 1px solid #a9bdb3; border-radius: 10px; resize: vertical; }
+#policy-submit { justify-self: start; }
+.policy-suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+#policy-panel button { min-height: 44px; }
+#policy-panel { min-width: 0; }
+#policy-output { overflow-wrap: anywhere; }
+#policy-output pre { max-height: 400px; overflow: auto; white-space: pre-wrap; }
+.policy-sources li { margin-block: 12px; }

@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from server.ai_service import assistant_response
-from src.config import demo_mode_enabled, openai_explanation_enabled
+from src.config import demo_mode_enabled
+from src.policy_assistant import answer_policy_question
 
 
 app = FastAPI(title="新北市青年就業 AI 決策助理")
@@ -28,7 +29,8 @@ def health() -> dict[str, object]:
     return {
         "status": "ok",
         "demo_mode": demo_mode_enabled(),
-        "openai_explanation": "enabled" if openai_explanation_enabled() else "disabled",
+        "policy_assistant": "deterministic",
+        "bedrock_explanation": "not_configured",
         "deterministic_assistant": "enabled",
     }
 
@@ -39,3 +41,11 @@ def assistant(request: AssistantRequest) -> dict:
     if not query:
         raise HTTPException(status_code=400, detail="query is required")
     return assistant_response(query)
+
+
+@app.post("/api/policy-assistant")
+def policy_assistant(request: AssistantRequest) -> dict:
+    query = request.query.strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="query is required")
+    return answer_policy_question(query)

@@ -15,11 +15,11 @@ User query
   -> district aggregation
   -> candidate ranking
   -> evidence pack
-  -> deterministic template or optional LLM explanation
+  -> deterministic template
   -> dashboard UI
 ```
 
-核心 engine 位於 `src/ai_decision_engine.py`。靜態網站也有對應的 browser deterministic fallback；即使沒有啟動後端或沒有 `OPENAI_API_KEY`，仍可回傳資料驅動推薦。
+核心 engine 位於 `src/ai_decision_engine.py`。靜態網站也有對應的 browser deterministic fallback；即使沒有啟動後端，仍可回傳資料驅動推薦。
 
 ## Query Parsing
 
@@ -81,13 +81,13 @@ Index 與 Reliability 是不同概念。高 Index 但 Low reliability 的行政�
 
 ## LLM Role
 
-後端 `server/app.py` 提供 `POST /api/assistant`。如果環境有 `OPENAI_API_KEY`，`server/ai_service.py` 可用 Evidence Pack 產生自然語言說明；如果沒有 API key，使用 deterministic template。
+後端 `server/app.py` 提供 `POST /api/assistant`，固定使用 deterministic template。政策助理另提供 `POST /api/policy-assistant`；正式 LLM 擴充僅預留 AWS Bedrock／AgentCore，詳見 `docs/policy_assistant_mvp.md`。
 
 LLM 不是 ranking engine。排名、推薦與數字均來自 deterministic engine。
 
 ## Hallucination Safeguards
 
-LLM prompt 明確限制：
+政策助理採完整問題規則匹配與正式證據選取；未來 LLM 亦須遵守：
 
 - 不可 invent job
 - 不可 invent salary

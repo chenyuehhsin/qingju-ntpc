@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "lookup_metrics": [
+    ["每千", "jobs_per_1000_youth"],
+    ["青年人口", "youth_population_18_35"],
+    ["薪資", "median_salary"],
+    ["職缺", "job_postings"],
+    ["工作機會", "job_openings"]
+  ],
+  "scope_pattern": "台北|臺北|桃園|台中|臺中|台南|臺南|高雄|基隆|新竹|苗栗|彰化|南投|雲林|嘉義|屏東|宜蘭|花蓮|台東|臺東|澎湖|金門|連江|全台|全臺|台灣|臺灣|taipei|taoyuan",
+  "routes": [
+    {"intent":"metric_explain","pattern":"^(請)?(解釋|說明)?(opportunityindex|index|青年就業機會指數|reliability|可靠度|資料可靠度)(是什麼|如何計算|怎麼算|的定義)?$"},
+    {"intent":"metric_explain","pattern":"^(為什麼)?D(的)?(opportunityindex|index|青年就業機會指數|reliability|可靠度|資料可靠度)(為什麼|怎麼會)?(比較|較|這麼|偏)?(高|低|是什麼|如何計算|怎麼算)$"},
+    {"intent":"district_compare","pattern":"^(請)?(比較)?D([和與跟、,及]|vs|和)D(([和與跟、,及]|vs)D)*(哪一區|哪區|哪裡)?(青年就業機會|工作機會)?(比較|較)?(好|適合找工作)?$"},
+    {"intent":"district_lookup","pattern":"^(請)?(查詢)?D(目前|現在)?(的)?(有多少)?(青年人口|18–35歲青年人口|職缺|工作機會|每千名青年(大約)?(有多少)?職缺|每千名青年工作機會|薪資指標|薪資|資料)(有多少|數|如何|概況)?$"},
+    {"intent":"policy_observation","selection":"population_gap","pattern":"^哪些(區域|行政區|區)(青年人口很多|青年人口多)(但)?(職缺|工作機會)(相對)?(不足|少)$"},
+    {"intent":"policy_observation","selection":"concentrated","pattern":"^哪些(行政區|區)(的)?職缺(很多|多)[，,]?(但是|但)?職缺(種類|類別)(比較|較)?集中$"},
+    {"intent":"policy_observation","selection":"attention","pattern":"^哪些(行政區|區)(值得)?(政策單位)?(政策觀察|進一步觀察|後續觀察|觀察|關注)$"},
+    {"intent":"policy_observation","selection":"opportunity","pattern":"^哪些(行政區|區)(青年就業機會|工作機會|機會)(比較|較)?(高|好)$"}
+  ],
+  "labels": {
+    "youth_population_18_35":"青年人口（18–35 歲，人）",
+    "job_postings":"職缺刊登筆數（筆）",
+    "job_openings":"工作機會／需求人數（人）",
+    "jobs_per_1000_youth":"每千名青年工作機會",
+    "median_salary":"月薪中位數（元）",
+    "salary_score":"薪資分數",
+    "job_diversity_score":"職類多樣性分數",
+    "employment_stability_score":"全職比例分數",
+    "opportunity_index":"Opportunity Index",
+    "reliability":"資料可靠度分數"
+  },
+  "limitations": [
+    "目前職缺資料屬於當期快照，不代表全年或完整就業市場；職缺並非僅向青年招募。",
+    "青年定義為 18–35 歲，分析範圍僅為新北市 29 行政區。",
+    "Opportunity Index 是原型綜合指標，並非官方排名或預測；相關性不代表因果關係。",
+    "職缺刊登筆數與需求人數不同；每千名青年工作機會以需求人數為分子。薪資僅使用可解析月薪，缺值不當成零。"
+  ]
+}
