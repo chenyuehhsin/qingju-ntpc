@@ -1,6 +1,10 @@
 .DS_Store
+.venv/
+__pycache__/
+*.pyc
+.env
+.codex/
 
 # Local/raw data should stay out of Git.
 data/raw/
 data/interim/
-

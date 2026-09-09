@@ -1,0 +1,39 @@
+{
+  "generated_at_utc": "2026-09-04T05:30:06.494009+00:00",
+  "download_date": "2026-09-04",
+  "raw_files": {
+    "metro_station": "data/raw/transport/metro/tdx_trtc_metro_station_2026-09-04.json",
+    "metro_line": "data/raw/transport/metro/tdx_trtc_metro_line_2026-09-04.json",
+    "metro_station_of_line": "data/raw/transport/metro/tdx_trtc_metro_station_of_line_2026-09-04.json",
+    "metro_shape": "data/raw/transport/metro/tdx_trtc_metro_shape_2026-09-04.json",
+    "youbike_taipei": "data/raw/transport/bike/tdx_taipei_youbike_station_2026-09-04.json",
+    "youbike_new_taipei": "data/raw/transport/bike/tdx_new_taipei_youbike_station_2026-09-04.json"
+  },
+  "processed_files": {
+    "metro_stations": "data/processed/transport/metro_stations.csv",
+    "metro_lines": "data/processed/transport/metro_lines.geojson",
+    "youbike_stations": "data/processed/transport/youbike_stations.csv"
+  },
+  "api_counts": {
+    "metro_station": 121,
+    "metro_line": 5,
+    "metro_station_of_line": 5,
+    "metro_shape": 5,
+    "youbike_taipei": 1800,
+    "youbike_new_taipei": 1600
+  },
+  "processed_counts": {
+    "metro_stations": 121,
+    "metro_line_features": 5,
+    "metro_line_features_with_geometry": 5,
+    "youbike_stations": 3400
+  },
+  "shape_status": {
+    "status": "reused",
+    "error": ""
+  },
+  "notes": [
+    "YouBike station endpoint only is fetched; real-time availability endpoints are intentionally not queried.",
+    "Metro route geometry is included only when TDX Shape/TRTC returns parseable geometry."
+  ]
+}

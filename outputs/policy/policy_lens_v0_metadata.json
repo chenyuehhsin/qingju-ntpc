@@ -1,0 +1,64 @@
+{
+  "created_at": "2026-08-25T13:46:30.613717+08:00",
+  "candidate_count": 16,
+  "workplace_count": 9,
+  "workplaces_used": [
+    {
+      "workplace_id": "gangqian_neihu",
+      "workplace_name": "港墘站",
+      "workplace_district": "內湖"
+    },
+    {
+      "workplace_id": "taipei_city_hall_xinyi",
+      "workplace_name": "市政府站",
+      "workplace_district": "信義"
+    },
+    {
+      "workplace_id": "taipei_main_zhongzheng",
+      "workplace_name": "台北車站",
+      "workplace_district": "中正"
+    },
+    {
+      "workplace_id": "nangang_nangang",
+      "workplace_name": "南港站",
+      "workplace_district": "南港"
+    },
+    {
+      "workplace_id": "xinban_special_district",
+      "workplace_name": "新板特區",
+      "workplace_district": "板橋"
+    },
+    {
+      "workplace_id": "xinzhuang_fuduxin",
+      "workplace_name": "新莊副都心",
+      "workplace_district": "新莊"
+    },
+    {
+      "workplace_id": "xizhi_science_park",
+      "workplace_name": "汐止科學園區",
+      "workplace_district": "汐止"
+    },
+    {
+      "workplace_id": "zhonghe_tech_park",
+      "workplace_name": "中和科技園區",
+      "workplace_district": "中和"
+    },
+    {
+      "workplace_id": "tucheng_industrial_park",
+      "workplace_name": "土城產業園區",
+      "workplace_district": "土城"
+    }
+  ],
+  "commute_accessibility_definition": "median commute_minutes across existing workplace presets",
+  "rent_quadrant_threshold": 15000.0,
+  "commute_quadrant_threshold": 41.900000000000006,
+  "policy_linked_record_definition": "social_housing_flag == 社宅 / 包租代管",
+  "limitations": [
+    "District-level MOI independent-suite rent benchmark is not station-area live rent.",
+    "Commute is representative candidate node to existing workplace anchor public-transit proxy.",
+    "Livability is an OSM 800m POI proxy, not complete quality of life.",
+    "Policy-linked rental share is rental registration sample structure, not market share or supply rate.",
+    "Rental records do not include tenant age.",
+    "Policy v0 is screening, not causal analysis or formal policy prioritization."
+  ]
+}

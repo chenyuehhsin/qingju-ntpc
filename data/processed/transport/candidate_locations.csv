@@ -1,0 +1,9 @@
+candidate_name,district,station_name,station_operator,station_uid,station_id,lat,lon,source_endpoint,source_update_time,tdx_update_time
+汐止車站,汐止區,汐止,TRA,TRA-0960,0960,25.0679,121.66113,https://tdx.transportdata.tw/api/basic/v2/Rail/TRA/Station,,2026-08-21T07:18:19+08:00
+頂溪站,永和區,頂溪,TRTC,TRTC-O04,O04,25.01308,121.515398,https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/Station/TRTC,2023-10-12T00:00:00+08:00,2023-10-17T00:00:00+08:00
+景安站,中和區,景安,TRTC,TRTC-O02,O02,24.99392,121.505114,https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/Station/TRTC,2023-10-12T00:00:00+08:00,2023-10-17T00:00:00+08:00
+大坪林站,新店區,大坪林,TRTC,TRTC-G04,G04,24.98272,121.54134,https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/Station/TRTC,2023-10-12T00:00:00+08:00,2023-10-17T00:00:00+08:00
+板橋站,板橋區,板橋,TRTC,TRTC-BL07,BL07,25.014098,121.462671,https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/Station/TRTC,2023-10-12T00:00:00+08:00,2023-10-17T00:00:00+08:00
+三重站,三重區,三重,TRTC,TRTC-O15,O15,25.05571,121.48422,https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/Station/TRTC,2023-10-12T00:00:00+08:00,2023-10-17T00:00:00+08:00
+新莊站,新莊區,新莊,TRTC,TRTC-O18,O18,25.03608,121.45218,https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/Station/TRTC,2023-10-12T00:00:00+08:00,2023-10-17T00:00:00+08:00
+蘆洲站,蘆洲區,蘆洲,TRTC,TRTC-O54,O54,25.09152,121.46471,https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/Station/TRTC,2023-10-12T00:00:00+08:00,2023-10-17T00:00:00+08:00

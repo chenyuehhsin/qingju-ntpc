@@ -1,0 +1,182 @@
+{
+  "pipeline": "scripts/housing/build_ntpc_district_boundaries.py",
+  "generated_at": "2026-09-05T23:56:31+08:00",
+  "source": {
+    "organization": "National Land Surveying and Mapping Center / Ministry of the Interior",
+    "source_url": "https://maps.nlsc.gov.tw/download/%E9%84%89%E9%8E%AE%E5%B8%82%E5%8D%80%E7%95%8C%E7%B7%9A(TWD97%E7%B6%93%E7%B7%AF%E5%BA%A6).zip",
+    "source_date": "2023-03-17",
+    "source_crs": "EPSG:3824",
+    "raw_zip": "data/interim/housing/boundaries/nlsc_town_boundary_twd97.zip",
+    "raw_zip_sha256": "e028e5a750eee48cf7913330655e5e5c5bb1f176868fbd0afdfc661fca60557c",
+    "shapefile": "data/interim/housing/boundaries/nlsc_town_boundary_twd97/TOWN_MOI_1120317.shp",
+    "required_components": [
+      "TOWN_MOI_1120317.shp",
+      "TOWN_MOI_1120317.shx",
+      "TOWN_MOI_1120317.dbf",
+      "TOWN_MOI_1120317.prj"
+    ]
+  },
+  "output": {
+    "path": "data/processed/geography/ntpc_district_boundaries.geojson",
+    "crs": "EPSG:4326",
+    "size_bytes": 3111241,
+    "sha256": "91ffdb4a671d536d112d0a1f53a586bbc7b968e2365246877a5792877702601c"
+  },
+  "validation": {
+    "feature_count": 29,
+    "district_count": 29,
+    "district_names": [
+      "三峽區",
+      "三芝區",
+      "三重區",
+      "中和區",
+      "五股區",
+      "八里區",
+      "土城區",
+      "坪林區",
+      "平溪區",
+      "新店區",
+      "新莊區",
+      "板橋區",
+      "林口區",
+      "樹林區",
+      "永和區",
+      "汐止區",
+      "泰山區",
+      "淡水區",
+      "深坑區",
+      "烏來區",
+      "瑞芳區",
+      "石碇區",
+      "石門區",
+      "萬里區",
+      "蘆洲區",
+      "貢寮區",
+      "金山區",
+      "雙溪區",
+      "鶯歌區"
+    ],
+    "districts": [
+      {
+        "district": "三峽區",
+        "code": "F15"
+      },
+      {
+        "district": "三芝區",
+        "code": "F30"
+      },
+      {
+        "district": "三重區",
+        "code": "F05"
+      },
+      {
+        "district": "中和區",
+        "code": "F18"
+      },
+      {
+        "district": "五股區",
+        "code": "F03"
+      },
+      {
+        "district": "八里區",
+        "code": "F32"
+      },
+      {
+        "district": "土城區",
+        "code": "F19"
+      },
+      {
+        "district": "坪林區",
+        "code": "F10"
+      },
+      {
+        "district": "平溪區",
+        "code": "F22"
+      },
+      {
+        "district": "新店區",
+        "code": "F07"
+      },
+      {
+        "district": "新莊區",
+        "code": "F01"
+      },
+      {
+        "district": "板橋區",
+        "code": "F14"
+      },
+      {
+        "district": "林口區",
+        "code": "F02"
+      },
+      {
+        "district": "樹林區",
+        "code": "F17"
+      },
+      {
+        "district": "永和區",
+        "code": "F33"
+      },
+      {
+        "district": "汐止區",
+        "code": "F28"
+      },
+      {
+        "district": "泰山區",
+        "code": "F06"
+      },
+      {
+        "district": "淡水區",
+        "code": "F27"
+      },
+      {
+        "district": "深坑區",
+        "code": "F09"
+      },
+      {
+        "district": "烏來區",
+        "code": "F11"
+      },
+      {
+        "district": "瑞芳區",
+        "code": "F21"
+      },
+      {
+        "district": "石碇區",
+        "code": "F08"
+      },
+      {
+        "district": "石門區",
+        "code": "F31"
+      },
+      {
+        "district": "萬里區",
+        "code": "F26"
+      },
+      {
+        "district": "蘆洲區",
+        "code": "F04"
+      },
+      {
+        "district": "貢寮區",
+        "code": "F24"
+      },
+      {
+        "district": "金山區",
+        "code": "F25"
+      },
+      {
+        "district": "雙溪區",
+        "code": "F23"
+      },
+      {
+        "district": "鶯歌區",
+        "code": "F16"
+      }
+    ],
+    "duplicate_district_names": [],
+    "missing_districts": [],
+    "unexpected_districts": [],
+    "all_29_districts_present": true
+  }
+}

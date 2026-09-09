@@ -1,0 +1,417 @@
+{
+  "pipeline": "scripts/population/build_ntpc_district_youth_population.py",
+  "generated_at": "2026-09-05T22:52:47+08:00",
+  "source": {
+    "organization": "Ministry of the Interior Department of Household Registration",
+    "dataset_id": "ODRP014",
+    "dataset_name": "村里戶數、單一年齡人口（新增區域代碼）",
+    "source_url": "https://www.ris.gov.tw/rs-opendata/api/v1/datastore/ODRP014/11507?COUNTY=%E6%96%B0%E5%8C%97%E5%B8%82",
+    "source_month": "11507",
+    "source_period": "115年07月 / 2026-07",
+    "geographic_scope": "新北市村里，依戶政司 district_code、site_id、village 欄位彙整為 29 區",
+    "raw_response_files": [
+      {
+        "path": "data/raw/population/ris_odrp014_11507_ntpc_page_001.json",
+        "sha256": "b4e2bffaea51d3be1dd881df74746a1fdce1b2d785c055caa5a1c834ff1162ec"
+      }
+    ]
+  },
+  "exact_18_35_method": {
+    "age_range": [
+      18,
+      35
+    ],
+    "inclusive": true,
+    "formula": "sum(age 18..35 of people_age_{age:03d}_m + people_age_{age:03d}_f)",
+    "denominator": "sum(people_total) from the same ODRP014 month and village records",
+    "share_formula": "youth_18_35_count / total_population"
+  },
+  "outputs": {
+    "district_csv": "data/processed/population/ntpc_district_youth_18_35.csv",
+    "village_mapping_csv": "outputs/population/ntpc_village_to_district_mapping.csv",
+    "district_row_count": 29,
+    "village_mapping_row_count": 1039
+  },
+  "api_schema": {
+    "field_count": 210,
+    "field_names": [
+      "statistic_yyymm",
+      "district_code",
+      "site_id",
+      "village",
+      "household_no",
+      "people_total",
+      "people_total_m",
+      "people_total_f",
+      "people_age_000_m",
+      "people_age_000_f",
+      "people_age_001_m",
+      "people_age_001_f",
+      "people_age_002_m",
+      "people_age_002_f",
+      "people_age_003_m",
+      "people_age_003_f",
+      "people_age_004_m",
+      "people_age_004_f",
+      "people_age_005_m",
+      "people_age_005_f",
+      "people_age_006_m",
+      "people_age_006_f",
+      "people_age_007_m",
+      "people_age_007_f",
+      "people_age_008_m",
+      "people_age_008_f",
+      "people_age_009_m",
+      "people_age_009_f",
+      "people_age_010_m",
+      "people_age_010_f",
+      "people_age_011_m",
+      "people_age_011_f",
+      "people_age_012_m",
+      "people_age_012_f",
+      "people_age_013_m",
+      "people_age_013_f",
+      "people_age_014_m",
+      "people_age_014_f",
+      "people_age_015_m",
+      "people_age_015_f",
+      "people_age_016_m",
+      "people_age_016_f",
+      "people_age_017_m",
+      "people_age_017_f",
+      "people_age_018_m",
+      "people_age_018_f",
+      "people_age_019_m",
+      "people_age_019_f",
+      "people_age_020_m",
+      "people_age_020_f",
+      "people_age_021_m",
+      "people_age_021_f",
+      "people_age_022_m",
+      "people_age_022_f",
+      "people_age_023_m",
+      "people_age_023_f",
+      "people_age_024_m",
+      "people_age_024_f",
+      "people_age_025_m",
+      "people_age_025_f",
+      "people_age_026_m",
+      "people_age_026_f",
+      "people_age_027_m",
+      "people_age_027_f",
+      "people_age_028_m",
+      "people_age_028_f",
+      "people_age_029_m",
+      "people_age_029_f",
+      "people_age_030_m",
+      "people_age_030_f",
+      "people_age_031_m",
+      "people_age_031_f",
+      "people_age_032_m",
+      "people_age_032_f",
+      "people_age_033_m",
+      "people_age_033_f",
+      "people_age_034_m",
+      "people_age_034_f",
+      "people_age_035_m",
+      "people_age_035_f",
+      "people_age_036_m",
+      "people_age_036_f",
+      "people_age_037_m",
+      "people_age_037_f",
+      "people_age_038_m",
+      "people_age_038_f",
+      "people_age_039_m",
+      "people_age_039_f",
+      "people_age_040_m",
+      "people_age_040_f",
+      "people_age_041_m",
+      "people_age_041_f",
+      "people_age_042_m",
+      "people_age_042_f",
+      "people_age_043_m",
+      "people_age_043_f",
+      "people_age_044_m",
+      "people_age_044_f",
+      "people_age_045_m",
+      "people_age_045_f",
+      "people_age_046_m",
+      "people_age_046_f",
+      "people_age_047_m",
+      "people_age_047_f",
+      "people_age_048_m",
+      "people_age_048_f",
+      "people_age_049_m",
+      "people_age_049_f",
+      "people_age_050_m",
+      "people_age_050_f",
+      "people_age_051_m",
+      "people_age_051_f",
+      "people_age_052_m",
+      "people_age_052_f",
+      "people_age_053_m",
+      "people_age_053_f",
+      "people_age_054_m",
+      "people_age_054_f",
+      "people_age_055_m",
+      "people_age_055_f",
+      "people_age_056_m",
+      "people_age_056_f",
+      "people_age_057_m",
+      "people_age_057_f",
+      "people_age_058_m",
+      "people_age_058_f",
+      "people_age_059_m",
+      "people_age_059_f",
+      "people_age_060_m",
+      "people_age_060_f",
+      "people_age_061_m",
+      "people_age_061_f",
+      "people_age_062_m",
+      "people_age_062_f",
+      "people_age_063_m",
+      "people_age_063_f",
+      "people_age_064_m",
+      "people_age_064_f",
+      "people_age_065_m",
+      "people_age_065_f",
+      "people_age_066_m",
+      "people_age_066_f",
+      "people_age_067_m",
+      "people_age_067_f",
+      "people_age_068_m",
+      "people_age_068_f",
+      "people_age_069_m",
+      "people_age_069_f",
+      "people_age_070_m",
+      "people_age_070_f",
+      "people_age_071_m",
+      "people_age_071_f",
+      "people_age_072_m",
+      "people_age_072_f",
+      "people_age_073_m",
+      "people_age_073_f",
+      "people_age_074_m",
+      "people_age_074_f",
+      "people_age_075_m",
+      "people_age_075_f",
+      "people_age_076_m",
+      "people_age_076_f",
+      "people_age_077_m",
+      "people_age_077_f",
+      "people_age_078_m",
+      "people_age_078_f",
+      "people_age_079_m",
+      "people_age_079_f",
+      "people_age_080_m",
+      "people_age_080_f",
+      "people_age_081_m",
+      "people_age_081_f",
+      "people_age_082_m",
+      "people_age_082_f",
+      "people_age_083_m",
+      "people_age_083_f",
+      "people_age_084_m",
+      "people_age_084_f",
+      "people_age_085_m",
+      "people_age_085_f",
+      "people_age_086_m",
+      "people_age_086_f",
+      "people_age_087_m",
+      "people_age_087_f",
+      "people_age_088_m",
+      "people_age_088_f",
+      "people_age_089_m",
+      "people_age_089_f",
+      "people_age_090_m",
+      "people_age_090_f",
+      "people_age_091_m",
+      "people_age_091_f",
+      "people_age_092_m",
+      "people_age_092_f",
+      "people_age_093_m",
+      "people_age_093_f",
+      "people_age_094_m",
+      "people_age_094_f",
+      "people_age_095_m",
+      "people_age_095_f",
+      "people_age_096_m",
+      "people_age_096_f",
+      "people_age_097_m",
+      "people_age_097_f",
+      "people_age_098_m",
+      "people_age_098_f",
+      "people_age_099_m",
+      "people_age_099_f",
+      "people_age_100up_m",
+      "people_age_100up_f"
+    ],
+    "required_fields": [
+      "district_code",
+      "people_age_018_f",
+      "people_age_018_m",
+      "people_age_019_f",
+      "people_age_019_m",
+      "people_age_020_f",
+      "people_age_020_m",
+      "people_age_021_f",
+      "people_age_021_m",
+      "people_age_022_f",
+      "people_age_022_m",
+      "people_age_023_f",
+      "people_age_023_m",
+      "people_age_024_f",
+      "people_age_024_m",
+      "people_age_025_f",
+      "people_age_025_m",
+      "people_age_026_f",
+      "people_age_026_m",
+      "people_age_027_f",
+      "people_age_027_m",
+      "people_age_028_f",
+      "people_age_028_m",
+      "people_age_029_f",
+      "people_age_029_m",
+      "people_age_030_f",
+      "people_age_030_m",
+      "people_age_031_f",
+      "people_age_031_m",
+      "people_age_032_f",
+      "people_age_032_m",
+      "people_age_033_f",
+      "people_age_033_m",
+      "people_age_034_f",
+      "people_age_034_m",
+      "people_age_035_f",
+      "people_age_035_m",
+      "people_total",
+      "site_id",
+      "statistic_yyymm",
+      "village"
+    ]
+  },
+  "qa": {
+    "response_completeness": {
+      "api_declared_total_pages": 1,
+      "api_declared_total_data_size": "7781",
+      "retrieved_page_count": 1,
+      "retrieved_record_count": 1039,
+      "retrieved_record_count_equals_page_data_sizes": true,
+      "api_total_data_size_note": "ODRP014 returns the national totalDataSize even with COUNTY filtering; page count and pageDataSize are the response-completeness checks.",
+      "pages": [
+        {
+          "page": 1,
+          "page_data_size": 1039,
+          "url": "https://www.ris.gov.tw/rs-opendata/api/v1/datastore/ODRP014/11507?COUNTY=%E6%96%B0%E5%8C%97%E5%B8%82&page=1"
+        }
+      ],
+      "required_schema_fields_present": true
+    },
+    "aggregation": {
+      "expected_district_count": 29,
+      "district_count": 29,
+      "missing_districts": [],
+      "unexpected_districts": [],
+      "duplicate_districts": [],
+      "village_record_count": 1039,
+      "unique_village_district_code_count": 1039,
+      "duplicate_village_district_codes": [],
+      "village_records_accounted_for": true,
+      "district_code_prefixes_by_district": {
+        "三峽區": [
+          "65000090"
+        ],
+        "三芝區": [
+          "65000210"
+        ],
+        "三重區": [
+          "65000020"
+        ],
+        "中和區": [
+          "65000030"
+        ],
+        "五股區": [
+          "65000150"
+        ],
+        "八里區": [
+          "65000230"
+        ],
+        "土城區": [
+          "65000130"
+        ],
+        "坪林區": [
+          "65000200"
+        ],
+        "平溪區": [
+          "65000240"
+        ],
+        "新店區": [
+          "65000060"
+        ],
+        "新莊區": [
+          "65000050"
+        ],
+        "板橋區": [
+          "65000010"
+        ],
+        "林口區": [
+          "65000170"
+        ],
+        "樹林區": [
+          "65000070"
+        ],
+        "永和區": [
+          "65000040"
+        ],
+        "汐止區": [
+          "65000110"
+        ],
+        "泰山區": [
+          "65000160"
+        ],
+        "淡水區": [
+          "65000100"
+        ],
+        "深坑區": [
+          "65000180"
+        ],
+        "烏來區": [
+          "65000290"
+        ],
+        "瑞芳區": [
+          "65000120"
+        ],
+        "石碇區": [
+          "65000190"
+        ],
+        "石門區": [
+          "65000220"
+        ],
+        "萬里區": [
+          "65000280"
+        ],
+        "蘆洲區": [
+          "65000140"
+        ],
+        "貢寮區": [
+          "65000260"
+        ],
+        "金山區": [
+          "65000270"
+        ],
+        "雙溪區": [
+          "65000250"
+        ],
+        "鶯歌區": [
+          "65000080"
+        ]
+      },
+      "source_youth_18_35_count": 832214,
+      "district_youth_18_35_count": 832214,
+      "district_youth_equals_source_youth": true,
+      "source_total_population": 4037150,
+      "district_total_population": 4037150,
+      "district_total_population_equals_source_total": true
+    }
+  }
+}
