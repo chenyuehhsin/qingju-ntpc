@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import sys
 from pathlib import Path
 from typing import Any
@@ -7,18 +8,16 @@ from typing import Any
 import streamlit as st
 
 APP_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = APP_DIR.parent
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 from custom_workplace import GEOCODING_SOURCE, build_custom_dashboard_data, geocode_address
 from components.career_evidence_viewer import render_career_evidence_viewer
-from components.overview import render_overview
+from components.overview import render_comparison_dashboard
 from components.policy_lens import render_policy_lens
 from data_loader import (
-    MODE_COLORS,
-    MODE_COPY,
     MODE_ORDER,
-    MODE_SOFT_COLORS,
     load_boundaries,
     load_career_evidence_data,
     load_career_learning_ladder_phase8,
@@ -27,7 +26,7 @@ from data_loader import (
     load_policy_lens_data,
 )
 from recommendation_view import render_dashboard_view
-from styles import apply_selected_radio_style, apply_styles
+from styles import apply_styles
 
 
 NO_PRESET_LABEL = "無"
@@ -104,6 +103,127 @@ def _load_quick_example(preset_label: str, preset_workplaces: dict[str, dict[str
     st.session_state.active_workplace_input_address = address
 
 
+def _render_housing_control_center(
+    view_options: list[str],
+    preset_addresses: dict[str, str],
+    preset_options: list[str],
+    preset_workplaces: dict[str, dict[str, Any]],
+    show_recommendation_mode: bool = True,
+    show_heading: bool = True,
+) -> None:
+    if show_heading:
+        st.markdown("### 青年安居｜設定我的條件")
+        st.caption("從租金、通勤與生活機能，找到適合自己的新北生活圈。")
+    st.segmented_control(
+        "查看方式",
+        view_options,
+        label_visibility="visible",
+        key="housing_view_mode",
+    )
+    if show_recommendation_mode:
+        st.segmented_control(
+            "推薦模式",
+            MODE_ORDER,
+            label_visibility="visible",
+            key="housing_recommendation_mode",
+        )
+    else:
+        st.caption("比較模式會同時呈現四種偏好。")
+    st.text_input(
+        "工作地點",
+        key="workplace_address",
+        placeholder="例如：台北市內湖區瑞光路",
+        on_change=_mark_manual_address,
+        args=(preset_addresses,),
+    )
+    st.selectbox(
+        "快速範例",
+        preset_options,
+        key="quick_preset",
+        on_change=_apply_quick_preset,
+        args=(preset_addresses,),
+    )
+    st.markdown("固定條件：`大眾運輸`　`獨立套房`")
+    if not st.button("開始 / 更新推薦", use_container_width=True, key="housing_submit_recommendation"):
+        return
+
+    target_address = st.session_state.workplace_address.strip()
+    if not target_address:
+        st.error("請輸入工作地址，或先選擇一個快速範例。")
+        return
+    try:
+        selected_preset = st.session_state.get("quick_preset", NO_PRESET_LABEL)
+        if selected_preset != NO_PRESET_LABEL:
+            with st.spinner(f"載入快速範例：{selected_preset}..."):
+                _load_quick_example(selected_preset, preset_workplaces)
+        else:
+            with st.spinner("定位工作地址並計算 16 個生活圈通勤時間..."):
+                _load_custom_workplace(target_address)
+    except Exception as exc:
+        st.session_state.custom_workplace_data = None
+        st.session_state.custom_geocode = None
+        st.session_state.active_workplace_address = None
+        st.session_state.active_workplace_input_address = None
+        st.session_state.active_workplace_source = None
+        st.error(f"工作地址處理失敗：{exc}")
+        return
+    st.rerun()
+
+
+def render_top_nav(page_options: list[str], current_page: str) -> str:
+    with st.container(border=True):
+        brand_col, nav_col = st.columns([0.78, 1.22], gap="medium")
+        with brand_col:
+            st.markdown(
+                """
+                <div class="qj-top-nav-brand">
+                    <div class="qj-top-nav-title">青聚新北｜青年安居 × 就業 × 交通</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with nav_col:
+            nav_links = st.columns(len(page_options), gap="small")
+            for nav_col, option in zip(nav_links, page_options):
+                with nav_col:
+                    if st.button(
+                        option,
+                        key=f"top_nav_{option}",
+                        type="primary" if option == current_page else "secondary",
+                        use_container_width=True,
+                    ):
+                        st.session_state.app_page = option
+                        st.rerun()
+    return current_page
+
+
+def render_page_hero(page_name: str) -> None:
+    """Render the page-specific banner from the repository's local assets."""
+    hero_images = {
+        "青年職涯探索": "hero_career.png",
+        "青年安居推薦": "hero_housing.png",
+        "青年局 Policy Lens": "hero_policy.png",
+    }
+    hero_name = hero_images.get(page_name)
+    hero_path = PROJECT_ROOT / "assets" / "illustrations" / str(hero_name)
+
+    if hero_path.is_file():
+        image_data = base64.b64encode(hero_path.read_bytes()).decode("ascii")
+        st.markdown(
+            '<div class="qj-page-hero">'
+            f'<img src="data:image/png;base64,{image_data}" alt="" />'
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        return
+
+    st.markdown(
+        '<div class="qj-page-hero qj-page-hero-fallback" role="img" '
+        'aria-label="頁面橫幅"></div>',
+        unsafe_allow_html=True,
+    )
+
+
 def main() -> None:
     st.set_page_config(
         page_title="青聚新北",
@@ -111,8 +231,6 @@ def main() -> None:
         layout="wide",
         initial_sidebar_state="collapsed",
     )
-    apply_styles()
-
     page_options = ["青年職涯探索", "青年安居推薦", "青年局 Policy Lens"]
     current_page = st.session_state.get("app_page", "青年職涯探索")
     if current_page == "Career Evidence Viewer":
@@ -121,16 +239,12 @@ def main() -> None:
         current_page = "青年安居推薦"
     if current_page not in page_options:
         current_page = "青年職涯探索"
+    if st.session_state.get("app_page") != current_page:
+        st.session_state.app_page = current_page
+    apply_styles(current_page)
 
-    page = st.segmented_control(
-        "頁面",
-        options=page_options,
-        default=current_page,
-        key="app_page",
-        label_visibility="collapsed",
-    )
-    if page is None:
-        page = "青年職涯探索"
+    page = render_top_nav(page_options, current_page)
+    render_page_hero(page)
     if page == "青年職涯探索":
         try:
             candidates_v35, training_v4, course_mapping, demo_job_evidence, beauty_phase5, crc_external_market = load_career_evidence_data()
@@ -154,8 +268,16 @@ def main() -> None:
     if page != "青年安居推薦":
         page = "青年安居推薦"
 
-    nav_options = ["四模式總覽", *MODE_ORDER]
-    current_view = st.session_state.get("main_view", "四模式總覽")
+    view_options = ["比較四種模式", "查看單一模式"]
+    legacy_view = st.session_state.get("main_view")
+    if "housing_view_mode" not in st.session_state:
+        st.session_state.housing_view_mode = "查看單一模式" if legacy_view in MODE_ORDER else "比較四種模式"
+    if "housing_recommendation_mode" not in st.session_state:
+        st.session_state.housing_recommendation_mode = legacy_view if legacy_view in MODE_ORDER else MODE_ORDER[0]
+    if st.session_state.housing_view_mode not in view_options:
+        st.session_state.housing_view_mode = "比較四種模式"
+    if st.session_state.housing_recommendation_mode not in MODE_ORDER:
+        st.session_state.housing_recommendation_mode = MODE_ORDER[0]
 
     preset_workplaces = {
         "港墘站｜內湖": {
@@ -214,130 +336,37 @@ def main() -> None:
     if st.session_state.quick_preset not in preset_options:
         st.session_state.quick_preset = NO_PRESET_LABEL
 
-    header_left, header_right = st.columns([1.15, 0.85], gap="medium")
-    with header_left:
-        st.markdown(
-            """
-            <div class="qj-header-title">青聚新北｜青年安居推薦</div>
-            <div class="qj-subtitle">輸入工作地址後，我住新北哪裡比較適合？</div>
-            """,
-            unsafe_allow_html=True,
-        )
-        first_row = st.columns([0.95, 0.48, 0.30, 1.35], gap="small")
-        with first_row[0]:
-            st.text_input(
-                "我的工作地點（Beta）",
-                key="workplace_address",
-                placeholder="例如：台北市內湖區瑞光路",
-                on_change=_mark_manual_address,
-                args=(preset_addresses,),
-            )
-        with first_row[1]:
-            st.selectbox(
-                "快速範例",
-                preset_options,
-                key="quick_preset",
-                on_change=_apply_quick_preset,
-                args=(preset_addresses,),
-            )
-        with first_row[2]:
-            submitted = st.button("開始推薦", use_container_width=True)
+    if st.session_state.custom_workplace_data is None:
+        try:
+            with st.spinner("載入預設快速範例：港墘站｜內湖..."):
+                _load_preset_workplace(DEFAULT_PRESET_LABEL, preset_workplaces)
+        except Exception as exc:
+            st.session_state.custom_workplace_data = None
+            st.session_state.custom_geocode = None
+            st.session_state.active_workplace_address = None
+            st.session_state.active_workplace_input_address = None
+            st.session_state.active_workplace_source = None
+            st.error(f"預設快速範例載入失敗：{exc}")
 
-        second_row = st.columns([0.44, 0.44, 2.20], gap="small")
-        with second_row[0]:
-            st.selectbox("交通方式", ["大眾運輸"], disabled=True)
-        with second_row[1]:
-            st.selectbox("租屋型態", ["獨立套房"], disabled=True)
-        note_slot = second_row[2].empty()
+    st.markdown(
+        """
+        <div class="qj-housing-page-intro">
+            <h1 class="qj-visually-hidden">青年安居推薦</h1>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-        if st.session_state.custom_workplace_data is None:
-            try:
-                with st.spinner("載入預設快速範例：港墘站｜內湖..."):
-                    _load_preset_workplace(DEFAULT_PRESET_LABEL, preset_workplaces)
-            except Exception as exc:
-                st.session_state.custom_workplace_data = None
-                st.session_state.custom_geocode = None
-                st.session_state.active_workplace_address = None
-                st.session_state.active_workplace_input_address = None
-                st.session_state.active_workplace_source = None
-                st.error(f"預設快速範例載入失敗：{exc}")
-
-        if submitted:
-            target_address = st.session_state.workplace_address.strip()
-            if not target_address:
-                st.error("請輸入工作地址，或先選擇一個快速範例。")
-                st.stop()
-            try:
-                selected_preset = st.session_state.get("quick_preset", NO_PRESET_LABEL)
-                if selected_preset != NO_PRESET_LABEL:
-                    with st.spinner(f"載入快速範例：{selected_preset}..."):
-                        _load_quick_example(selected_preset, preset_workplaces)
-                else:
-                    with st.spinner("定位工作地址並計算 16 個生活圈通勤時間..."):
-                        _load_custom_workplace(target_address)
-            except Exception as exc:
-                st.session_state.custom_workplace_data = None
-                st.session_state.custom_geocode = None
-                st.session_state.active_workplace_address = None
-                st.session_state.active_workplace_input_address = None
-                st.session_state.active_workplace_source = None
-                st.error(f"工作地址處理失敗：{exc}")
-
-        if st.session_state.custom_geocode:
-            geocode = st.session_state.custom_geocode
-            active_address = st.session_state.active_workplace_address
-            active_input_address = st.session_state.active_workplace_input_address
-            current_address = st.session_state.workplace_address.strip()
-            pending_note = ""
-            if current_address and active_input_address and current_address != active_input_address:
-                pending_note = "<br><b>輸入地址尚未套用：</b>請按「開始推薦」更新地圖與排名。"
-            with note_slot:
-                st.markdown(
-                    f"""
-                    <div class="qj-geocode-note">
-                        目前套用工作地：{active_address}<br>
-                        已定位：{float(geocode['lat']):.6f}, {float(geocode['lon']):.6f}｜來源：{st.session_state.active_workplace_source}
-                        {pending_note}
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-        else:
-            with note_slot:
-                st.markdown(
-                    f'<div class="qj-geocode-note">請輸入工作地址後按「開始推薦」。快速範例可作為 fallback；geocoding 來源：{GEOCODING_SOURCE}。</div>',
-                    unsafe_allow_html=True,
-                )
-    with header_right:
-        hero_title = "推薦總覽"
-        hero_copy = "比較四種偏好模式的 Top 1，快速掌握推薦生活圈差異。"
-        hero_color = "#52646B"
-        if current_view in MODE_ORDER:
-            hero_title = f"{current_view}推薦"
-            hero_copy = MODE_COPY[current_view]
-            hero_color = MODE_COLORS[current_view]
-        st.markdown(
-            f"""
-            <div class="qj-mode-hero">
-                <div class="qj-mode-heading" style="color: {hero_color};">{hero_title}</div>
-                <div class="qj-mode-subtitle">{hero_copy}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-        selected_view = st.radio(
-            "主畫面切換",
-            nav_options,
-            horizontal=True,
-            label_visibility="collapsed",
-            key="main_view",
-        )
-        selected_color = MODE_COLORS.get(selected_view, "#78B995")
-        selected_soft_color = MODE_SOFT_COLORS.get(selected_view, "#EAF6EF")
-        apply_selected_radio_style(selected_color, selected_soft_color)
+    control_args = (view_options, preset_addresses, preset_options, preset_workplaces)
+    selected_view = str(st.session_state.housing_view_mode)
+    selected_mode = str(st.session_state.housing_recommendation_mode)
 
     if st.session_state.custom_workplace_data is None:
-        st.info("請先輸入工作地址並按「開始推薦」，Dashboard 會在成功定位後更新推薦結果。")
+        control_col, message_col = st.columns([24, 76], gap="medium")
+        with control_col:
+            _render_housing_control_center(*control_args)
+        with message_col:
+            st.info("請先輸入工作地址並按「開始 / 更新推薦」。")
         st.stop()
 
     try:
@@ -347,11 +376,30 @@ def main() -> None:
         st.error(f"Dashboard data loading failed: {exc}")
         st.stop()
 
-    if selected_view == "四模式總覽":
-        render_overview(candidates, top3, destination, towns, cities)
+    if selected_view == "比較四種模式":
+        render_comparison_dashboard(
+            candidates,
+            top3,
+            destination,
+            towns,
+            cities,
+            render_controls=lambda: _render_housing_control_center(
+                *control_args,
+                show_recommendation_mode=False,
+                show_heading=False,
+            ),
+        )
     else:
-        mode = selected_view
-        render_dashboard_view(mode, candidates, recommendations, top3, destination, towns, cities)
+        render_dashboard_view(
+            selected_mode,
+            candidates,
+            recommendations,
+            top3,
+            destination,
+            towns,
+            cities,
+            render_controls=lambda: _render_housing_control_center(*control_args),
+        )
 
     st.markdown("---")
     with st.expander("資料與方法說明", expanded=False):

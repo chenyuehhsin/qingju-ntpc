@@ -11,7 +11,9 @@ import streamlit as st
 DEMO_SOURCE = "Registered Nurses"
 DEMO_TARGET_DOMAIN = "Technology / AI"
 DEMO_HORIZON = "6 months"
+SOURCE_BACKGROUND_OPTIONS = [DEMO_SOURCE]
 TARGET_DOMAIN_OPTIONS = ["科技 / AI", "美容 / 醫美 / 個人照護"]
+LEARNING_HORIZON_OPTIONS = ["6 個月"]
 DOMAIN_OUTPUT_LABELS = {
     "科技 / AI": "Technology / AI",
     "美容 / 醫美 / 個人照護": "Beauty / Aesthetic / Personal Care",
@@ -279,8 +281,8 @@ def render_career_evidence_viewer(
     _html(
         f"""
         <div class="qj-career-header">
-            <div class="qj-header-title">青年職涯探索</div>
-            <div class="qj-subtitle">護理師 → {escape(_current_domain_label())} 的職涯可能性探索</div>
+            <h1 class="qj-visually-hidden">青年職涯探索</h1>
+            <div class="qj-page-intro">從背景、技能與市場訊號，探索可能的職涯方向。</div>
         </div>
         """
     )
@@ -289,6 +291,10 @@ def render_career_evidence_viewer(
         st.session_state.career_view_layer = "discovery"
     if "career_target_domain" not in st.session_state:
         st.session_state.career_target_domain = TARGET_DOMAIN_OPTIONS[0]
+    if "career_source_background" not in st.session_state:
+        st.session_state.career_source_background = DEMO_SOURCE
+    if "career_learning_horizon" not in st.session_state:
+        st.session_state.career_learning_horizon = LEARNING_HORIZON_OPTIONS[0]
 
     if st.session_state.career_view_layer == "evidence" and st.session_state.get("career_selected_path"):
         domain_label = _current_domain_label()
@@ -335,16 +341,9 @@ def _render_selected_evidence(
 
 
 def _render_discovery_map(evidence: pd.DataFrame, domain_label: str) -> None:
-    if st.button("探索可能路徑", use_container_width=False, key="career_explore_button"):
-        st.session_state.career_view_layer = "discovery"
-        st.session_state.career_selected_path = None
-
     st.markdown("### 探索可能性")
     _html(
         '<div class="qj-section-note">代表性案例按產品需求固定展示，不是排序，也不是推薦分數。</div>'
-    )
-    _html(
-        _transition_map_html(evidence)
     )
     _render_path_cards(evidence)
 
@@ -427,34 +426,38 @@ def _beauty_representative_paths(beauty_phase5: pd.DataFrame) -> pd.DataFrame:
 
 
 def _render_explore_section() -> str:
-    selected = st.selectbox(
-        "目標領域",
-        TARGET_DOMAIN_OPTIONS,
-        index=TARGET_DOMAIN_OPTIONS.index(_current_domain_label()),
-        key="career_target_domain_selector",
-    )
+    source_col, domain_col, horizon_col, action_col, _ = st.columns([0.9, 0.9, 0.9, 0.7, 0.6], gap="medium")
+    with source_col:
+        st.selectbox(
+            "目前背景",
+            SOURCE_BACKGROUND_OPTIONS,
+            format_func=_occupation_display_text,
+            key="career_source_background",
+        )
+    with domain_col:
+        selected = st.selectbox(
+            "目標領域",
+            TARGET_DOMAIN_OPTIONS,
+            index=TARGET_DOMAIN_OPTIONS.index(_current_domain_label()),
+            key="career_target_domain_selector",
+        )
+    with horizon_col:
+        st.selectbox(
+            "學習時間窗",
+            LEARNING_HORIZON_OPTIONS,
+            key="career_learning_horizon",
+        )
+    with action_col:
+        if st.button("探索可能路徑", use_container_width=True, key="career_explore_button"):
+            st.session_state.career_view_layer = "discovery"
+            st.session_state.career_selected_path = None
+
     if selected != st.session_state.get("career_target_domain"):
         st.session_state.career_target_domain = selected
         st.session_state.career_view_layer = "discovery"
         st.session_state.career_selected_path = None
         st.rerun()
 
-    cols = st.columns([1, 1, 1], gap="medium")
-    values = [
-        ("目前背景", _occupation_display_text(DEMO_SOURCE)),
-        ("目標領域", selected),
-        ("學習時間窗", "6 個月"),
-    ]
-    for col, (label, value) in zip(cols, values):
-        with col:
-            _html(
-                f"""
-                <div class="qj-career-preset">
-                    <div class="qj-metric-label">{escape(label)}</div>
-                    <div class="qj-career-preset-value">{escape(value)}</div>
-                </div>
-                """
-            )
     _html(
         '<div class="qj-note">目前是固定展示情境，只支援護理師作為目前背景；目標領域可在科技 / AI 與美容 / 醫美 / 個人照護之間切換。</div>'
     )
@@ -465,6 +468,7 @@ def _render_path_cards(evidence: pd.DataFrame) -> None:
     cols = st.columns(len(evidence), gap="medium")
     for col, (_, row) in zip(cols, evidence.iterrows()):
         occupation_name = str(row["target_occupation_name"])
+        occupation_class = "qj-career-card-data-scientists" if occupation_name == "Data Scientists" else ""
         note = PATH_NOTES.get(str(row["target_occupation_name"]), "")
         if row["target_occupation_name"] == "Health Informatics Specialists" and float(row["training_coverage_ratio"]) >= 0.5:
             note = ""
@@ -472,7 +476,7 @@ def _render_path_cards(evidence: pd.DataFrame) -> None:
         with col:
             _html(
                 f"""
-                <div class="qj-career-card {_span_class(row)}">
+                <div class="qj-career-card {_span_class(row)} {occupation_class}">
                     {_occupation_title_html(occupation_name)}
                     {badge}
                     <div class="qj-career-intro">{escape(PATH_INTROS.get(occupation_name, ""))}</div>

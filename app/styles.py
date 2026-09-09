@@ -3,15 +3,39 @@ from __future__ import annotations
 import streamlit as st
 
 
-def apply_styles() -> None:
+PAGE_THEMES = {
+    "青年職涯探索": {
+        "primary": "#3BA7F5",
+        "primary_ink": "#257FBE",
+        "soft": "#EAF6FF",
+        "border": "#BDE7FF",
+    },
+    "青年安居推薦": {
+        "primary": "#42C98E",
+        "primary_ink": "#187A59",
+        "soft": "#ECFBF3",
+        "border": "#C3EFD9",
+    },
+    "青年局 Policy Lens": {
+        "primary": "#F6C64A",
+        "primary_ink": "#9A7200",
+        "soft": "#FFF8E4",
+        "border": "#FFE6A6",
+    },
+}
+
+
+def apply_styles(page: str = "青年安居推薦") -> None:
+    """Apply the shared UI system and the accent theme for the active product page."""
+    theme = PAGE_THEMES.get(page, PAGE_THEMES["青年安居推薦"])
     st.markdown(
         """
         <style>
         :root {
-            --qj-bg: #f7f6f1;
-            --qj-text: #243238;
-            --qj-muted: #65747a;
-            --qj-line: #dde5e6;
+            --qj-bg: #F8FCFF;
+            --qj-text: #17324D;
+            --qj-muted: #64748B;
+            --qj-line: #DDEAF2;
         }
         .stApp {
             background: var(--qj-bg);
@@ -716,9 +740,9 @@ def apply_styles() -> None:
             border: 1px solid var(--qj-line);
             border-left: 5px solid #78B995;
             border-radius: 12px;
-            padding: 0.86rem 0.9rem;
+            padding: 0.7rem 0.78rem;
             box-shadow: 0 1px 2px rgba(36, 50, 56, 0.04);
-            min-height: 112px;
+            min-height: 96px;
         }
         .qj-career-policy-card span,
         .qj-career-policy-card small {
@@ -730,10 +754,161 @@ def apply_styles() -> None:
         .qj-career-policy-card b {
             display: block;
             color: #243238;
-            font-size: 1.6rem;
+            font-size: 1.45rem;
             font-weight: 920;
             line-height: 1.05;
             margin: 0.24rem 0;
+        }
+        .qj-policy-insight-card,
+        .qj-policy-analysis-card,
+        .qj-policy-compact-metric {
+            background: #ffffff;
+            border: 1px solid #F3D98B;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(23, 50, 77, 0.045);
+        }
+        .qj-policy-insight-card {
+            min-height: 96px;
+            padding: 0.64rem 0.74rem;
+            margin-bottom: 0.5rem;
+        }
+        .qj-policy-evidence-badge {
+            display: inline-flex;
+            background: #FFF4C7;
+            border: 1px solid #F3D98B;
+            border-radius: 999px;
+            color: #17324D;
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 0.18rem 0.42rem;
+        }
+        .qj-policy-matrix-wrap {
+            max-width: 100%;
+            overflow-x: auto;
+            margin: 0.3rem 0 0.65rem;
+        }
+        .qj-policy-compact-matrix {
+            width: 100%;
+            min-width: 620px;
+            border-collapse: separate;
+            border-spacing: 0;
+            color: #52646B;
+            font-size: 0.76rem;
+            line-height: 1.35;
+            table-layout: fixed;
+        }
+        .qj-policy-compact-matrix th,
+        .qj-policy-compact-matrix td {
+            overflow-wrap: anywhere;
+            text-align: left;
+            vertical-align: top;
+        }
+        .qj-policy-compact-matrix th {
+            background: #FFF8E4;
+            border-bottom: 1px solid #F3D98B;
+            color: #775B12;
+            font-size: 0.72rem;
+            font-weight: 850;
+            padding: 0.42rem 0.5rem;
+        }
+        .qj-policy-compact-matrix th:first-child {
+            border-left: 3px solid #F3D98B;
+            border-radius: 8px 0 0 0;
+            width: 18%;
+        }
+        .qj-policy-compact-matrix th:nth-child(2) { width: 37%; }
+        .qj-policy-compact-matrix th:nth-child(3) { width: 27%; }
+        .qj-policy-compact-matrix th:last-child {
+            border-radius: 0 8px 0 0;
+            width: 18%;
+        }
+        .qj-policy-compact-matrix td {
+            background: #ffffff;
+            border-bottom: 1px solid #F5E9C3;
+            padding: 0.46rem 0.5rem;
+        }
+        .qj-policy-compact-matrix td:first-child {
+            border-left: 3px solid #FFF0BF;
+            color: #17324D;
+            font-weight: 800;
+        }
+        .qj-policy-insight-title,
+        .qj-policy-analysis-title {
+            color: #17324D;
+            font-size: 0.94rem;
+            font-weight: 850;
+            line-height: 1.35;
+        }
+        .qj-policy-insight-title {
+            margin-top: 0.35rem;
+        }
+        .qj-policy-analysis-title {
+            margin-top: 0.48rem;
+        }
+        .qj-policy-insight-copy,
+        .qj-policy-analysis-copy {
+            color: #52646B;
+            font-size: 0.82rem;
+        }
+        .qj-policy-insight-copy {
+            line-height: 1.35;
+            margin-top: 0.18rem;
+        }
+        .qj-policy-analysis-copy {
+            line-height: 1.48;
+            margin-top: 0.28rem;
+        }
+        .qj-policy-analysis-card {
+            padding: 0.82rem 0.9rem;
+            margin-bottom: 0.68rem;
+        }
+        .qj-policy-compact-metric {
+            min-height: 104px;
+            padding: 0.7rem 0.75rem;
+        }
+        .qj-policy-compact-metric span,
+        .qj-policy-compact-metric small {
+            display: block;
+            color: #64748B;
+            font-size: 0.73rem;
+            line-height: 1.3;
+        }
+        .qj-policy-compact-metric b {
+            display: block;
+            color: #17324D;
+            font-size: 1.05rem;
+            font-weight: 900;
+            line-height: 1.15;
+            margin: 0.24rem 0;
+            overflow-wrap: anywhere;
+        }
+        .qj-policy-detail-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.42rem;
+        }
+        .qj-policy-detail-summary span {
+            background: #FFF8E4;
+            border: 1px solid #F3D98B;
+            border-radius: 999px;
+            color: #17324D;
+            font-size: 0.78rem;
+            font-weight: 720;
+            padding: 0.26rem 0.5rem;
+        }
+        [class*="st-key-policy_career_path_"] {
+            background: #ffffff;
+            border-color: #F3D98B !important;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px rgba(23, 50, 77, 0.045);
+        }
+        [class*="st-key-policy_career_path_"] div[data-testid="stButton"] {
+            margin-top: 0.5rem;
+        }
+        [class*="st-key-policy_career_path_"] div[data-testid="stButton"] button {
+            min-height: 2.15rem;
+            padding: 0.38rem 0.72rem;
+            font-size: 0.86rem;
         }
         .qj-career-header {
             margin-top: 0.3rem;
@@ -1040,22 +1215,620 @@ def apply_styles() -> None:
         """,
         unsafe_allow_html=True,
     )
-
-
-def apply_selected_radio_style(color: str, soft_color: str) -> None:
+    # Keep page colour distinct without coupling presentation to any data or view logic.
     st.markdown(
         f"""
         <style>
+        .stApp {{
+            --qj-bg: #F8FCFF;
+            --qj-surface: #ffffff;
+            --qj-text: #17324D;
+            --qj-muted: #64748B;
+            --qj-line: #DDEAF2;
+            --qj-primary: {theme['primary']};
+            --qj-primary-ink: {theme['primary_ink']};
+            --qj-primary-soft: {theme['soft']};
+            --qj-primary-border: {theme['border']};
+            --qj-accent-pink: #F58BA7;
+            --qj-accent-pink-soft: #FFF0F4;
+            --qj-accent-pink-ink: #9E3F59;
+            --qj-radius-card: 16px;
+            --qj-radius-control: 12px;
+            --qj-shadow: 0 3px 12px rgba(23, 50, 77, 0.055);
+            background:
+                radial-gradient(circle at 5% -10%, var(--qj-primary-soft) 0, transparent 22rem),
+                var(--qj-bg);
+        }}
+        .stApp [data-testid="stAppViewContainer"] .main .block-container,
+        .block-container {{ 
+            width: min(1840px, calc(100vw - 24px)) !important;
+            max-width: min(1840px, calc(100vw - 24px)) !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
+            padding-inline: 12px !important;
+        }}
+        h1, h2, h3 {{
+            color: var(--qj-text);
+            letter-spacing: -0.018em;
+        }}
+        h2 {{ margin-top: 1.8rem; }}
+        h3 {{ margin-top: 1.25rem; }}
+        .qj-header-title {{
+            color: var(--qj-text);
+            font-size: clamp(2rem, 3vw, 3.15rem);
+            letter-spacing: -0.035em;
+            margin-top: 0.35rem;
+        }}
+        .qj-subtitle {{ max-width: 48rem; line-height: 1.55; }}
+
+        /* Global top navigation: a light website header, not a dashboard card. */
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) {{
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 0 !important;
+            border-bottom: 1px solid #DDEAF2 !important;
+            border-radius: 0 !important;
+            box-shadow: 0 1px 3px rgba(23, 50, 77, 0.035) !important;
+            margin: 0 0 0.875rem !important;
+            padding: 0 0.15rem !important;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) > div {{
+            padding: 0 !important;
+        }}
+        .qj-top-nav-brand {{
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 60px;
+        }}
+        .qj-top-nav-title {{
+            color: var(--qj-text);
+            font-size: clamp(1rem, 1.25vw, 1.28rem);
+            font-weight: 900;
+            letter-spacing: -0.025em;
+            line-height: 1.1;
+            white-space: nowrap;
+        }}
+        .qj-top-nav-subtitle {{
+            color: var(--qj-muted);
+            font-size: 0.72rem;
+            font-weight: 720;
+            margin-top: 0.18rem;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [data-testid="stHorizontalBlock"]:has(button) {{
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            min-height: 60px;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) button {{
+            min-height: 2.15rem;
+            padding: 0.35rem 0.5rem;
+            background: transparent !important;
+            border: 0 !important;
+            border-radius: 6px !important;
+            box-shadow: none !important;
+            color: var(--qj-muted) !important;
+            font-size: 0.88rem;
+            font-weight: 780;
+            white-space: nowrap;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) button:hover {{
+            color: var(--qj-text) !important;
+            background: rgba(23, 50, 77, 0.04) !important;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) button[data-testid="stBaseButton-primary"] {{
+            color: var(--qj-text) !important;
+            background: var(--qj-primary-soft) !important;
+            border-bottom: 2px solid var(--qj-primary) !important;
+        }}
+
+        /* Each supplied illustration is a complete banner, with no text overlaid. */
+        .qj-page-hero {{
+            width: 100%;
+            height: 160px;
+            margin: 0 0 1.5rem;
+            overflow: hidden;
+            border-radius: 20px;
+            box-shadow: 0 3px 12px rgba(23, 50, 77, 0.07);
+        }}
+        .qj-page-hero img {{
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover;
+            object-position: center;
+            border-radius: 20px;
+        }}
+        .qj-page-hero-fallback {{
+            background:
+                radial-gradient(circle at 82% 22%, rgba(255, 255, 255, 0.72), transparent 28%),
+                linear-gradient(112deg, var(--qj-primary-soft), rgba(255, 255, 255, 0.9));
+        }}
+        .qj-visually-hidden {{
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }}
+        .qj-career-header,
+        .qj-policy-header,
+        .qj-housing-page-intro {{
+            margin: 0 0 0.7rem;
+        }}
+        .qj-page-intro {{
+            max-width: 48rem;
+            color: var(--qj-muted);
+            font-size: 0.98rem;
+            line-height: 1.5;
+        }}
+        .qj-column-heading {{
+            min-height: 44px;
+            display: flex;
+            align-items: flex-end;
+            margin: 0 0 12px 0;
+            padding: 0;
+        }}
+        .qj-column-heading h2,
+        .qj-column-heading h3 {{
+            margin: 0;
+            padding: 0;
+            line-height: 1.15;
+        }}
+        @media (max-width: 1440px) {{
+            .qj-page-hero {{ height: 150px; }}
+        }}
+
+        /* Navigation, selectors, and actions share the same quiet, rounded treatment. */
+        div[data-testid="stSegmentedControl"] {{ margin-bottom: 0.9rem; }}
+        div[data-testid="stSegmentedControl"] button {{
+            border-color: var(--qj-line);
+            border-radius: 999px;
+            min-height: 2.5rem;
+            padding-inline: 0.95rem;
+            transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+        }}
+        div[data-testid="stSegmentedControl"] button[aria-pressed="true"] {{
+            background: var(--qj-primary-soft) !important;
+            border-color: var(--qj-primary) !important;
+            color: var(--qj-text) !important;
+            box-shadow: 0 3px 10px rgba(23, 50, 77, 0.07);
+        }}
+        div[data-testid="stSegmentedControl"] button[data-checked="true"] {{
+            background: var(--qj-primary-soft) !important;
+            border-color: var(--qj-primary) !important;
+            color: var(--qj-text) !important;
+            box-shadow: 0 3px 10px rgba(23, 50, 77, 0.07);
+        }}
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
+        div[data-testid="stTextInput"] input {{
+            border-color: var(--qj-line);
+            border-radius: var(--qj-radius-control);
+            box-shadow: 0 1px 2px rgba(37, 61, 72, 0.035);
+        }}
+        div[data-testid="stSelectbox"] div[data-baseweb="select"] > div:focus-within,
+        div[data-testid="stTextInput"] input:focus {{
+            border-color: var(--qj-primary);
+            box-shadow: 0 0 0 3px var(--qj-primary-soft);
+        }}
+        div[data-testid="stButton"] button,
+        div[data-testid="stFormSubmitButton"] button {{
+            background: var(--qj-primary);
+            border-color: var(--qj-primary);
+            border-radius: var(--qj-radius-control);
+            color: #ffffff;
+            box-shadow: 0 4px 10px rgba(37, 61, 72, 0.10);
+        }}
+        div[data-testid="stButton"] button:hover,
+        div[data-testid="stFormSubmitButton"] button:hover {{
+            background: var(--qj-primary);
+            border-color: var(--qj-primary);
+            filter: brightness(0.94);
+        }}
+        div[data-testid="stButton"] button:focus-visible,
+        div[data-testid="stFormSubmitButton"] button:focus-visible {{
+            box-shadow: 0 0 0 3px var(--qj-primary-soft);
+        }}
+        .st-key-career_explore_button button,
+        [class*="st-key-career_evidence_button_"] button {{
+            background: #EAF6FF !important;
+            border-color: #BDE7FF !important;
+            color: #257FBE !important;
+            box-shadow: none !important;
+        }}
+        .st-key-career_explore_button button:hover,
+        [class*="st-key-career_evidence_button_"] button:hover {{
+            background: #D7F0FF !important;
+            border-color: #93D6FF !important;
+            filter: none;
+        }}
+        .st-key-career_explore_button button:focus-visible,
+        [class*="st-key-career_evidence_button_"] button:focus-visible {{
+            box-shadow: 0 0 0 3px rgba(59, 167, 245, 0.22) !important;
+        }}
+        div[data-testid="stRadio"] {{
+            margin-top: 0.7rem;
+            transform: none;
+            text-align: left;
+        }}
+        div[data-testid="stRadio"] div[role="radiogroup"] {{
+            background: rgba(255, 255, 255, 0.78);
+            border-color: var(--qj-line);
+            border-radius: 16px;
+        }}
+        div[data-testid="stRadio"] div[role="radiogroup"] label {{
+            border-color: var(--qj-line);
+            border-radius: 999px;
+        }}
         div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {{
-            background: {soft_color};
-            border-color: {color};
-            color: #243238;
-            box-shadow: 0 4px 12px rgba(36, 50, 56, 0.10);
+            background: var(--qj-primary-soft);
+            border-color: var(--qj-primary);
+            box-shadow: 0 3px 10px rgba(23, 50, 77, 0.07);
         }}
-        div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) p {{
-            color: #243238;
+
+        /* Shared surface system: cards, metrics, badges, and low-priority evidence notes. */
+        .qj-panel, .qj-card, .qj-top1-card, .qj-compact-card,
+        .qj-overview-card, .qj-comparison-bar, .qj-comparison-card,
+        .qj-life-detail-card, .qj-policy-panel, .qj-policy-detail,
+        .qj-career-preset, .qj-career-empty, .qj-career-card,
+        .qj-career-policy-card, .qj-transition-map, .qj-transition-node,
+        .qj-job-card {{
+            background: var(--qj-surface);
+            border-color: var(--qj-line);
+            border-radius: var(--qj-radius-card);
+            box-shadow: var(--qj-shadow);
+        }}
+        .qj-overview-card {{
+            background: var(--qj-surface) !important;
+            border-color: var(--qj-line) !important;
+        }}
+        .qj-panel, .qj-policy-panel, .qj-policy-detail, .qj-transition-map {{
+            padding: clamp(0.95rem, 1.8vw, 1.2rem);
+        }}
+        .qj-metric, .qj-top1-metrics div, .qj-life-metric-grid div,
+        .qj-policy-metric-grid div {{
+            background: var(--qj-primary-soft);
+            border-color: var(--qj-primary-border);
+            border-radius: 12px;
+        }}
+        .qj-summary-strip, .qj-life-detail-card, .qj-career-preset,
+        .qj-career-card, .qj-job-card {{ border-left-color: var(--qj-primary); }}
+        .qj-career-card, .qj-transition-node {{ border-top-color: var(--qj-primary); }}
+        .qj-career-card-high-reuse {{ border-top-color: var(--qj-primary-ink); }}
+        .qj-career-card-partial-reuse {{ border-top-color: var(--qj-primary); }}
+        .qj-career-card-major-reskilling, .qj-career-policy-card {{ border-top-color: var(--qj-primary); border-left-color: var(--qj-primary); }}
+        .qj-career-card-data-scientists {{
+            border-color: #B99A58;
+            border-top-color: #B99A58;
+            border-left-color: #B99A58;
+        }}
+        .st-key-housing_mode_card_0,
+        .st-key-housing_mode_card_0 [data-testid="stVerticalBlockBorderWrapper"] {{ border-color: #78B995 !important; }}
+        .st-key-housing_mode_card_1,
+        .st-key-housing_mode_card_1 [data-testid="stVerticalBlockBorderWrapper"] {{ border-color: #6EA7C7 !important; }}
+        .st-key-housing_mode_card_2,
+        .st-key-housing_mode_card_2 [data-testid="stVerticalBlockBorderWrapper"] {{ border-color: #E8A05A !important; }}
+        .st-key-housing_mode_card_3,
+        .st-key-housing_mode_card_3 [data-testid="stVerticalBlockBorderWrapper"] {{ border-color: #A98BC8 !important; }}
+        .qj-transition-origin, .qj-path-conclusion, .qj-skill-chip {{
+            background: var(--qj-primary-soft);
+            border-color: var(--qj-primary-border);
+            color: var(--qj-text);
+        }}
+        .qj-transition-target, .qj-job-source a {{ color: var(--qj-primary-ink); }}
+        .qj-transition-arrow {{ background: linear-gradient(90deg, var(--qj-primary), var(--qj-primary-border)); }}
+        .qj-transition-arrow::after {{ border-left-color: var(--qj-primary-border); }}
+        .qj-career-badge, .qj-job-review {{
+            background: var(--qj-accent-pink-soft);
+            border-color: var(--qj-accent-pink);
+            color: var(--qj-accent-pink-ink);
+        }}
+        .qj-note, .qj-section-note, .qj-geocode-note {{
+            color: var(--qj-muted);
+            font-size: 0.78rem;
+            line-height: 1.55;
+        }}
+        .qj-map-provenance {{
+            background: var(--qj-primary-soft);
+            border-color: var(--qj-primary-border);
+            border-left-color: var(--qj-primary);
+            border-radius: var(--qj-radius-control);
+            color: var(--qj-primary-ink);
+            font-size: 0.82rem;
+        }}
+        div[data-testid="stExpander"] {{
+            border: 1px solid var(--qj-line);
+            border-radius: var(--qj-radius-control);
+            background: rgba(255, 255, 255, 0.68);
+        }}
+        div[data-testid="stExpander"] summary {{
+            color: var(--qj-muted);
+            font-size: 0.88rem;
+            font-weight: 720;
+        }}
+        .stTabs [data-baseweb="tab"] {{
+            color: var(--qj-muted);
+        }}
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {{
+            color: var(--qj-text) !important;
+            border-bottom-color: var(--qj-primary) !important;
+        }}
+        .stTabs [data-baseweb="tab-highlight"] {{
+            background-color: var(--qj-primary) !important;
+        }}
+        div[data-testid="stMetric"] {{
+            background: var(--qj-surface);
+            border: 1px solid var(--qj-line);
+            border-radius: var(--qj-radius-card);
+            box-shadow: var(--qj-shadow);
+            padding: 0.8rem 0.9rem;
+        }}
+        div[data-testid="stMetric"] [data-testid="stMetricValue"] {{ color: var(--qj-primary); }}
+        .qj-policy-alert, .qj-policy-warning {{
+            background: var(--qj-primary-soft);
+            border-color: var(--qj-primary-border);
+            color: var(--qj-text);
+        }}
+        iframe {{ border-radius: var(--qj-radius-card); }}
+
+        /* Housing Phase 2A: a calmer, clearer entry flow and recommendation overview. */
+        .qj-housing-page-intro {{
+            margin: 0 0 0.7rem;
+        }}
+        .qj-housing-eyebrow,
+        .qj-section-eyebrow,
+        .qj-housing-view-eyebrow {{
+            color: var(--qj-primary-ink);
+            font-size: 0.74rem;
             font-weight: 850;
+            letter-spacing: 0.075em;
+            text-transform: uppercase;
         }}
+        .qj-housing-page-intro .qj-header-title {{
+            color: #245542;
+            font-size: clamp(2.15rem, 3.35vw, 3.4rem);
+            font-weight: 880;
+            line-height: 1.05;
+            margin: 0.3rem 0 0.45rem;
+        }}
+        .qj-housing-page-intro .qj-subtitle {{
+            color: #5d7469;
+            font-size: 1.02rem;
+            margin: 0;
+        }}
+        .qj-housing-workflow-title {{
+            color: var(--qj-text);
+            font-size: 1.1rem;
+            font-weight: 850;
+            margin: 0.1rem 0 0.16rem;
+        }}
+        .qj-housing-workflow-copy {{
+            color: var(--qj-muted);
+            font-size: 0.84rem;
+            line-height: 1.5;
+            margin-bottom: 0.15rem;
+        }}
+        .qj-housing-setting-note {{
+            color: #61766c;
+            font-size: 0.76rem;
+            line-height: 1.45;
+            margin: 0.08rem 0 0.18rem;
+        }}
+        .qj-housing-setting-note span {{
+            color: var(--qj-muted);
+        }}
+        .qj-geocode-note {{
+            align-items: baseline;
+            background: var(--qj-primary-soft);
+            border: 1px solid var(--qj-primary-border);
+            border-radius: var(--qj-radius-control);
+            color: #365e4d;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.2rem 0.48rem;
+            margin-top: 0.15rem;
+            padding: 0.52rem 0.68rem;
+        }}
+        .qj-geocode-detail {{
+            color: var(--qj-muted);
+            font-size: 0.72rem;
+        }}
+        .qj-housing-view-switch {{
+            background: rgba(255, 255, 255, 0.84);
+            border: 1px solid var(--qj-line);
+            border-radius: var(--qj-radius-card);
+            box-shadow: var(--qj-shadow);
+            margin: 0.25rem 0 0.1rem;
+            padding: 1rem 1.05rem;
+        }}
+        .qj-housing-view-title {{
+            color: #245542;
+            font-size: clamp(1.45rem, 2.05vw, 2.05rem);
+            font-weight: 880;
+            line-height: 1.15;
+            margin: 0.28rem 0 0.22rem;
+        }}
+        .qj-housing-view-copy {{
+            color: var(--qj-muted);
+            font-size: 0.86rem;
+            line-height: 1.5;
+        }}
+        .qj-overview-section-head {{
+            margin: 2.25rem 0 0.3rem;
+        }}
+        .qj-section-title {{
+            color: var(--qj-text);
+            font-size: clamp(1.45rem, 2.1vw, 1.85rem);
+            font-weight: 880;
+            letter-spacing: -0.022em;
+            line-height: 1.18;
+            margin-top: 0.22rem;
+        }}
+        .qj-section-copy {{
+            color: var(--qj-muted);
+            font-size: 0.88rem;
+            line-height: 1.55;
+            margin-top: 0.32rem;
+        }}
+        .qj-overview-card {{
+            background: #ffffff !important;
+            border: 1px solid var(--qj-line) !important;
+            border-top: 4px solid var(--qj-mode-color) !important;
+            box-shadow: 0 5px 16px rgba(23, 50, 77, 0.055);
+            min-height: 236px;
+            padding: 1.05rem;
+        }}
+        .qj-overview-card-top {{
+            align-items: center;
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }}
+        .qj-overview-mode {{
+            color: var(--qj-mode-color);
+            font-size: 0.84rem;
+            margin: 0;
+        }}
+        .qj-overview-mode .qj-dot {{
+            background: var(--qj-mode-color);
+            height: 0.62rem;
+            width: 0.62rem;
+        }}
+        .qj-overview-rank {{
+            background: var(--qj-mode-soft);
+            border-radius: 999px;
+            color: var(--qj-mode-color);
+            font-size: 0.7rem;
+            font-weight: 850;
+            line-height: 1;
+            padding: 0.3rem 0.48rem;
+        }}
+        .qj-overview-title {{
+            font-size: 1.28rem;
+            line-height: 1.2;
+            margin: 0.68rem 0 0.14rem;
+        }}
+        .qj-overview-location {{
+            color: var(--qj-muted);
+            font-size: 0.75rem;
+            line-height: 1.35;
+            min-height: 1.05rem;
+        }}
+        .qj-overview-grid {{
+            align-items: stretch;
+            border-top: 1px solid #edf2ef;
+            gap: 0;
+            margin: 0.78rem 0 0.7rem;
+            padding-top: 0.7rem;
+        }}
+        .qj-overview-grid > div {{
+            min-width: 0;
+        }}
+        .qj-overview-grid > div + div {{
+            border-left: 1px solid #e8efeb;
+            padding-left: 0.65rem;
+        }}
+        .qj-overview-grid span {{
+            font-size: 0.7rem;
+        }}
+        .qj-overview-grid b {{
+            font-size: 1rem;
+            line-height: 1.25;
+            margin-top: 0.1rem;
+        }}
+        .qj-overview-primary-metric b {{
+            color: #245542;
+            font-size: 1.22rem;
+        }}
+        .qj-overview-grid small {{
+            color: var(--qj-muted);
+            font-size: 0.65rem;
+            font-weight: 720;
+            margin-left: 0.14rem;
+        }}
+        .qj-overview-copy {{
+            border-top: 1px solid #f0f4f2;
+            color: #5b6d64;
+            font-size: 0.76rem;
+            line-height: 1.48;
+            padding-top: 0.55rem;
+        }}
+        .qj-overview-copy span {{
+            color: var(--qj-muted);
+            display: block;
+            font-size: 0.67rem;
+            font-weight: 820;
+            letter-spacing: 0.045em;
+            margin-bottom: 0.08rem;
+            text-transform: uppercase;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-overview-map-head) {{
+            background: rgba(255, 255, 255, 0.9);
+            border-color: var(--qj-line);
+            border-radius: var(--qj-radius-card);
+            box-shadow: var(--qj-shadow);
+            margin-top: 1.55rem;
+            padding: 0.25rem;
+        }}
+        .qj-overview-map-head {{
+            padding: 0.2rem 0 0.35rem;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-overview-map-head) div[data-testid="stSegmentedControl"] {{
+            margin: 0.5rem 0 0;
+        }}
+        .qj-map-provenance {{
+            font-size: 0.76rem;
+            margin: 0.35rem 0 0.72rem;
+            padding: 0.56rem 0.7rem;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-overview-map-head) iframe {{
+            border: 1px solid var(--qj-line);
+        }}
+        @media (max-width: 720px) {{
+            .stApp [data-testid="stAppViewContainer"] .main .block-container,
+            .block-container {{ padding: 1.15rem 0.9rem 2.5rem; }}
+            .qj-header-title {{ font-size: 2rem; }}
+            .qj-page-hero {{
+                height: 130px;
+                margin-bottom: 1.25rem;
+                border-radius: 18px;
+            }}
+            .qj-page-hero img {{ border-radius: 18px; }}
+            .qj-housing-view-switch {{ margin-top: 0.9rem; }}
+            .qj-overview-card {{ min-height: auto; }}
+            div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [data-testid="stHorizontalBlock"] {{ flex-wrap: wrap; }}
+            div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [data-testid="column"] {{ min-width: 100% !important; }}
+            div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [data-testid="stHorizontalBlock"]:has(button) {{ justify-content: flex-start; min-height: auto; padding-bottom: 0.55rem; }}
+            div[data-testid="stSegmentedControl"] button {{ padding-inline: 0.7rem; }}
+            .qj-career-policy-grid {{ grid-template-columns: 1fr 1fr; }}
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def apply_selected_radio_style() -> None:
+    """Keep Housing mode navigation within the Housing page theme."""
+    st.markdown(
+        """
+        <style>
+        div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
+            background: var(--qj-primary-soft);
+            border-color: var(--qj-primary);
+            color: var(--qj-text);
+            box-shadow: 0 3px 10px rgba(23, 50, 77, 0.07);
+        }
+        div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) p {
+            color: var(--qj-text);
+            font-weight: 850;
+        }
         </style>
         """,
         unsafe_allow_html=True,

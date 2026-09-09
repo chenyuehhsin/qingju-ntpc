@@ -1117,7 +1117,7 @@ def _add_legend(map_obj: folium.Map, mode_color: str, workplace_name: str) -> No
           <div><span style="display:inline-block;width:20px;border-top:3px solid {mode_color};opacity:0.38;margin-right:6px;"></span>通勤連結示意</div>
           <div><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#AEB8BA;margin-right:7px;"></span>其他已評估候選</div>
           <div><span style="color:#C45B65;font-size:16px;margin-right:4px;">★</span>工作地：{safe_name}</div>
-          <div><span style="display:inline-block;width:18px;height:10px;background:#EADCA9;opacity:0.35;margin-right:6px;"></span>行政區租金背景（預設關閉）</div>
+          <div><span style="display:inline-block;width:18px;height:10px;background:#EADCA9;opacity:0.35;margin-right:6px;"></span>行政區租金背景（預設開啟）</div>
         </div>
         {{% endmacro %}}
         """
@@ -1191,6 +1191,10 @@ def _add_detail_legend(map_obj: folium.Map, living_area_name: str, has_livabilit
             color: #243238;
             font-size: 13px;
             box-shadow: 0 1px 4px rgba(36,50,56,0.10);
+            max-width: 300px;
+            white-space: normal;
+            overflow-wrap: break-word;
+            line-height: 1.35;
         ">
           <div style="font-weight:800;margin-bottom:6px;">{safe_name}</div>
           {heatmap_legend}
@@ -1202,7 +1206,9 @@ def _add_detail_legend(map_obj: folium.Map, living_area_name: str, has_livabilit
           <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#78B995;color:white;font-size:9px;font-weight:900;margin-right:6px;">採</span>超市 / 市場</div>
           <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#C45B65;color:white;font-size:9px;font-weight:900;margin-right:6px;">醫</span>醫療</div>
           <div><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#D39B43;color:white;font-size:9px;font-weight:900;margin-right:6px;">園</span>公園/運動</div>
-          <div style="margin-top:6px;color:#65747A;font-size:12px;line-height:1.35;">生活機能密度使用餐飲、採買、休閒與文化 POI；醫療維持獨立圖層。生活機能統計目前仍基於 OSM {POI_STATISTICS_RADIUS_METERS}m 範圍。</div>
+          <div style="margin-top:6px;color:#65747A;font-size:12px;">生活機能密度：餐飲、採買、休閒與文化 POI</div>
+          <div style="color:#65747A;font-size:12px;">醫療：維持獨立圖層</div>
+          <div style="color:#65747A;font-size:12px;">統計範圍：OSM {POI_STATISTICS_RADIUS_METERS}m</div>
         </div>
         {{% endmacro %}}
         """
