@@ -782,6 +782,56 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             font-weight: 800;
             padding: 0.18rem 0.42rem;
         }
+        .qj-policy-matrix-wrap {
+            max-width: 100%;
+            overflow-x: auto;
+            margin: 0.3rem 0 0.65rem;
+        }
+        .qj-policy-compact-matrix {
+            width: 100%;
+            min-width: 620px;
+            border-collapse: separate;
+            border-spacing: 0;
+            color: #52646B;
+            font-size: 0.76rem;
+            line-height: 1.35;
+            table-layout: fixed;
+        }
+        .qj-policy-compact-matrix th,
+        .qj-policy-compact-matrix td {
+            overflow-wrap: anywhere;
+            text-align: left;
+            vertical-align: top;
+        }
+        .qj-policy-compact-matrix th {
+            background: #FFF8E4;
+            border-bottom: 1px solid #F3D98B;
+            color: #775B12;
+            font-size: 0.72rem;
+            font-weight: 850;
+            padding: 0.42rem 0.5rem;
+        }
+        .qj-policy-compact-matrix th:first-child {
+            border-left: 3px solid #F3D98B;
+            border-radius: 8px 0 0 0;
+            width: 18%;
+        }
+        .qj-policy-compact-matrix th:nth-child(2) { width: 37%; }
+        .qj-policy-compact-matrix th:nth-child(3) { width: 27%; }
+        .qj-policy-compact-matrix th:last-child {
+            border-radius: 0 8px 0 0;
+            width: 18%;
+        }
+        .qj-policy-compact-matrix td {
+            background: #ffffff;
+            border-bottom: 1px solid #F5E9C3;
+            padding: 0.46rem 0.5rem;
+        }
+        .qj-policy-compact-matrix td:first-child {
+            border-left: 3px solid #FFF0BF;
+            color: #17324D;
+            font-weight: 800;
+        }
         .qj-policy-insight-title,
         .qj-policy-analysis-title {
             color: #17324D;

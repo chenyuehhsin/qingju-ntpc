@@ -225,6 +225,14 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
             returned_objects=["last_object_clicked"],
             key="policy_map",
         )
+        st.markdown("### 政策介入矩陣")
+        st.caption(
+            "以下只表示值得進一步檢視的資料訊號，不代表政策優先順序、ranking、score 或正式政策處方。"
+        )
+        if intervention_matrix.empty:
+            st.info("目前沒有足夠的有效行政區資料建立政策介入矩陣。")
+        else:
+            _render_policy_intervention_compact_matrix(intervention_matrix)
     if default_popup_candidate is not None:
         st.session_state.policy_default_popup_shown = True
     clicked_candidate = _candidate_from_click(map_policy, map_state)
@@ -261,28 +269,65 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
         st.caption(f"有效行政區：{len(youth_job_data)} 區｜資料缺值不補值")
         st.plotly_chart(build_youth_job_scatter(youth_job_data), use_container_width=True)
 
-    st.markdown("## 政策介入矩陣")
-    st.caption(
-        "以目前有效行政區的 median 作為透明高低門檻；每列是資料訊號與可評估工具，"
-        "不是 ranking、政策 score、composite index 或政策成效預測。"
-    )
-    if intervention_matrix.empty:
-        st.info("目前沒有足夠的有效行政區資料建立政策介入矩陣。")
-    else:
-        st.dataframe(
-            intervention_matrix,
-            hide_index=True,
-            use_container_width=True,
-            column_config={
-                "資料訊號": st.column_config.TextColumn("資料訊號", width="large"),
-                "政策觀察": st.column_config.TextColumn("政策觀察", width="large"),
-                "可評估工具": st.column_config.TextColumn("可評估工具", width="large"),
-                "涉及行政區": st.column_config.TextColumn("涉及行政區", width="large"),
-            },
+    with st.expander("查看完整政策介入矩陣", expanded=False):
+        st.caption(
+            "完整清單保留各規則的長文字與所有命中行政區；不代表政策優先順序或正式政策處方。"
         )
+        if intervention_matrix.empty:
+            st.info("目前沒有足夠的有效行政區資料建立政策介入矩陣。")
+        else:
+            st.dataframe(
+                intervention_matrix,
+                hide_index=True,
+                use_container_width=True,
+                column_config={
+                    "資料訊號": st.column_config.TextColumn("資料訊號", width="large"),
+                    "政策觀察": st.column_config.TextColumn("政策觀察", width="large"),
+                    "可評估工具": st.column_config.TextColumn("可評估工具", width="large"),
+                    "涉及行政區": st.column_config.TextColumn("涉及行政區", width="large"),
+                },
+            )
 
-    with st.expander("資料、方法與限制", expanded=False):
+    with st.expander("資料來源、方法與限制", expanded=False):
         render_policy_method_notes()
+
+
+def _render_policy_intervention_compact_matrix(intervention_matrix: pd.DataFrame) -> None:
+    """Render existing matrix rules in a compact comparison table without changing their logic."""
+    rows = []
+    for _, row in intervention_matrix.head(5).iterrows():
+        districts = [part.strip() for part in str(row["涉及行政區"]).split("、") if part.strip()]
+        if districts == ["無"]:
+            district_label = "目前無命中行政區"
+        elif len(districts) > 3:
+            district_label = f"{'、'.join(districts[:3])} 等"
+        else:
+            district_label = "、".join(districts)
+        rows.append(
+            "<tr>"
+            f"<td>{html.escape(str(row['資料訊號']).split('（', 1)[0])}</td>"
+            f"<td>{html.escape(str(row['政策觀察']))}</td>"
+            f"<td>{html.escape(str(row['可評估工具']))}</td>"
+            f"<td>{html.escape(district_label)}</td>"
+            "</tr>"
+        )
+    st.markdown(
+        """
+        <div class="qj-policy-matrix-wrap">
+            <table class="qj-policy-compact-matrix">
+                <thead>
+                    <tr><th>資料訊號</th><th>政策觀察</th><th>可評估工具</th><th>命中區域</th></tr>
+                </thead>
+                <tbody>
+        """
+        + "".join(rows)
+        + """
+                </tbody>
+            </table>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def _render_policy_district_layer_note(analysis_layer: str, towns: gpd.GeoDataFrame) -> None:
