@@ -1,0 +1,178 @@
+{
+  "version": "m3-1",
+  "numeric_source_of_truth": false,
+  "documents": [
+    {
+      "id": "opportunity_index",
+      "path": "methodology/opportunity_index.md",
+      "keywords": [
+        "opportunity_index",
+        "Opportunity Index",
+        "就業機會指數"
+      ],
+      "source_files": [
+        "app/assistant_service.py",
+        "app/components/policy_lens.py"
+      ],
+      "sha256": "cd81e2979d9fc369827d844fc304366f41f6475fa5329f47f169acd3d5d090a2"
+    },
+    {
+      "id": "reliability_methodology",
+      "path": "methodology/reliability_methodology.md",
+      "keywords": [
+        "reliability",
+        "可靠度",
+        "可信度"
+      ],
+      "source_files": [
+        "app/assistant_service.py"
+      ],
+      "sha256": "604dcd2f416c20a52a4564a45e014ea36b96b8b34a1652139f90c7768f0fdc4b"
+    },
+    {
+      "id": "temporal_methodology",
+      "path": "methodology/temporal_methodology.md",
+      "keywords": [
+        "資料期間",
+        "資料月份",
+        "temporal"
+      ],
+      "source_files": [
+        "app/assistant_service.py",
+        "scripts/employment/build_new_taipei_employment_summary.py",
+        "outputs/population/ntpc_district_youth_18_35_metadata.json"
+      ],
+      "sha256": "0055e251dc5d18e558a27a52ed56414b4195c4ac9eca0fa4f8f812da6e523f63"
+    },
+    {
+      "id": "youth_definition",
+      "path": "definitions/youth_definition.md",
+      "keywords": [
+        "youth_population",
+        "青年",
+        "人口"
+      ],
+      "source_files": [
+        "outputs/population/ntpc_district_youth_18_35_metadata.json",
+        "docs/youth_age_harmonization.md"
+      ],
+      "sha256": "818d7791d3ec28909c546fddecf6fb9ca386060b266c16a4dc8cc0f6f12fe70c"
+    },
+    {
+      "id": "jobs_per_1000_youth",
+      "path": "definitions/jobs_per_1000_youth.md",
+      "keywords": [
+        "jobs_per_1000_youth",
+        "每千",
+        "求才",
+        "hiring_count"
+      ],
+      "source_files": [
+        "app/components/policy_lens.py"
+      ],
+      "sha256": "55de91b318ffd39d5211b2bc3487abbba2717d4da8e235a96b2121fec402e745"
+    },
+    {
+      "id": "salary",
+      "path": "definitions/salary.md",
+      "keywords": [
+        "salary",
+        "薪資"
+      ],
+      "source_files": [
+        "scripts/employment/build_new_taipei_employment_summary.py"
+      ],
+      "sha256": "1710ca09a9eb8a426ddc036ea0bae53ab7bbd72f6dde78dde89c4c886c78e6cb"
+    },
+    {
+      "id": "job_diversity",
+      "path": "definitions/job_diversity.md",
+      "keywords": [
+        "job_diversity",
+        "多樣性"
+      ],
+      "source_files": [
+        "scripts/employment/build_new_taipei_employment_summary.py"
+      ],
+      "sha256": "ae0a69883656398b1a1eb12e265ca2eccb85ed09e5cfb21164bca6c1d4e3a40d"
+    },
+    {
+      "id": "employment_stability",
+      "path": "definitions/employment_stability.md",
+      "keywords": [
+        "employment_stability",
+        "穩定度"
+      ],
+      "source_files": [
+        "scripts/employment/build_new_taipei_employment_summary.py"
+      ],
+      "sha256": "ebbb30ca6e3da3418ebb3a6c8efbf7577a81ff5fee50f7e9d65044bdc88d7e67"
+    },
+    {
+      "id": "population_source",
+      "path": "data_catalog/population_source.md",
+      "keywords": [
+        "人口資料來源",
+        "population_source"
+      ],
+      "source_files": [
+        "outputs/population/ntpc_district_youth_18_35_metadata.json"
+      ],
+      "sha256": "2587b91a2917989efaa5360cc45f5ffdefba9c413a7cb67b1ef38c501e41988c"
+    },
+    {
+      "id": "jobs_source",
+      "path": "data_catalog/jobs_source.md",
+      "keywords": [
+        "job_count",
+        "職缺資料",
+        "jobs_source"
+      ],
+      "source_files": [
+        "data/data_catalog.csv",
+        "scripts/employment/build_new_taipei_employment_summary.py"
+      ],
+      "sha256": "19f84abcd32794133f65455e27f4e382840b285cdda46b430b5b3b52f1547f71"
+    },
+    {
+      "id": "district_coverage",
+      "path": "data_catalog/district_coverage.md",
+      "keywords": [
+        "行政區",
+        "district_coverage"
+      ],
+      "source_files": [
+        "app/assistant_service.py"
+      ],
+      "sha256": "be0ff69ede011aa3fbb5acf4a41ad7038c9fa1fc48902934c372da7cc5396d20"
+    },
+    {
+      "id": "employment_data_limitations",
+      "path": "limitations/employment_data_limitations.md",
+      "keywords": [
+        "職缺資料",
+        "限制",
+        "rent",
+        "租金"
+      ],
+      "source_files": [
+        "app/assistant_service.py"
+      ],
+      "sha256": "30beb8c12f208dd44ce7b40ce0d7efcb4fb204a0a242aec3d8ea02b7fb4a53f4"
+    },
+    {
+      "id": "policy_interpretation",
+      "path": "limitations/policy_interpretation.md",
+      "keywords": [
+        "政策觀察",
+        "政策",
+        "因果"
+      ],
+      "source_files": [
+        "app/components/policy_lens.py",
+        "app/policy_agent/policy_rules.json"
+      ],
+      "sha256": "b5ea3b0454e8544761dd1ff0b9b0158b52859a3e3b4c59e0ca984cc3fbeee53c"
+    }
+  ]
+}

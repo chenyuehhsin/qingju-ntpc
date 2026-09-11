@@ -1,0 +1,2 @@
+# New KB document integrity must be identical on Windows and Linux checkouts.
+knowledge_base/** text eol=lf

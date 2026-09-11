@@ -39,6 +39,25 @@ python scripts/product/test_qingju_assistant.py
 
 整合說明見 [docs/qingju_assistant_integration.md](docs/qingju_assistant_integration.md)。
 
+### Milestone 3 — Agent-ready policy tools
+
+小幫手已接入本機 deterministic planner、九個 schema-defined tools 與 query-only session。
+可問「薪資最高前5區」、先「比較板橋和淡水」再問「那薪資呢？」。
+Opportunity Index、多樣性、穩定度及行政區可靠度分級尚未存在於本網站，會明確拒答；
+不能將舊地圖的方法套入。預測只回 `not_ready`，AWS 尚未部署。
+
+```bash
+python scripts/product/test_policy_agent.py
+python scripts/product/test_qingju_assistant.py
+python scripts/product/evaluate_policy_agent.py
+python scripts/product/forecast_readiness.py
+```
+
+測試使用 Streamlit/Altair 現有依賴的 `jsonschema` 做獨立 schema 驗證，未增加 runtime dependency。
+方法文件與 schema 修改後執行 `python scripts/product/build_agent_assets.py` 更新匯出及文件 hash。
+詳見 [M3 報告](docs/MILESTONE3_REPORT.md)、[工具 schemas](docs/policy_tool_schemas.json)、
+[AWS 後續計畫](docs/AWS_AGENTCORE_PLAN.md)。
+
 The default Housing quick preset uses versioned processed data and is available
 offline. Custom workplace input is an optional online Beta feature: it uses
 OpenStreetMap Nominatim for geocoding and TDX MaaS for transit routing.

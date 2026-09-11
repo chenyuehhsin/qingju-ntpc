@@ -1,0 +1,46 @@
+{
+  "status": "not_ready",
+  "available_months": [
+    "2026-08"
+  ],
+  "snapshot_dates": [
+    "2026-08-25"
+  ],
+  "verified_monthly_series_count": 0,
+  "evidence_files": [
+    "data/processed/employment/new_taipei_employment_summary.csv"
+  ],
+  "minimum_data_requirement": {
+    "exploratory_gate": "12 comparable consecutive monthly snapshots plus rolling validation",
+    "seasonality_goal": "24–36 months; still requires coverage/stability audit and baseline evaluation",
+    "basis": "Proposed project collection gates, not an AWS requirement or guarantee of sufficiency"
+  },
+  "candidate_target": "district × stable occupation category monthly unique postings / hiring demand proxy, not confirmed vacancies",
+  "candidate_features": [
+    "lagged postings and hiring counts",
+    "seasonality",
+    "salary sample coverage",
+    "source coverage",
+    "same-period youth population with availability lag"
+  ],
+  "data_gaps": [
+    "One employment snapshot is not a monthly time series.",
+    "Summary has only top_job_category, no complete district/category panel.",
+    "Cross-month occupation taxonomy, deduplication and district coverage are unverified.",
+    "Annual age-proxy unemployment series cannot replace monthly district/category job demand.",
+    "Raw employment file is excluded from Git; no reproducible historical archive is available in this checkout."
+  ],
+  "recommended_collection_plan": [
+    "Archive immutable monthly source responses, fetch dates, reference periods and hashes.",
+    "Record taxonomy version, job IDs, district mapping, missing and late records.",
+    "Build comparable district/category panels; distinguish zero from missing.",
+    "Use chronological holdout and rolling-origin backtests against seasonal/naive baselines before SageMaker deployment."
+  ],
+  "forecast_contract": {
+    "prediction": null,
+    "uncertainty": null,
+    "training_period": null,
+    "model_version": null,
+    "prediction_is_fact": false
+  }
+}

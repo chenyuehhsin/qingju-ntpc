@@ -8,6 +8,8 @@ import pandas as pd
 import streamlit as st
 
 from assistant_service import LABELS, answer_question, load_context
+from policy_agent.contracts import SessionContext
+from policy_agent.orchestrator import PolicyAgentOrchestrator
 
 
 def render_qingju_assistant(page: str) -> None:
@@ -65,7 +67,15 @@ def render_qingju_assistant(page: str) -> None:
                         st.info("請輸入問題或選擇推薦問題。")
                     else:
                         try:
-                            st.session_state.qingju_assistant_answer = answer_question(query, load_context(), page)
+                            session = SessionContext(**st.session_state.get("qingju_agent_context", {}))
+                            result = PolicyAgentOrchestrator().run(query, session)
+                            # Retain existing site/career explanations not in the policy tool scope.
+                            if not result["tool_results"]:
+                                legacy = answer_question(query, load_context(), page)
+                                if legacy["intent"] in {"site_guide", "career_evidence", "metric_explain"}:
+                                    result = {**legacy, "tool_results": [], "session_context": result["session_context"]}
+                            st.session_state.qingju_agent_context = result["session_context"]
+                            st.session_state.qingju_assistant_answer = result
                         except (OSError, ValueError, KeyError, RuntimeError):
                             st.session_state.qingju_assistant_answer = None
                             st.error("目前資料不足以回答這個問題。青聚資料暫時無法讀取，請稍後再試。")
@@ -87,6 +97,9 @@ def render_qingju_assistant(page: str) -> None:
                             st.code(item["sha256"], language=None)
                         for warning in result["reliability"]:
                             st.caption(f"{warning['district']} · 刊登樣本 {warning['job_postings']}：{warning['warning']}")
+                        for tool_result in result.get("tool_results", []):
+                            if tool_result["data"].get("factors"):
+                                st.json(tool_result["data"]["factors"])
                         for note in result["limitations"]:
                             st.caption(note)
                 else:
