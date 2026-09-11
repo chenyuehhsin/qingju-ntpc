@@ -25,6 +25,20 @@ pip install -r requirements.txt
 streamlit run app/app.py
 ```
 
+## 青聚小幫手
+
+在「青年職涯探索」、「青年安居推薦」及「青年局 Policy Lens」三個頁面右下角點擊芽苗角色，即可展開青聚小幫手。可詢問網站使用方式、護理轉職方向、行政區青年人口／职缺／租金、比較行政區及既有政策訊號。點擊外側或按 Esc 收起；切換頁面會保留最近一次問答。
+
+小幫手直接使用這個 Streamlit 網站的既有資料與 Policy Lens 計算，不需要另啟 FastAPI、靜態地圖網站或外部 LLM API。啟動後預設網址為 `http://localhost:8501`。
+
+離線驗證：
+
+```bash
+python scripts/product/test_qingju_assistant.py
+```
+
+整合說明見 [docs/qingju_assistant_integration.md](docs/qingju_assistant_integration.md)。
+
 The default Housing quick preset uses versioned processed data and is available
 offline. Custom workplace input is an optional online Beta feature: it uses
 OpenStreetMap Nominatim for geocoding and TDX MaaS for transit routing.
