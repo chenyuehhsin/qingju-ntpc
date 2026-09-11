@@ -243,6 +243,181 @@ def build_recommendation_map(
     return map_obj
 
 
+def build_housing_selection_map(
+    mode: str,
+    selected_row: pd.Series,
+    candidates: pd.DataFrame,
+    destination: dict[str, float | str],
+    towns: gpd.GeoDataFrame,
+    cities: gpd.GeoDataFrame,
+) -> folium.Map:
+    """Build a focused map for one selected preference result."""
+    color = MODE_COLORS[mode]
+    center_lat = float(destination["destination_lat"])
+    center_lon = float(destination["destination_lon"])
+    map_obj = folium.Map(
+        location=[center_lat, center_lon],
+        zoom_start=10,
+        tiles=None,
+        control_scale=True,
+        zoom_control=True,
+        prefer_canvas=True,
+    )
+    folium.TileLayer(
+        tiles=TRANSPARENT_TILE_DATA_URI,
+        name="簡潔底圖",
+        attr="Local transparent background",
+        control=False,
+        show=True,
+    ).add_to(map_obj)
+    _add_overview_base_context(map_obj, towns, cities)
+    _add_rent_context_layer(map_obj, towns)
+
+    for _, row in candidates.iterrows():
+        if str(row["candidate_name"]) == str(selected_row["candidate_name"]):
+            continue
+        folium.CircleMarker(
+            location=[float(row["lat"]), float(row["lon"])],
+            radius=3,
+            color="#9EAAAD",
+            weight=0.7,
+            fill=True,
+            fill_color="#AEB8BA",
+            fill_opacity=0.28,
+            opacity=0.38,
+            tooltip=html.escape(str(row["living_area"])),
+        ).add_to(map_obj)
+
+    selected_lat = float(selected_row["lat"])
+    selected_lon = float(selected_row["lon"])
+    folium.Circle(
+        location=[selected_lat, selected_lon],
+        radius=CORE_LIVING_AREA_RADIUS_METERS,
+        color=color,
+        weight=2.2,
+        opacity=0.82,
+        fill=True,
+        fill_color=color,
+        fill_opacity=0.13,
+        tooltip=f"目前選取｜{selected_row['living_area']}",
+    ).add_to(map_obj)
+    folium.CircleMarker(
+        location=[selected_lat, selected_lon],
+        radius=10,
+        color="#FFFFFF",
+        weight=3,
+        fill=True,
+        fill_color=color,
+        fill_opacity=0.98,
+        tooltip=f"目前選取｜{selected_row['living_area']}",
+        popup=_selected_housing_popup(selected_row, mode),
+    ).add_to(map_obj)
+    folium.Marker(
+        location=[selected_lat, selected_lon],
+        icon=folium.DivIcon(
+            html=(
+                f'<div style="transform:translate(14px,-34px);white-space:nowrap;background:white;'
+                f'border:1.5px solid {color};border-radius:8px;padding:4px 8px;color:#243238;'
+                f'font-size:12px;font-weight:850;box-shadow:0 2px 6px rgba(36,50,56,.14);">'
+                f'{html.escape(str(selected_row["living_area"]))}</div>'
+            ),
+            icon_size=(150, 28),
+            icon_anchor=(0, 0),
+        ),
+    ).add_to(map_obj)
+
+    _add_selected_commute_link(map_obj, selected_row, destination, color)
+    workplace_display = str(destination.get("workplace_address") or destination["destination"])
+    _add_simple_workplace_marker(map_obj, center_lat, center_lon, workplace_display)
+    _fit_candidate_bounds(map_obj, pd.DataFrame([selected_row]), center_lat, center_lon)
+    _add_simple_rent_legend(map_obj)
+    return map_obj
+
+
+def _selected_housing_popup(row: pd.Series, mode: str) -> folium.Popup:
+    rent_text = "資料不足" if pd.isna(row.get("rent")) else f"NT$ {money(row['rent'])}／月"
+    commute_text = "暫無資料" if pd.isna(row.get("commute_minutes")) else f"{float(row['commute_minutes']):.0f} 分鐘"
+    body = f"""
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-width:190px;">
+      <div style="font-weight:850;font-size:15px;">{html.escape(str(row['living_area']))}</div>
+      <div style="color:#65747A;margin:3px 0 7px;">{html.escape(mode)}</div>
+      <div>租金中位數：<b>{html.escape(rent_text)}</b></div>
+      <div>大眾運輸通勤：<b>{html.escape(commute_text)}</b></div>
+    </div>
+    """
+    return folium.Popup(body, max_width=260)
+
+
+def _add_selected_commute_link(
+    map_obj: folium.Map,
+    row: pd.Series,
+    destination: dict[str, float | str],
+    color: str,
+) -> None:
+    workplace_lat = float(destination["destination_lat"])
+    workplace_lon = float(destination["destination_lon"])
+    commute = "暫無資料" if pd.isna(row.get("commute_minutes")) else f"約 {float(row['commute_minutes']):.0f} 分鐘"
+    folium.PolyLine(
+        [[float(row["lat"]), float(row["lon"])], [workplace_lat, workplace_lon]],
+        color=color,
+        weight=3,
+        opacity=0.72,
+        tooltip=f"大眾運輸通勤｜{commute}",
+    ).add_to(map_obj)
+    label_lat = (float(row["lat"]) + workplace_lat) / 2
+    label_lon = (float(row["lon"]) + workplace_lon) / 2
+    folium.Marker(
+        location=[label_lat, label_lon],
+        icon=folium.DivIcon(
+            html=(
+                f'<div style="transform:translate(-38px,-12px);min-width:76px;text-align:center;white-space:nowrap;'
+                f'background:rgba(255,255,255,.94);border:1.4px solid {color};border-radius:999px;'
+                f'padding:4px 8px;color:#243238;font-size:12px;font-weight:850;">{commute}</div>'
+            ),
+            icon_size=(90, 26),
+            icon_anchor=(0, 0),
+        ),
+    ).add_to(map_obj)
+
+
+def _add_simple_workplace_marker(map_obj: folium.Map, lat: float, lon: float, workplace_name: str) -> None:
+    safe_name = html.escape(workplace_name)
+    folium.Marker(
+        [lat, lon],
+        tooltip=f"工作地點｜{safe_name}",
+        icon=folium.DivIcon(
+            html=(
+                '<div style="display:flex;align-items:center;gap:5px;white-space:nowrap;">'
+                '<span style="display:inline-flex;width:24px;height:24px;border-radius:999px;background:#C45B65;'
+                'border:2px solid white;color:white;align-items:center;justify-content:center;font-weight:900;">工</span>'
+                f'<span style="background:white;border:1px solid #E0B7BB;border-radius:7px;padding:3px 7px;'
+                f'color:#742C34;font-size:12px;font-weight:800;">{safe_name}</span></div>'
+            ),
+            icon_size=(180, 30),
+            icon_anchor=(12, 15),
+        ),
+    ).add_to(map_obj)
+
+
+def _add_simple_rent_legend(map_obj: folium.Map) -> None:
+    template = Template(
+        """
+        {% macro html(this, kwargs) %}
+        <div style="position:fixed;left:18px;bottom:20px;z-index:9998;background:rgba(255,255,255,.94);
+          border:1px solid #D6DDE0;border-radius:8px;padding:8px 10px;color:#354B5B;font-size:11px;
+          box-shadow:0 1px 4px rgba(36,50,56,.1);">
+          <div style="font-weight:850;margin-bottom:5px;">行政區租金中位數</div>
+          <div style="width:150px;height:8px;border-radius:99px;background:linear-gradient(90deg,#CFE4D5,#EADCA9,#EBC7AF,#D8A4A8);"></div>
+          <div style="display:flex;justify-content:space-between;margin-top:3px;color:#65747A;"><span>較低</span><span>較高</span></div>
+        </div>
+        {% endmacro %}
+        """
+    )
+    macro = MacroElement()
+    macro._template = template
+    map_obj.get_root().add_child(macro)
+
+
 def build_detail_map(
     row: pd.Series,
     pois: pd.DataFrame,

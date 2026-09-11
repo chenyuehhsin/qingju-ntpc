@@ -8,10 +8,12 @@ import pandas as pd
 import streamlit as st
 from streamlit_folium import st_folium
 
-from components.cards import render_recommendation_cards
-from components.map_view import build_detail_map, build_recommendation_map
+from components.cards import render_housing_mode_grid
+from components.map_view import build_detail_map, build_housing_selection_map
 from data_loader import (
     MODE_COLORS,
+    MODE_COPY,
+    MODE_ORDER,
     life_summary,
     load_detail_metro_lines,
     load_detail_metro_stations,
@@ -56,24 +58,36 @@ def render_dashboard_view(
     towns,
     cities,
     render_controls: Callable[[], None],
+    rent_budget: float,
 ) -> None:
-    mode_rows = top3[top3["preference_mode"] == mode].sort_values("rank").copy()
-    selected_candidate = _selected_top3_candidate(mode, mode_rows)
-    selected_row = mode_rows[mode_rows["candidate_name"] == selected_candidate].iloc[0]
-    page_key = _housing_page_key(mode)
+    rows_by_mode = _housing_choices_by_mode(recommendations, candidates, rent_budget)
+    available_modes = [candidate_mode for candidate_mode, row in rows_by_mode.items() if row is not None]
+    if not available_modes:
+        _render_housing_result_header(destination, rent_budget, render_controls)
+        st.warning("目前租屋預算內沒有符合條件的生活圈，請修改預算後重新分析。")
+        return
+
+    selected_mode = str(st.session_state.get("housing_selected_mode", mode))
+    if selected_mode not in available_modes:
+        selected_mode = available_modes[0]
+        st.session_state.housing_selected_mode = selected_mode
+    selected_row = rows_by_mode[selected_mode]
+    if selected_row is None:
+        return
+    page_key = _housing_page_key(selected_mode)
     if st.session_state.get(page_key) not in {HOUSING_PAGE_OVERVIEW, HOUSING_PAGE_DETAIL}:
         st.session_state[page_key] = HOUSING_PAGE_OVERVIEW
 
     if st.session_state[page_key] == HOUSING_PAGE_DETAIL:
-        _render_living_area_detail_page(mode, selected_row, destination, towns, cities)
+        _render_living_area_detail_page(selected_mode, selected_row, destination, towns, cities)
         return
 
-    _render_single_mode_overview_page(
-        mode,
+    _render_housing_results_page(
         candidates,
-        top3,
-        mode_rows,
+        rows_by_mode,
+        selected_mode,
         selected_row,
+        rent_budget,
         destination,
         towns,
         cities,
@@ -81,78 +95,133 @@ def render_dashboard_view(
     )
 
 
-def _render_single_mode_overview_page(
-    mode: str,
+def _render_housing_results_page(
     candidates: pd.DataFrame,
-    top3: pd.DataFrame,
-    mode_rows: pd.DataFrame,
+    rows_by_mode: dict[str, pd.Series | None],
+    selected_mode: str,
     selected_row: pd.Series,
+    rent_budget: float,
     destination: dict[str, float | str],
     towns,
     cities,
     render_controls: Callable[[], None],
 ) -> None:
-    left, middle, right = st.columns([24, 30, 46], gap="medium")
+    _render_housing_result_header(destination, rent_budget, render_controls)
+    left, right = st.columns([55, 45], gap="large", vertical_alignment="top")
     with left:
-        render_controls()
-        _render_market_overview(candidates, destination)
-    with middle:
-        st.markdown("### 推薦生活圈 Top 3")
-        render_recommendation_cards(
-            mode,
-            mode_rows,
-            selected_candidate=str(selected_row["candidate_name"]),
-            on_select=lambda candidate_name: _select_living_area(mode, candidate_name),
+        st.markdown("### 四種生活取向")
+        st.caption("每張卡片呈現現有推薦排序中，符合目前預算的優先生活圈。")
+        render_housing_mode_grid(
+            rows_by_mode,
+            selected_mode,
+            on_select=_select_housing_mode,
         )
     with right:
-        map_title, map_cta = st.columns([0.57, 0.43], gap="small")
-        with map_title:
-            st.markdown("### 生活圈分布地圖")
-        with map_cta:
-            st.markdown(
-                """
-                <style>
-                div[data-testid="stButton"] button[kind="primary"],
-                div[data-testid="stButton"] button[data-testid="stBaseButton-primary"] {
-                    background: #FFE8A3 !important;
-                    border-color: #F6C64A !important;
-                    color: #17324D !important;
-                }
-                div[data-testid="stButton"] button[kind="primary"]:hover,
-                div[data-testid="stButton"] button[data-testid="stBaseButton-primary"]:hover {
-                    background: #FFD96B !important;
-                    border-color: #F6C64A !important;
-                }
-                </style>
-                """,
-                unsafe_allow_html=True,
-            )
-            st.button(
-                "🌱 查看生活圈詳情",
-                key=f"housing_open_detail_{mode}",
-                use_container_width=True,
-                type="primary",
-                on_click=_open_living_area_detail,
-                args=(mode,),
-            )
-        map_obj = build_recommendation_map(
-            mode,
+        st.markdown("### 推薦總覽地圖")
+        st.caption("顯示目前選取生活圈、工作地點及大眾運輸通勤連線。")
+        map_obj = build_housing_selection_map(
+            selected_mode,
+            selected_row,
             candidates,
-            top3,
             destination,
             towns,
             cities,
         )
-        _enable_rent_context_layer(map_obj)
-        _highlight_selected_candidate(map_obj, selected_row, mode)
         st_folium(
             map_obj,
-            height=550,
+            height=510,
             use_container_width=True,
             returned_objects=[],
-            key="housing_recommendation_map",
+            key=f"housing_recommendation_map_{selected_mode}_{selected_row['candidate_name']}",
         )
-        _render_lifestyle_insight_card(selected_row)
+        _render_selected_plan_summary(selected_mode, selected_row)
+
+    st.markdown(
+        '<div class="qj-housing-data-limit">租金資料為歷史租賃實價登錄，並非即時待租房源；推薦結果供生活圈探索參考。</div>',
+        unsafe_allow_html=True,
+    )
+
+
+def _render_housing_result_header(
+    destination: dict[str, float | str],
+    rent_budget: float,
+    render_controls: Callable[[], None],
+) -> None:
+    st.markdown(
+        '<div class="qj-housing-results-title"><h1>找到適合你的新北生活圈</h1>'
+        '<p>依工作地點、租屋預算與固定居住條件，整理四種生活取向。</p></div>',
+        unsafe_allow_html=True,
+    )
+    with st.container(border=True, key="housing_condition_summary"):
+        render_controls()
+
+
+def _toggle_housing_condition_editor() -> None:
+    current = bool(st.session_state.get("housing_condition_editor_open", False))
+    st.session_state.housing_condition_editor_open = not current
+
+
+def _select_housing_mode(mode: str) -> None:
+    st.session_state.housing_selected_mode = mode
+
+
+def _housing_choices_by_mode(
+    recommendations: pd.DataFrame,
+    candidates: pd.DataFrame,
+    rent_budget: float,
+) -> dict[str, pd.Series | None]:
+    """Apply the budget as a filter after the existing preference ranking."""
+    choices: dict[str, pd.Series | None] = {}
+    rent_values = pd.to_numeric(recommendations.get("rent"), errors="coerce")
+    livability_values = pd.to_numeric(candidates.get("livability_index"), errors="coerce").dropna()
+    low_cut = float(livability_values.quantile(1 / 3)) if not livability_values.empty else float("nan")
+    high_cut = float(livability_values.quantile(2 / 3)) if not livability_values.empty else float("nan")
+    for candidate_mode in MODE_ORDER:
+        ranked = recommendations[recommendations["preference_mode"] == candidate_mode].copy()
+        ranked["_rent_numeric"] = rent_values.loc[ranked.index]
+        eligible = ranked[ranked["_rent_numeric"].le(float(rent_budget))].sort_values("rank")
+        if eligible.empty:
+            choices[candidate_mode] = None
+            continue
+        row = eligible.iloc[0].copy()
+        row["livability_level"] = _livability_level(row.get("livability_index"), low_cut, high_cut)
+        choices[candidate_mode] = row
+    return choices
+
+
+def _livability_level(value: object, low_cut: float, high_cut: float) -> str:
+    if value is None or pd.isna(value) or pd.isna(low_cut) or pd.isna(high_cut):
+        return "資料不足"
+    numeric = float(value)
+    if numeric >= high_cut:
+        return "高"
+    if numeric >= low_cut:
+        return "中"
+    return "基礎"
+
+
+def _render_selected_plan_summary(mode: str, row: pd.Series) -> None:
+    tradeoffs = {
+        "省租型": "租金相對較低，但可能需要較長通勤時間。",
+        "平衡型": "在租金與通勤時間之間取得較佳平衡。",
+        "通勤型": "通勤時間相對較短，但租金不一定最低。",
+        "生活品質型": "優先考量生活機能與休閒資源，租金與通勤需一併評估。",
+    }
+    st.markdown(
+        '<div class="qj-housing-plan-summary">'
+        f'<div><span>選取</span><b>{html.escape(mode)}｜{html.escape(str(row["living_area"]))}</b></div>'
+        f'<p><b>主要取捨：</b>{html.escape(tradeoffs.get(mode, MODE_COPY[mode]))}</p>'
+        '</div>',
+        unsafe_allow_html=True,
+    )
+    st.button(
+        "查看完整證據",
+        key=f"housing_open_detail_{mode}",
+        use_container_width=True,
+        type="primary",
+        on_click=_open_living_area_detail,
+        args=(mode,),
+    )
 
 
 def _render_living_area_detail_page(
@@ -468,18 +537,18 @@ def _render_life_summary_card(mode: str, row: pd.Series, pois: pd.DataFrame) -> 
     st.markdown(
         f"""
         <div class="qj-life-detail-card" style="border-left-color: {color};">
-            <div class="qj-life-detail-eyebrow">Selected Top {int(row['rank'])}</div>
+            <div class="qj-life-detail-eyebrow">目前選取方案</div>
             <div class="qj-life-detail-title">{html.escape(str(row['living_area']))}</div>
             <div class="qj-station">{html.escape(str(row['candidate_name']))}｜{html.escape(str(row['district']))}</div>
             <div class="qj-life-poi-note">{html.escape(district_context)}</div>
             <div class="qj-life-metric-grid">
                 <div><span>月租中位數</span><b>{money(row['rent'])}</b><small>MOI 2026-03</small></div>
-                <div><span>通勤</span><b>{minutes(row['commute_minutes'])}</b><small>public transit</small></div>
-                <div><span>food</span><b>{food}</b><small>OSM 800m 統計</small></div>
-                <div><span>shopping</span><b>{shopping}</b><small>OSM 800m 統計</small></div>
-                <div><span>medical</span><b>{medical}</b><small>OSM 800m 統計</small></div>
-                <div><span>recreation</span><b>{recreation}</b><small>OSM 800m 統計</small></div>
-                <div><span>culture</span><b>{culture}</b><small>OSM 800m 統計</small></div>
+                <div><span>通勤</span><b>{minutes(row['commute_minutes'])}</b><small>大眾運輸</small></div>
+                <div><span>餐飲</span><b>{food}</b><small>OSM 800m 統計</small></div>
+                <div><span>採買</span><b>{shopping}</b><small>OSM 800m 統計</small></div>
+                <div><span>醫療</span><b>{medical}</b><small>OSM 800m 統計</small></div>
+                <div><span>休閒</span><b>{recreation}</b><small>OSM 800m 統計</small></div>
+                <div><span>文化</span><b>{culture}</b><small>OSM 800m 統計</small></div>
             </div>
             <div class="qj-life-summary">{html.escape(life_summary(row))}</div>
             <div class="qj-life-poi-note">{html.escape(poi_note)}</div>
@@ -491,7 +560,7 @@ def _render_life_summary_card(mode: str, row: pd.Series, pois: pd.DataFrame) -> 
 
 def _count(row: pd.Series, column: str) -> int | str:
     if column not in row.index or pd.isna(row[column]):
-        return "NA"
+        return "資料不足"
     return int(row[column])
 
 

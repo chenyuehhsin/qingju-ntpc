@@ -138,6 +138,11 @@ def render_policy_lens(
         <div class="qj-policy-header">
             <h1 class="qj-visually-hidden">青年局 Policy Lens</h1>
             <div class="qj-page-intro">分開觀察青年職涯與安居資料訊號，作為政策端快速掃描工具。</div>
+            <div class="qj-policy-capabilities" aria-label="政策觀察能力">
+                <span>職涯需求掃描</span>
+                <span>安居條件觀察</span>
+                <span>資料限制透明</span>
+            </div>
             <div class="qj-policy-alert">Policy v0 為政策篩選與探索工具，不代表正式政策優先順序。</div>
         </div>
         """,

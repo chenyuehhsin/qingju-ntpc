@@ -5,22 +5,31 @@ import streamlit as st
 
 PAGE_THEMES = {
     "青年職涯探索": {
-        "primary": "#3BA7F5",
-        "primary_ink": "#257FBE",
-        "soft": "#EAF6FF",
-        "border": "#BDE7FF",
+        "primary": "#198A63",
+        "primary_ink": "#126B4D",
+        "soft": "#EDF8F3",
+        "border": "#BFE2D2",
+        "ambient_a": "rgba(25, 138, 99, 0.16)",
+        "ambient_b": "rgba(72, 169, 235, 0.14)",
+        "ambient_c": "rgba(245, 139, 167, 0.09)",
     },
     "青年安居推薦": {
         "primary": "#42C98E",
         "primary_ink": "#187A59",
         "soft": "#ECFBF3",
         "border": "#C3EFD9",
+        "ambient_a": "rgba(66, 201, 142, 0.17)",
+        "ambient_b": "rgba(110, 167, 199, 0.14)",
+        "ambient_c": "rgba(232, 160, 90, 0.08)",
     },
     "青年局 Policy Lens": {
         "primary": "#F6C64A",
         "primary_ink": "#9A7200",
         "soft": "#FFF8E4",
         "border": "#FFE6A6",
+        "ambient_a": "rgba(246, 198, 74, 0.18)",
+        "ambient_b": "rgba(66, 201, 142, 0.11)",
+        "ambient_c": "rgba(110, 167, 199, 0.11)",
     },
 }
 
@@ -628,6 +637,31 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             padding: 0.45rem 0.78rem;
             margin-top: 0.7rem;
         }
+        .qj-policy-capabilities {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.42rem;
+            margin-top: 0.7rem;
+        }
+        .qj-policy-capabilities span {
+            align-items: center;
+            background: rgba(255, 255, 255, 0.82);
+            border: 1px solid #F0D88D;
+            border-radius: 999px;
+            color: #6D5718;
+            display: inline-flex;
+            font-size: 0.78rem;
+            font-weight: 780;
+            gap: 0.35rem;
+            padding: 0.3rem 0.58rem;
+        }
+        .qj-policy-capabilities span::before {
+            background: #E5B72D;
+            border-radius: 999px;
+            content: "";
+            height: 0.42rem;
+            width: 0.42rem;
+        }
         .qj-policy-view-switch {
             display: flex;
             justify-content: center;
@@ -1232,20 +1266,30 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             --qj-accent-pink: #F58BA7;
             --qj-accent-pink-soft: #FFF0F4;
             --qj-accent-pink-ink: #9E3F59;
-            --qj-radius-card: 16px;
-            --qj-radius-control: 12px;
-            --qj-shadow: 0 3px 12px rgba(23, 50, 77, 0.055);
+            --qj-radius-card: 12px;
+            --qj-radius-control: 10px;
+            --qj-shadow: 0 1px 4px rgba(23, 50, 77, 0.045);
             background:
-                radial-gradient(circle at 5% -10%, var(--qj-primary-soft) 0, transparent 22rem),
+                radial-gradient(ellipse 54rem 36rem at -6% -8%, {theme['ambient_a']} 0%, transparent 72%),
+                radial-gradient(ellipse 52rem 34rem at 106% 10%, {theme['ambient_b']} 0%, transparent 70%),
+                radial-gradient(ellipse 60rem 32rem at 52% 108%, {theme['ambient_c']} 0%, transparent 72%),
+                linear-gradient(180deg, #F7FCFF 0%, #FCFEFF 44%, #F7FAFC 100%),
                 var(--qj-bg);
+            background-attachment: fixed;
+        }}
+        .stApp [data-testid="stAppViewContainer"],
+        .stApp section[data-testid="stMain"] {{
+            background: transparent;
         }}
         .stApp [data-testid="stAppViewContainer"] .main .block-container,
         .block-container {{ 
-            width: min(1840px, calc(100vw - 24px)) !important;
-            max-width: min(1840px, calc(100vw - 24px)) !important;
-            padding-left: 12px !important;
-            padding-right: 12px !important;
-            padding-inline: 12px !important;
+            width: calc(100vw - 12px) !important;
+            max-width: none !important;
+            margin-left: 6px !important;
+            margin-right: 6px !important;
+            padding-left: 6px !important;
+            padding-right: 6px !important;
+            padding-inline: 6px !important;
         }}
         h1, h2, h3 {{
             color: var(--qj-text);
@@ -1263,24 +1307,52 @@ def apply_styles(page: str = "青年安居推薦") -> None:
 
         /* Global top navigation: a light website header, not a dashboard card. */
         div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) {{
-            background: rgba(255, 255, 255, 0.88);
+            background: rgba(255, 255, 255, 0.94);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 0 !important;
             border-bottom: 1px solid #DDEAF2 !important;
             border-radius: 0 !important;
-            box-shadow: 0 1px 3px rgba(23, 50, 77, 0.035) !important;
-            margin: 0 0 0.875rem !important;
+            box-shadow: none !important;
+            margin: 0 0 0.5rem !important;
             padding: 0 0.15rem !important;
         }}
         div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) > div {{
             padding: 0 !important;
         }}
         .qj-top-nav-brand {{
+            align-items: center;
             display: flex;
-            flex-direction: column;
-            justify-content: center;
-            min-height: 60px;
+            flex-direction: row;
+            gap: 0.62rem;
+            justify-content: flex-start;
+            min-height: 52px;
+            padding-left: 0.45rem;
+            text-align: left;
+        }}
+        .qj-brand-mark {{
+            background:
+                radial-gradient(circle at 68% 28%, #7DE2B1 0 18%, transparent 19%),
+                linear-gradient(145deg, var(--qj-primary) 0 48%, var(--qj-primary-ink) 49% 100%);
+            border-radius: 55% 45% 60% 40%;
+            box-shadow: 0 4px 12px rgba(23, 50, 77, 0.12);
+            display: block;
+            flex: 0 0 auto;
+            height: 1.7rem;
+            position: relative;
+            transform: rotate(-10deg);
+            width: 1.7rem;
+        }}
+        .qj-brand-mark::after {{
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 999px;
+            content: "";
+            height: 0.28rem;
+            left: 0.42rem;
+            position: absolute;
+            top: 0.72rem;
+            transform: rotate(42deg);
+            width: 0.92rem;
         }}
         .qj-top-nav-title {{
             color: var(--qj-text);
@@ -1300,7 +1372,7 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             display: flex;
             justify-content: flex-end;
             align-items: center;
-            min-height: 60px;
+            min-height: 52px;
         }}
         div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) button {{
             min-height: 2.15rem;
@@ -1327,11 +1399,21 @@ def apply_styles(page: str = "青年安居推薦") -> None:
         /* Each supplied illustration is a complete banner, with no text overlaid. */
         .qj-page-hero {{
             width: 100%;
-            height: 160px;
-            margin: 0 0 1.5rem;
+            height: 138px;
+            margin: 0 0 0.85rem;
             overflow: hidden;
-            border-radius: 20px;
-            box-shadow: 0 3px 12px rgba(23, 50, 77, 0.07);
+            border: 1px solid #E1EDF2;
+            border-radius: 10px;
+            box-shadow: 0 8px 28px rgba(23, 50, 77, 0.08);
+            position: relative;
+        }}
+        .qj-page-hero::after {{
+            border: 1px solid rgba(255, 255, 255, 0.68);
+            border-radius: 9px;
+            content: "";
+            inset: 5px;
+            pointer-events: none;
+            position: absolute;
         }}
         .qj-page-hero img {{
             display: block;
@@ -1339,7 +1421,22 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             height: 100% !important;
             object-fit: cover;
             object-position: center;
-            border-radius: 20px;
+            border-radius: 10px;
+        }}
+        /* Career/housing illustrations are presented as cropped page banners. */
+        .qj-page-hero.qj-page-hero-original {{
+            background: #eef7f8;
+            height: clamp(125px, 10vw, 155px);
+        }}
+        .qj-page-hero.qj-page-hero-original img {{
+            height: 100% !important;
+            max-height: none;
+            object-fit: cover;
+            object-position: center 18%;
+            width: 100% !important;
+        }}
+        .qj-page-hero.qj-page-hero-housing {{
+            height: clamp(125px, 10vw, 155px);
         }}
         .qj-page-hero-fallback {{
             background:
@@ -1382,7 +1479,7 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             line-height: 1.15;
         }}
         @media (max-width: 1440px) {{
-            .qj-page-hero {{ height: 150px; }}
+            .qj-page-hero {{ height: 132px; }}
         }}
 
         /* Navigation, selectors, and actions share the same quiet, rounded treatment. */
@@ -1792,14 +1889,18 @@ def apply_styles(page: str = "青年安居推薦") -> None:
         }}
         @media (max-width: 720px) {{
             .stApp [data-testid="stAppViewContainer"] .main .block-container,
-            .block-container {{ padding: 1.15rem 0.9rem 2.5rem; }}
+            .block-container {{
+                margin: 0 !important;
+                padding: 1.05rem 0.65rem 2rem !important;
+                width: 100% !important;
+            }}
             .qj-header-title {{ font-size: 2rem; }}
             .qj-page-hero {{
-                height: 130px;
-                margin-bottom: 1.25rem;
-                border-radius: 18px;
+                height: 112px;
+                margin-bottom: 0.8rem;
+                border-radius: 9px;
             }}
-            .qj-page-hero img {{ border-radius: 18px; }}
+            .qj-page-hero img {{ border-radius: 9px; }}
             .qj-housing-view-switch {{ margin-top: 0.9rem; }}
             .qj-overview-card {{ min-height: auto; }}
             div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [data-testid="stHorizontalBlock"] {{ flex-wrap: wrap; }}
@@ -1808,6 +1909,941 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             div[data-testid="stSegmentedControl"] button {{ padding-inline: 0.7rem; }}
             .qj-career-policy-grid {{ grid-template-columns: 1fr 1fr; }}
         }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+    st.markdown(
+        """
+        <style>
+        /* Career exploration result page */
+        .qj-career-header {
+            margin: 0 auto 1rem;
+        }
+        .qj-career-title-row {
+            align-items: center;
+            display: flex;
+            gap: 2rem;
+            justify-content: space-between;
+        }
+        .qj-career-title-row h1 {
+            color: #17324D;
+            font-size: clamp(1.75rem, 2.4vw, 2.5rem);
+            line-height: 1.15;
+            margin: 0 0 0.3rem;
+        }
+        .qj-career-steps {
+            align-items: center;
+            display: flex;
+            flex: 0 0 auto;
+            gap: 0.75rem;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .qj-career-steps li {
+            align-items: center;
+            color: #718096;
+            display: flex;
+            font-size: 0.84rem;
+            font-weight: 750;
+            gap: 0.38rem;
+            white-space: nowrap;
+        }
+        .qj-career-steps li:not(:last-child)::after {
+            background: #CBD5E1;
+            content: "";
+            height: 1px;
+            margin-left: 0.38rem;
+            width: 1.2rem;
+        }
+        .qj-career-steps span,
+        .qj-career-comparison th span {
+            align-items: center;
+            background: #E9EEF2;
+            border-radius: 999px;
+            display: inline-flex;
+            height: 1.7rem;
+            justify-content: center;
+            min-width: 1.7rem;
+        }
+        .qj-career-steps li.is-active {
+            color: #126B4D;
+        }
+        .qj-career-steps li.is-active span {
+            background: #198A63;
+            color: #FFFFFF;
+        }
+        .st-key-career_filter_panel > div[data-testid="stVerticalBlockBorderWrapper"] {
+            background: #FFFFFF;
+            border: 1px solid #DCE7E2;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(23, 50, 77, 0.05);
+            padding: 0.9rem 1rem 0.75rem;
+        }
+        .st-key-career_filter_panel div[data-testid="stButton"] button,
+        .st-key-career_reanalyze_button button {
+            min-height: 2.55rem;
+        }
+        .qj-career-scenario {
+            align-items: center;
+            border-top: 1px solid #E7EEEB;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            margin-top: 0.65rem;
+            padding-top: 0.65rem;
+        }
+        .qj-career-scenario-label {
+            background: transparent !important;
+            border: 0 !important;
+            color: #64748B !important;
+            font-weight: 750 !important;
+            padding-left: 0 !important;
+        }
+        .qj-career-scenario span {
+            background: #FFF0F1;
+            border: 1px solid #F5CFD3;
+            border-radius: 999px;
+            color: #9B3F4A;
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 0.25rem 0.55rem;
+        }
+        .qj-career-data-scope {
+            margin: 0.25rem 0 0.75rem;
+        }
+        .qj-result-summary {
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.86);
+            border: 1px solid #DCE7E2;
+            border-radius: 12px;
+            box-shadow: 0 5px 18px rgba(23, 50, 77, 0.055);
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            margin: 0.1rem 0 0.8rem;
+            overflow: hidden;
+        }
+        .qj-result-summary-item {
+            min-width: 0;
+            padding: 0.62rem 0.78rem 0.66rem;
+            position: relative;
+        }
+        .qj-result-summary-item + .qj-result-summary-item {
+            border-left: 1px solid #E6EEEA;
+        }
+        .qj-result-summary-item::before {
+            background: var(--qj-primary);
+            border-radius: 999px;
+            content: "";
+            height: 3px;
+            left: 0.78rem;
+            position: absolute;
+            top: 0;
+            width: 1.6rem;
+        }
+        .qj-result-summary-item span,
+        .qj-result-summary-item small {
+            color: #718096;
+            display: block;
+            font-size: 0.68rem;
+            line-height: 1.3;
+        }
+        .qj-result-summary-item b {
+            color: #17324D;
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 850;
+            line-height: 1.25;
+            margin: 0.16rem 0 0.12rem;
+            overflow-wrap: anywhere;
+        }
+        .qj-career-result-summary .qj-result-summary-item:nth-child(2)::before {
+            background: #F58BA7;
+        }
+        .qj-career-result-summary .qj-result-summary-item:nth-child(3)::before {
+            background: #6EA7C7;
+        }
+        .qj-career-result-summary .qj-result-summary-item:nth-child(4)::before {
+            background: #E8A05A;
+        }
+        [class*="st-key-career_result_card_"] > div[data-testid="stVerticalBlockBorderWrapper"] {
+            background: #FFFFFF;
+            border: 1px solid #DCE7E2;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(23, 50, 77, 0.045);
+            margin-bottom: 0.7rem;
+            padding: 0.85rem 0.95rem 0.8rem;
+            transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+        }
+        [class*="st-key-career_result_card_"] > div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+            border-color: #A8D2BF;
+            box-shadow: 0 8px 24px rgba(23, 50, 77, 0.085);
+            transform: translateY(-1px);
+        }
+        .st-key-career_result_card_1 > div[data-testid="stVerticalBlockBorderWrapper"] {
+            border-color: #198A63;
+            box-shadow: 0 3px 13px rgba(25, 138, 99, 0.11);
+        }
+        .qj-career-result-card {
+            align-items: stretch;
+            display: grid;
+            gap: 0.9rem;
+            grid-template-columns: minmax(0, 1.05fr) minmax(410px, 1.15fr);
+        }
+        .qj-career-result-copy {
+            min-width: 0;
+        }
+        .qj-career-rank-row {
+            align-items: center;
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.3rem;
+        }
+        .qj-career-rank {
+            align-items: center;
+            background: #E3EEE9;
+            border-radius: 999px;
+            color: #17324D;
+            display: inline-flex;
+            font-size: 0.82rem;
+            font-weight: 850;
+            height: 1.65rem;
+            justify-content: center;
+            width: 1.65rem;
+        }
+        .qj-career-result-card-primary .qj-career-rank {
+            background: #198A63;
+            color: #FFFFFF;
+        }
+        .qj-career-path-badge {
+            background: #FFF0F1;
+            border: 1px solid #F5CFD3;
+            border-radius: 999px;
+            color: #9B3F4A;
+            display: inline-flex;
+            font-size: 0.74rem;
+            font-weight: 800;
+            padding: 0.22rem 0.52rem;
+        }
+        .qj-career-result-card h3 {
+            font-size: 1.15rem;
+            line-height: 1.25;
+            margin: 0;
+            overflow-wrap: anywhere;
+        }
+        .qj-career-english {
+            color: #64748B;
+            font-size: 0.76rem;
+            line-height: 1.35;
+            margin-top: 0.12rem;
+            overflow-wrap: anywhere;
+        }
+        .qj-career-result-card p {
+            color: #465A67;
+            font-size: 0.84rem;
+            line-height: 1.45;
+            margin: 0.42rem 0 0.48rem;
+        }
+        .qj-career-skill-heading {
+            align-items: center;
+            color: #64748B;
+            display: flex;
+            font-size: 0.72rem;
+            justify-content: space-between;
+            margin-bottom: 0.26rem;
+        }
+        .qj-career-skill-heading b {
+            color: #465A67;
+        }
+        .qj-career-skill-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+        .qj-career-skill-list span {
+            background: #EDF8F3;
+            border: 1px solid #CBE6D9;
+            border-radius: 6px;
+            color: #126B4D;
+            font-size: 0.71rem;
+            font-weight: 700;
+            padding: 0.23rem 0.45rem;
+        }
+        .qj-career-skill-list .qj-career-skill-empty {
+            background: #F7F9FA;
+            border-color: #E3E8EB;
+            color: #64748B;
+        }
+        .qj-career-result-metrics {
+            align-self: stretch;
+            border-left: 1px solid #E4ECE8;
+            display: grid;
+            gap: 0;
+            grid-template-columns: repeat(4, minmax(82px, 1fr));
+            padding-left: 0.9rem;
+        }
+        .qj-career-result-metric {
+            align-items: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 3.45rem;
+            padding: 0.35rem;
+            text-align: center;
+        }
+        .qj-career-result-metric:not(:last-child) {
+            border-right: 1px solid #EDF1EF;
+        }
+        .qj-career-result-metric span {
+            color: #718096;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+        .qj-career-metric-heading {
+            align-items: center;
+            display: flex;
+            gap: 0.28rem;
+            justify-content: center;
+        }
+        .qj-career-metric-icon {
+            fill: none;
+            height: 1.18rem;
+            stroke: #126B4D;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 1.65;
+            width: 1.18rem;
+        }
+        .qj-career-result-metric b {
+            color: #17324D;
+            font-size: 1.05rem;
+            line-height: 1.3;
+            margin-top: 0.18rem;
+        }
+        .qj-career-metric-dots {
+            align-items: center;
+            display: flex;
+            gap: 0.2rem;
+            margin-top: 0.28rem;
+        }
+        .qj-career-metric-dots i {
+            background: #DCE4E7;
+            border-radius: 999px;
+            display: block;
+            height: 0.47rem;
+            width: 0.47rem;
+        }
+        .qj-career-metric-dots i.is-active {
+            background: #198A63;
+        }
+        [class*="st-key-career_result_card_"] [data-testid="stButton"] button {
+            min-height: 2.2rem;
+            padding: 0.38rem 0.65rem;
+        }
+        [class*="st-key-career_evidence_button_"] button {
+            background: #FFFFFF !important;
+            border-color: #198A63 !important;
+            color: #126B4D !important;
+            box-shadow: none !important;
+        }
+        [class*="st-key-career_evidence_button_"] button:hover {
+            background: #EDF8F3 !important;
+            border-color: #126B4D !important;
+        }
+        .qj-career-comparison {
+            background: #FFFFFF;
+            border: 1px solid #DCE7E2;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(23, 50, 77, 0.05);
+            padding: 1rem;
+            position: static;
+            top: auto;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.st-key-career_comparison_anchor) {
+            align-items: flex-start !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.st-key-career_comparison_anchor) > div[data-testid="column"] {
+            align-self: flex-start !important;
+        }
+        .st-key-career_comparison_anchor {
+            margin-top: 0 !important;
+        }
+        .qj-career-comparison-title {
+            color: #17324D;
+            font-size: 1.2rem;
+            font-weight: 850;
+        }
+        .qj-career-comparison-subtitle {
+            color: #64748B;
+            font-size: 0.78rem;
+            margin: 0.18rem 0 0.7rem;
+        }
+        .qj-career-table-scroll {
+            border: 1px solid #E3EAE7;
+            border-radius: 9px;
+            overflow-x: auto;
+        }
+        .qj-career-table-scroll:focus-visible {
+            box-shadow: 0 0 0 3px #EDF8F3;
+            outline: 2px solid #198A63;
+        }
+        .qj-career-comparison table {
+            border-collapse: collapse;
+            font-size: 0.72rem;
+            table-layout: fixed;
+            min-width: 420px;
+            width: 100%;
+        }
+        .qj-career-comparison th,
+        .qj-career-comparison td {
+            border-bottom: 1px solid #E9EFEC;
+            border-right: 1px solid #E9EFEC;
+            padding: 0.55rem 0.42rem;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .qj-career-comparison th:last-child,
+        .qj-career-comparison td:last-child {
+            border-right: 0;
+        }
+        .qj-career-comparison thead th {
+            background: #F5F8F7;
+            color: #354B5B;
+            font-weight: 800;
+            height: 5.25rem;
+            line-height: 1.35;
+            overflow-wrap: anywhere;
+        }
+        .qj-career-comparison th:first-child {
+            width: 28%;
+        }
+        .qj-career-comparison thead th:not(:first-child) {
+            width: 24%;
+        }
+        .qj-career-comparison tbody th,
+        .qj-career-comparison tbody td {
+            height: 4.5rem;
+        }
+        .qj-career-comparison tbody th {
+            color: #354B5B;
+            line-height: 1.35;
+            text-align: left;
+        }
+        .qj-career-comparison th span {
+            display: flex;
+            height: 1.35rem;
+            margin: 0 auto 0.22rem;
+            min-width: 1.35rem;
+            width: 1.35rem;
+        }
+        .qj-career-scale {
+            align-items: center;
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            height: 100%;
+            justify-content: center;
+            line-height: 1.2;
+        }
+        .qj-career-scale > span:last-child {
+            display: flex;
+            gap: 0.18rem;
+        }
+        .qj-career-scale i {
+            background: #DCE4E7;
+            border-radius: 999px;
+            display: block;
+            height: 0.42rem;
+            width: 0.42rem;
+        }
+        .qj-career-scale i.is-active {
+            background: #198A63;
+        }
+        .qj-career-howto {
+            background: #FFF9ED;
+            border: 1px solid #F1DDAF;
+            border-radius: 10px;
+            color: #5C4A22;
+            margin-top: 0.75rem;
+            padding: 0.7rem 0.78rem;
+        }
+        .qj-career-howto b {
+            color: #4A3B1C;
+            font-size: 0.85rem;
+        }
+        .qj-career-howto p,
+        .qj-career-limit {
+            font-size: 0.74rem;
+            line-height: 1.45;
+            margin: 0.22rem 0 0;
+        }
+        .qj-career-limit {
+            color: #64748B;
+            padding: 0.65rem 0.1rem 0;
+        }
+        .qj-career-next-actions {
+            background: #FFFFFF;
+            border: 1px solid #DCE7E2;
+            border-radius: 12px;
+            color: #354B5B;
+            line-height: 1.55;
+            margin: 0;
+            padding: 0.8rem 1rem 0.8rem 2rem;
+        }
+        .qj-career-skeleton {
+            display: grid;
+            gap: 0.7rem;
+            margin: 0.7rem 0;
+        }
+        .qj-career-skeleton span {
+            animation: qj-career-pulse 1.15s ease-in-out infinite alternate;
+            background: #E8EFEC;
+            border-radius: 12px;
+            display: block;
+            height: 7.5rem;
+        }
+        @keyframes qj-career-pulse {
+            from { opacity: 0.55; }
+            to { opacity: 1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .qj-career-skeleton span { animation: none; }
+        }
+        @media (max-width: 1100px) {
+            .qj-career-title-row {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 0.8rem;
+            }
+            .qj-career-result-card {
+                grid-template-columns: 1fr;
+            }
+            .qj-career-result-metrics {
+                border-left: 0;
+                border-top: 1px solid #E4ECE8;
+                padding-left: 0;
+                padding-top: 0.4rem;
+            }
+            .qj-career-comparison {
+                position: static;
+            }
+        }
+        @media (max-width: 900px) {
+            div[data-testid="stHorizontalBlock"]:has(.qj-career-comparison) {
+                flex-wrap: wrap;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.qj-career-comparison) > div[data-testid="column"] {
+                flex: 1 1 100% !important;
+                min-width: 100% !important;
+                width: 100% !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.st-key-career_reanalyze_button) {
+                flex-wrap: wrap;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.st-key-career_reanalyze_button) > div[data-testid="column"] {
+                flex: 1 1 42% !important;
+                min-width: 15rem !important;
+            }
+        }
+        @media (max-width: 720px) {
+            .qj-career-steps {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 0.4rem;
+            }
+            .qj-career-steps li::after {
+                display: none;
+            }
+            .qj-career-result-metrics {
+                grid-template-columns: 1fr 1fr;
+            }
+            .qj-career-result-metric:nth-child(2) {
+                border-right: 0;
+            }
+            .qj-career-result-metric:nth-child(-n+2) {
+                border-bottom: 1px solid #EDF1EF;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.st-key-career_reanalyze_button) > div[data-testid="column"] {
+                flex-basis: 100% !important;
+                min-width: 100% !important;
+            }
+            .qj-career-scenario {
+                align-items: flex-start;
+                flex-direction: column;
+            }
+        }
+
+        /* Housing recommendation result page */
+        .qj-housing-results-title {
+            margin: 0.1rem 0 0.7rem;
+        }
+        .qj-housing-results-title h1 {
+            color: #17324D;
+            font-size: clamp(1.75rem, 2.2vw, 2.35rem);
+            line-height: 1.15;
+            margin: 0 0 0.28rem;
+        }
+        .qj-housing-results-title p {
+            color: #64748B;
+            margin: 0;
+        }
+        .st-key-housing_condition_summary > div[data-testid="stVerticalBlockBorderWrapper"] {
+            background: #FFFFFF;
+            border: 1px solid #DCE7E2;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(23, 50, 77, 0.045);
+            padding: 0.75rem 0.9rem;
+        }
+        .qj-housing-condition-list {
+            align-items: center;
+            display: grid;
+            gap: 0;
+            grid-template-columns: 1.3fr 1fr 0.78fr 0.9fr;
+        }
+        .qj-housing-condition-list > div {
+            border-right: 1px solid #E5ECE9;
+            min-width: 0;
+            padding: 0.15rem 0.85rem;
+        }
+        .qj-housing-condition-list > div:last-child {
+            border-right: 0;
+        }
+        .qj-housing-condition-item {
+            align-items: center;
+            display: flex;
+            gap: 0.62rem;
+        }
+        .qj-housing-condition-item svg {
+            fill: none;
+            flex: 0 0 auto;
+            height: 1.45rem;
+            stroke: #17324D;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 1.8;
+            width: 1.45rem;
+        }
+        .qj-housing-condition-item p {
+            margin: 0;
+            min-width: 0;
+        }
+        .qj-housing-condition-list span {
+            color: #718096;
+            display: block;
+            font-size: 0.72rem;
+            margin-bottom: 0.16rem;
+        }
+        .qj-housing-condition-list b {
+            color: #17324D;
+            display: flex;
+            flex-wrap: wrap;
+            font-size: 0.9rem;
+            font-weight: 800;
+            gap: 0.32rem;
+            overflow-wrap: anywhere;
+        }
+        .qj-housing-condition-list i {
+            background: #EDF8F3;
+            border: 1px solid #CBE6D9;
+            border-radius: 999px;
+            color: #126B4D;
+            font-size: 0.75rem;
+            font-style: normal;
+            padding: 0.2rem 0.48rem;
+        }
+        .qj-housing-condition-editor-title {
+            border-top: 1px solid #E5ECE9;
+            color: #354B5B;
+            font-size: 0.9rem;
+            font-weight: 800;
+            margin-top: 0.55rem;
+            padding-top: 0.7rem;
+        }
+        .qj-housing-fixed-condition {
+            min-height: 2.5rem;
+            padding-bottom: 0.22rem;
+        }
+        .qj-housing-fixed-condition > span {
+            color: #52646B;
+            display: block;
+            font-size: 0.8rem;
+            margin-bottom: 0.36rem;
+        }
+        .qj-housing-fixed-condition b {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+        }
+        .qj-housing-fixed-condition i {
+            background: #EDF8F3;
+            border: 1px solid #CBE6D9;
+            border-radius: 999px;
+            color: #126B4D;
+            font-size: 0.72rem;
+            font-style: normal;
+            padding: 0.2rem 0.45rem;
+        }
+        [class*="st-key-housing_result_card_"] > div[data-testid="stVerticalBlockBorderWrapper"] {
+            background: #FFFFFF;
+            border: 1px solid #DCE7E2;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(23, 50, 77, 0.04);
+            box-sizing: border-box;
+            height: 276px;
+            padding: 0.75rem;
+            transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+        }
+        [class*="st-key-housing_result_card_"] > div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+            box-shadow: 0 8px 24px rgba(23, 50, 77, 0.08);
+            transform: translateY(-1px);
+        }
+        .st-key-housing_result_card_saving > div[data-testid="stVerticalBlockBorderWrapper"] {
+            border-color: #78B995;
+        }
+        .st-key-housing_result_card_balanced > div[data-testid="stVerticalBlockBorderWrapper"] {
+            border-color: #6EA7C7;
+        }
+        .st-key-housing_result_card_commute > div[data-testid="stVerticalBlockBorderWrapper"] {
+            border-color: #E8A05A;
+        }
+        .st-key-housing_result_card_lifestyle > div[data-testid="stVerticalBlockBorderWrapper"] {
+            border-color: #D97972;
+        }
+        [class*="st-key-housing_result_card_"] > div[data-testid="stVerticalBlockBorderWrapper"]:has(.is-selected) {
+            box-shadow: 0 0 0 2px rgba(66, 201, 142, 0.11), 0 3px 12px rgba(23, 50, 77, 0.06);
+        }
+        .qj-housing-mode-card {
+            min-height: 187px;
+        }
+        .qj-housing-card-head {
+            align-items: center;
+            display: flex;
+            gap: 0.45rem;
+            justify-content: space-between;
+        }
+        .qj-housing-mode-label {
+            align-items: center;
+            display: flex;
+            font-size: 1.5rem;
+            font-weight: 850;
+            gap: 0.34rem;
+        }
+        .qj-housing-mode-card--saving .qj-housing-mode-label,
+        .qj-housing-mode-card--saving .qj-housing-card-metrics b {
+            color: #4D936C;
+        }
+        .qj-housing-mode-card--balanced .qj-housing-mode-label,
+        .qj-housing-mode-card--balanced .qj-housing-card-metrics b {
+            color: #397FA8;
+        }
+        .qj-housing-mode-card--commute .qj-housing-mode-label,
+        .qj-housing-mode-card--commute .qj-housing-card-metrics b {
+            color: #B66D15;
+        }
+        .qj-housing-mode-card--lifestyle .qj-housing-mode-label,
+        .qj-housing-mode-card--lifestyle .qj-housing-card-metrics b {
+            color: #C2534D;
+        }
+        .qj-housing-mode-label svg {
+            border-radius: 999px;
+            box-sizing: content-box;
+            fill: none;
+            height: 1.5rem;
+            padding: 0.48rem;
+            stroke: currentColor;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-width: 1.6;
+            width: 1.5rem;
+        }
+        .qj-housing-mode-card--saving .qj-housing-mode-label svg {
+            background: #EAF6EF;
+        }
+        .qj-housing-mode-card--balanced .qj-housing-mode-label svg {
+            background: #EAF4FA;
+        }
+        .qj-housing-mode-card--commute .qj-housing-mode-label svg {
+            background: #FFF1E3;
+        }
+        .qj-housing-mode-card--lifestyle .qj-housing-mode-label svg {
+            background: #FFF0EE;
+        }
+        .qj-housing-selected-badge {
+            background: #EAF6EF;
+            border: 1px solid #78B995;
+            border-radius: 999px;
+            color: #28784F;
+            font-size: 0.68rem;
+            font-weight: 800;
+            padding: 0.18rem 0.42rem;
+            white-space: nowrap;
+        }
+        .qj-housing-mode-card h3 {
+            color: #17324D;
+            font-size: 1.1rem;
+            line-height: 1.25;
+            margin: 0.48rem 0 0.28rem;
+            min-height: 1.4rem;
+            overflow-wrap: anywhere;
+        }
+        .qj-housing-mode-card p,
+        .qj-housing-card-empty {
+            color: #64748B;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            margin: 0 0 0.6rem;
+            min-height: 3.15rem;
+        }
+        .qj-housing-card-metrics {
+            border: 1px solid #E6ECE9;
+            border-radius: 9px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            overflow: hidden;
+        }
+        .qj-housing-card-metrics > div {
+            min-width: 0;
+            padding: 0.48rem 0.38rem;
+            text-align: center;
+        }
+        .qj-housing-card-metrics > div + div {
+            border-left: 1px solid #E6ECE9;
+        }
+        .qj-housing-card-metrics span {
+            color: #718096;
+            display: block;
+            font-size: 0.65rem;
+        }
+        .qj-housing-card-metrics b {
+            display: block;
+            font-size: 0.78rem;
+            line-height: 1.25;
+            margin-top: 0.15rem;
+            overflow-wrap: anywhere;
+        }
+        [class*="st-key-housing_result_card_"] button {
+            background: #FFFFFF !important;
+            border-color: currentColor !important;
+            min-height: 2.05rem;
+        }
+        .st-key-housing_result_card_saving button {
+            color: #4D936C !important;
+        }
+        .st-key-housing_result_card_balanced button {
+            color: #397FA8 !important;
+        }
+        .st-key-housing_result_card_commute button {
+            color: #B66D15 !important;
+        }
+        .st-key-housing_result_card_lifestyle button {
+            color: #C2534D !important;
+        }
+        [class*="st-key-housing_result_card_"] button:hover:not(:disabled) {
+            background: #F8FBFA !important;
+        }
+        .qj-housing-plan-summary {
+            background: #F7FAF8;
+            border: 1px solid #DCE7E2;
+            border-radius: 10px;
+            margin-top: 0.5rem;
+            padding: 0.68rem 0.78rem;
+        }
+        .qj-housing-plan-summary span {
+            color: #718096;
+            display: block;
+            font-size: 0.7rem;
+        }
+        .qj-housing-plan-summary b {
+            color: #17324D;
+        }
+        .qj-housing-plan-summary p {
+            color: #52646B;
+            font-size: 0.76rem;
+            line-height: 1.4;
+            margin: 0.35rem 0 0;
+        }
+        .qj-housing-data-limit {
+            color: #64748B;
+            font-size: 0.76rem;
+            margin-top: 0.8rem;
+            text-align: center;
+        }
+        @media (max-width: 1100px) {
+            .qj-result-summary {
+                grid-template-columns: 1fr 1fr;
+            }
+            .qj-result-summary-item:nth-child(3) {
+                border-left: 0;
+                border-top: 1px solid #E6EEEA;
+            }
+            .qj-result-summary-item:nth-child(4) {
+                border-top: 1px solid #E6EEEA;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.qj-housing-plan-summary) {
+                flex-wrap: wrap;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.qj-housing-plan-summary) > div[data-testid="column"] {
+                flex: 1 1 100% !important;
+                min-width: 100% !important;
+                width: 100% !important;
+            }
+        }
+        @media (max-width: 720px) {
+            .qj-page-hero.qj-page-hero-housing {
+                height: 120px;
+            }
+            .qj-housing-condition-list {
+                grid-template-columns: 1fr;
+            }
+            .qj-result-summary {
+                grid-template-columns: 1fr;
+            }
+            .qj-result-summary-item + .qj-result-summary-item {
+                border-left: 0;
+                border-top: 1px solid #E6EEEA;
+            }
+            .qj-result-summary-item {
+                padding-block: 0.72rem;
+            }
+            .qj-housing-condition-list > div {
+                border-bottom: 1px solid #E5ECE9;
+                border-right: 0;
+                padding: 0.48rem 0;
+            }
+            .qj-housing-condition-list > div:last-child {
+                border-bottom: 0;
+                padding-bottom: 0;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.qj-housing-mode-card) {
+                flex-wrap: wrap;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.qj-housing-mode-card) > div[data-testid="column"] {
+                flex: 1 1 100% !important;
+                min-width: 100% !important;
+                width: 100% !important;
+            }
+            [class*="st-key-housing_result_card_"] > div[data-testid="stVerticalBlockBorderWrapper"] {
+                height: auto;
+                min-height: auto;
+            }
+            .qj-housing-mode-card {
+                min-height: auto;
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            [class*="st-key-career_result_card_"] > div[data-testid="stVerticalBlockBorderWrapper"],
+            [class*="st-key-housing_result_card_"] > div[data-testid="stVerticalBlockBorderWrapper"] {
+                transition: none;
+            }
+            [class*="st-key-career_result_card_"] > div[data-testid="stVerticalBlockBorderWrapper"]:hover,
+            [class*="st-key-housing_result_card_"] > div[data-testid="stVerticalBlockBorderWrapper"]:hover {
+                transform: none;
+            }
+        }
         </style>
         """,
         unsafe_allow_html=True,

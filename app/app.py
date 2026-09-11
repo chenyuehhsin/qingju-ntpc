@@ -14,7 +14,6 @@ if str(APP_DIR) not in sys.path:
 
 from custom_workplace import GEOCODING_SOURCE, build_custom_dashboard_data, geocode_address
 from components.career_evidence_viewer import render_career_evidence_viewer
-from components.overview import render_comparison_dashboard
 from components.policy_lens import render_policy_lens
 from data_loader import (
     MODE_ORDER,
@@ -31,6 +30,9 @@ from styles import apply_styles
 
 NO_PRESET_LABEL = "無"
 DEFAULT_PRESET_LABEL = "港墘站｜內湖"
+DEFAULT_HOUSING_RENT_BUDGET = 18_000
+HOUSING_FIXED_TRANSPORT_MODE = "大眾運輸"
+HOUSING_FIXED_ROOM_TYPE = "獨立套房"
 
 
 def _apply_quick_preset(preset_addresses: dict[str, str]) -> None:
@@ -170,6 +172,75 @@ def _render_housing_control_center(
     st.rerun()
 
 
+def _render_housing_condition_editor(
+    preset_workplaces: dict[str, dict[str, Any]],
+) -> None:
+    """Edit the two user-controlled housing conditions with the original menus."""
+    workplace_options = list(preset_workplaces)
+    current_workplace = str(st.session_state.get("quick_preset", DEFAULT_PRESET_LABEL))
+    if current_workplace not in workplace_options:
+        current_workplace = DEFAULT_PRESET_LABEL
+    if st.session_state.get("housing_workplace_draft") not in workplace_options:
+        st.session_state.housing_workplace_draft = current_workplace
+
+    current_budget = int(st.session_state.get("housing_rent_budget", DEFAULT_HOUSING_RENT_BUDGET))
+    budget_options = list(range(5_000, 60_001, 1_000))
+    if current_budget not in budget_options:
+        budget_options.append(current_budget)
+        budget_options.sort()
+    if st.session_state.get("housing_budget_draft") not in budget_options:
+        st.session_state.housing_budget_draft = current_budget
+
+    with st.form("housing_condition_editor_form"):
+        workplace_col, budget_col, room_col, transport_col, action_col = st.columns(
+            [1.2, 0.95, 0.78, 0.9, 0.68], gap="medium", vertical_alignment="bottom"
+        )
+        with workplace_col:
+            selected_workplace = st.selectbox(
+                "工作地點",
+                workplace_options,
+                key="housing_workplace_draft",
+            )
+        with budget_col:
+            budget = st.selectbox(
+                "租屋預算（每月）",
+                budget_options,
+                key="housing_budget_draft",
+                format_func=lambda value: f"NT$ {value:,.0f}／月",
+            )
+        with room_col:
+            st.markdown(
+                '<div class="qj-housing-fixed-condition">'
+                '<span>房型</span>'
+                f'<b><i>{HOUSING_FIXED_ROOM_TYPE}</i></b>'
+                "</div>",
+                unsafe_allow_html=True,
+            )
+        with transport_col:
+            st.markdown(
+                '<div class="qj-housing-fixed-condition">'
+                '<span>交通方式</span>'
+                f'<b><i>{HOUSING_FIXED_TRANSPORT_MODE}</i></b>'
+                "</div>",
+                unsafe_allow_html=True,
+            )
+        with action_col:
+            submitted = st.form_submit_button("套用條件", type="primary", use_container_width=True)
+    if not submitted:
+        return
+    try:
+        with st.spinner(f"載入工作地點：{selected_workplace}..."):
+            st.session_state.quick_preset = selected_workplace
+            st.session_state.workplace_address = str(preset_workplaces[selected_workplace]["address"])
+            _load_quick_example(selected_workplace, preset_workplaces)
+        st.session_state.housing_rent_budget = float(budget)
+        st.session_state.housing_condition_editor_open = False
+    except Exception as exc:
+        st.error(f"工作地址處理失敗：{exc}")
+        return
+    st.rerun()
+
+
 def render_top_nav(page_options: list[str], current_page: str) -> str:
     with st.container(border=True):
         brand_col, nav_col = st.columns([0.78, 1.22], gap="medium")
@@ -177,7 +248,11 @@ def render_top_nav(page_options: list[str], current_page: str) -> str:
             st.markdown(
                 """
                 <div class="qj-top-nav-brand">
-                    <div class="qj-top-nav-title">青聚新北｜青年安居 × 就業 × 交通</div>
+                    <span class="qj-brand-mark" aria-hidden="true"></span>
+                    <div>
+                        <div class="qj-top-nav-title">青聚新北</div>
+                        <div class="qj-top-nav-subtitle">青年安居 × 就業 × 交通</div>
+                    </div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -200,8 +275,8 @@ def render_top_nav(page_options: list[str], current_page: str) -> str:
 def render_page_hero(page_name: str) -> None:
     """Render the page-specific banner from the repository's local assets."""
     hero_images = {
-        "青年職涯探索": "hero_career.png",
-        "青年安居推薦": "hero_housing.png",
+        "青年職涯探索": "original_hero_career.jpg",
+        "青年安居推薦": "original_hero_housing.jpg",
         "青年局 Policy Lens": "hero_policy.png",
     }
     hero_name = hero_images.get(page_name)
@@ -209,9 +284,16 @@ def render_page_hero(page_name: str) -> None:
 
     if hero_path.is_file():
         image_data = base64.b64encode(hero_path.read_bytes()).decode("ascii")
+        mime_type = "image/jpeg" if hero_path.suffix.lower() in {".jpg", ".jpeg"} else "image/png"
+        original_class = " qj-page-hero-original" if mime_type == "image/jpeg" else ""
+        page_class = {
+            "青年職涯探索": " qj-page-hero-career",
+            "青年安居推薦": " qj-page-hero-housing",
+            "青年局 Policy Lens": " qj-page-hero-policy",
+        }.get(page_name, "")
         st.markdown(
-            '<div class="qj-page-hero">'
-            f'<img src="data:image/png;base64,{image_data}" alt="" />'
+            f'<div class="qj-page-hero{original_class}{page_class}">'
+            f'<img src="data:{mime_type};base64,{image_data}" alt="" />'
             "</div>",
             unsafe_allow_html=True,
         )
@@ -249,7 +331,7 @@ def main() -> None:
         try:
             candidates_v35, training_v4, course_mapping, demo_job_evidence, beauty_phase5, crc_external_market = load_career_evidence_data()
         except Exception as exc:
-            st.error(f"Career evidence data loading failed: {exc}")
+            st.error(f"青年職涯資料載入失敗：{exc}")
             st.stop()
         render_career_evidence_viewer(candidates_v35, training_v4, course_mapping, demo_job_evidence, beauty_phase5, crc_external_market)
         return
@@ -278,6 +360,12 @@ def main() -> None:
         st.session_state.housing_view_mode = "比較四種模式"
     if st.session_state.housing_recommendation_mode not in MODE_ORDER:
         st.session_state.housing_recommendation_mode = MODE_ORDER[0]
+    if "housing_selected_mode" not in st.session_state:
+        st.session_state.housing_selected_mode = MODE_ORDER[0]
+    if "housing_rent_budget" not in st.session_state:
+        st.session_state.housing_rent_budget = float(DEFAULT_HOUSING_RENT_BUDGET)
+    if "housing_condition_editor_open" not in st.session_state:
+        st.session_state.housing_condition_editor_open = False
 
     preset_workplaces = {
         "港墘站｜內湖": {
@@ -357,14 +445,12 @@ def main() -> None:
         unsafe_allow_html=True,
     )
 
-    control_args = (view_options, preset_addresses, preset_options, preset_workplaces)
-    selected_view = str(st.session_state.housing_view_mode)
-    selected_mode = str(st.session_state.housing_recommendation_mode)
+    selected_mode = str(st.session_state.housing_selected_mode)
 
     if st.session_state.custom_workplace_data is None:
         control_col, message_col = st.columns([24, 76], gap="medium")
         with control_col:
-            _render_housing_control_center(*control_args)
+            _render_housing_condition_editor(preset_workplaces)
         with message_col:
             st.info("請先輸入工作地址並按「開始 / 更新推薦」。")
         st.stop()
@@ -376,30 +462,17 @@ def main() -> None:
         st.error(f"Dashboard data loading failed: {exc}")
         st.stop()
 
-    if selected_view == "比較四種模式":
-        render_comparison_dashboard(
-            candidates,
-            top3,
-            destination,
-            towns,
-            cities,
-            render_controls=lambda: _render_housing_control_center(
-                *control_args,
-                show_recommendation_mode=False,
-                show_heading=False,
-            ),
-        )
-    else:
-        render_dashboard_view(
-            selected_mode,
-            candidates,
-            recommendations,
-            top3,
-            destination,
-            towns,
-            cities,
-            render_controls=lambda: _render_housing_control_center(*control_args),
-        )
+    render_dashboard_view(
+        selected_mode,
+        candidates,
+        recommendations,
+        top3,
+        destination,
+        towns,
+        cities,
+        render_controls=lambda: _render_housing_condition_editor(preset_workplaces),
+        rent_budget=float(st.session_state.housing_rent_budget),
+    )
 
     st.markdown("---")
     with st.expander("資料與方法說明", expanded=False):
@@ -417,8 +490,8 @@ def main() -> None:
             目前不是 door-to-door 通勤。<br>
             目前不包含汽車 / 機車通勤模式。<br>
             推薦權重為 MVP preference settings，不代表客觀最佳居住選擇。<br>
-            總覽地圖呈現工作地、Top 3 推薦的約15分鐘核心生活圈（1 km）與延伸生活圈（2 km），以及弱化候選點；行政區背景可切換為無、租金、18–35 青年人口數或 18–35 青年人口占比。<br>
-            「15分鐘」為近似探索範圍，實際步行時間依道路與步行速度而異，不代表精準步行 isochrone；生活機能統計目前仍基於 800m 範圍。
+            結果頁地圖只強調目前選取生活圈、工作地、大眾運輸通勤連線與行政區租金背景；其他候選僅以弱化圓點呈現。<br>
+            生活圈圓形範圍為探索提示，不代表精準步行等時圈；生活機能統計目前仍基於 800m 範圍。
             </div>
             """,
             unsafe_allow_html=True,
