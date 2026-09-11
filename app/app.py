@@ -114,49 +114,78 @@ def _render_housing_control_center(
     if show_heading:
         st.markdown("### 青年安居｜設定我的條件")
         st.caption("從租金、通勤與生活機能，找到適合自己的新北生活圈。")
-    st.segmented_control(
-        "查看方式",
-        view_options,
-        label_visibility="visible",
-        key="housing_view_mode",
-    )
-    if show_recommendation_mode:
-        st.segmented_control(
-            "推薦模式",
-            MODE_ORDER,
+    form_sync = st.session_state.pop("housing_form_sync", None)
+    if isinstance(form_sync, dict):
+        for key, value in form_sync.items():
+            st.session_state[key] = value
+    st.session_state.setdefault("housing_view_mode_draft", st.session_state.housing_view_mode)
+    st.session_state.setdefault("housing_recommendation_mode_draft", st.session_state.housing_recommendation_mode)
+    st.session_state.setdefault("workplace_address_draft", st.session_state.workplace_address)
+    st.session_state.setdefault("quick_preset_draft", st.session_state.quick_preset)
+    with st.form("housing_recommendation_controls"):
+        selected_view = st.segmented_control(
+            "查看方式",
+            view_options,
             label_visibility="visible",
-            key="housing_recommendation_mode",
+            key="housing_view_mode_draft",
         )
-    else:
-        st.caption("比較模式會同時呈現四種偏好。")
-    st.text_input(
-        "工作地點",
-        key="workplace_address",
-        placeholder="例如：台北市內湖區瑞光路",
-        on_change=_mark_manual_address,
-        args=(preset_addresses,),
-    )
-    st.selectbox(
-        "快速範例",
-        preset_options,
-        key="quick_preset",
-        on_change=_apply_quick_preset,
-        args=(preset_addresses,),
-    )
-    st.markdown("固定條件：`大眾運輸`　`獨立套房`")
-    if not st.button("開始 / 更新推薦", use_container_width=True, key="housing_submit_recommendation"):
+        if show_recommendation_mode:
+            selected_mode = st.segmented_control(
+                "推薦模式",
+                MODE_ORDER,
+                label_visibility="visible",
+                key="housing_recommendation_mode_draft",
+            )
+        else:
+            selected_mode = st.session_state.housing_recommendation_mode_draft
+            st.caption("比較模式會同時呈現四種偏好。")
+        target_address = st.text_input(
+            "工作地點",
+            key="workplace_address_draft",
+            placeholder="例如：台北市內湖區瑞光路",
+        )
+        selected_preset = st.selectbox(
+            "快速範例",
+            preset_options,
+            key="quick_preset_draft",
+        )
+        st.markdown("固定條件：`大眾運輸`　`獨立套房`")
+        submitted = st.form_submit_button(
+            "開始 / 更新推薦",
+            type="primary",
+            use_container_width=True,
+        )
+    if not submitted:
         return
 
-    target_address = st.session_state.workplace_address.strip()
-    if not target_address:
-        st.error("請輸入工作地址，或先選擇一個快速範例。")
-        return
+    st.session_state.housing_view_mode = str(selected_view)
+    st.session_state.housing_recommendation_mode = str(selected_mode)
     try:
-        selected_preset = st.session_state.get("quick_preset", NO_PRESET_LABEL)
+        selected_preset = str(selected_preset)
         if selected_preset != NO_PRESET_LABEL:
+            st.session_state.workplace_address = preset_addresses[selected_preset]
+            st.session_state.quick_preset = selected_preset
+            st.session_state.housing_form_sync = {
+                "housing_view_mode_draft": str(selected_view),
+                "housing_recommendation_mode_draft": str(selected_mode),
+                "workplace_address_draft": preset_addresses[selected_preset],
+                "quick_preset_draft": selected_preset,
+            }
             with st.spinner(f"載入快速範例：{selected_preset}..."):
                 _load_quick_example(selected_preset, preset_workplaces)
         else:
+            target_address = str(target_address).strip()
+            if not target_address:
+                st.error("請輸入工作地址，或先選擇一個快速範例。")
+                return
+            st.session_state.workplace_address = target_address
+            st.session_state.quick_preset = NO_PRESET_LABEL
+            st.session_state.housing_form_sync = {
+                "housing_view_mode_draft": str(selected_view),
+                "housing_recommendation_mode_draft": str(selected_mode),
+                "workplace_address_draft": target_address,
+                "quick_preset_draft": NO_PRESET_LABEL,
+            }
             with st.spinner("定位工作地址並計算 16 個生活圈通勤時間..."):
                 _load_custom_workplace(target_address)
     except Exception as exc:

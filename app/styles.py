@@ -1302,7 +1302,7 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             align-items: center;
             min-height: 60px;
         }}
-        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) button {{
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [class*="st-key-top_nav_"] button {{
             min-height: 2.15rem;
             padding: 0.35rem 0.5rem;
             background: transparent !important;
@@ -1314,11 +1314,11 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             font-weight: 780;
             white-space: nowrap;
         }}
-        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) button:hover {{
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [class*="st-key-top_nav_"] button:hover {{
             color: var(--qj-text) !important;
             background: rgba(23, 50, 77, 0.04) !important;
         }}
-        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) button[data-testid="stBaseButton-primary"] {{
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [class*="st-key-top_nav_"] button[data-testid="stBaseButton-primary"] {{
             color: var(--qj-text) !important;
             background: var(--qj-primary-soft) !important;
             border-bottom: 2px solid var(--qj-primary) !important;
@@ -1327,7 +1327,7 @@ def apply_styles(page: str = "青年安居推薦") -> None:
         /* Each supplied illustration is a complete banner, with no text overlaid. */
         .qj-page-hero {{
             width: 100%;
-            height: 160px;
+            height: 260px;
             margin: 0 0 1.5rem;
             overflow: hidden;
             border-radius: 20px;
@@ -1392,7 +1392,7 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             justify-content: flex-start !important;
         }}
         @media (max-width: 1440px) {{
-            .qj-page-hero {{ height: 150px; }}
+            .qj-page-hero {{ height: 240px; }}
         }}
 
         /* Navigation, selectors, and actions share the same quiet, rounded treatment. */
@@ -1416,6 +1416,46 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             color: var(--qj-text) !important;
             box-shadow: 0 3px 10px rgba(23, 50, 77, 0.07);
         }}
+        div[data-testid="stSegmentedControl"] button[data-testid="stBaseButton-segmented_controlActive"] {{
+            background: var(--qj-primary-soft) !important;
+            border-color: var(--qj-primary) !important;
+            color: var(--qj-primary-ink) !important;
+            box-shadow: 0 3px 10px rgba(23, 50, 77, 0.07);
+        }}
+        div[data-testid="stSegmentedControl"] button[data-testid="stBaseButton-segmented_controlActive"] * {{
+            color: var(--qj-primary-ink) !important;
+            border-color: var(--qj-primary) !important;
+        }}
+        div[data-testid="stButtonGroup"] button[data-testid="stBaseButton-segmented_controlActive"] {{
+            background: var(--qj-primary-soft) !important;
+            border-color: var(--qj-primary) !important;
+            color: var(--qj-primary-ink) !important;
+            box-shadow: 0 3px 10px rgba(23, 50, 77, 0.07);
+        }}
+        div[data-testid="stButtonGroup"] button[data-testid="stBaseButton-segmented_controlActive"] * {{
+            color: var(--qj-primary-ink) !important;
+            border-color: var(--qj-primary) !important;
+        }}
+        div[data-testid="stButtonGroup"] button[data-testid="stBaseButton-segmented_control"]:hover {{
+            background: #ffffff !important;
+            border-color: var(--qj-primary) !important;
+            color: var(--qj-primary-ink) !important;
+            box-shadow: none !important;
+        }}
+        div[data-testid="stButtonGroup"] button[data-testid="stBaseButton-segmented_control"]:hover * {{
+            color: var(--qj-primary-ink) !important;
+            border-color: var(--qj-primary) !important;
+        }}
+        div[data-testid="stButtonGroup"] button[data-testid="stBaseButton-segmented_controlActive"]:hover {{
+            background: var(--qj-primary-soft) !important;
+            border-color: var(--qj-primary) !important;
+            color: var(--qj-primary-ink) !important;
+            box-shadow: 0 3px 10px rgba(23, 50, 77, 0.07) !important;
+        }}
+        div[data-testid="stButtonGroup"] button[data-testid="stBaseButton-segmented_controlActive"]:hover * {{
+            color: var(--qj-primary-ink) !important;
+            border-color: var(--qj-primary) !important;
+        }}
         div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
         div[data-testid="stTextInput"] input {{
             border-color: var(--qj-line);
@@ -1434,31 +1474,85 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             border-radius: var(--qj-radius-control);
             color: #ffffff;
             box-shadow: 0 4px 10px rgba(37, 61, 72, 0.10);
+            cursor: pointer;
+            transition: transform 140ms ease, filter 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
         }}
         div[data-testid="stButton"] button:hover,
         div[data-testid="stFormSubmitButton"] button:hover {{
             background: var(--qj-primary);
             border-color: var(--qj-primary);
             filter: brightness(0.94);
+            transform: translateY(-1px);
+            box-shadow: 0 7px 16px rgba(37, 61, 72, 0.16);
         }}
         div[data-testid="stButton"] button:focus-visible,
         div[data-testid="stFormSubmitButton"] button:focus-visible {{
             box-shadow: 0 0 0 3px var(--qj-primary-soft);
         }}
-        .st-key-career_explore_button button,
+        .st-key-housing_submit_recommendation button,
+        div[data-testid="stForm"] div[data-testid="stFormSubmitButton"] button {{
+            min-height: 2.85rem !important;
+            background: #187A59 !important;
+            border: 1px solid #187A59 !important;
+            color: #ffffff !important;
+            font-size: 0.98rem !important;
+            font-weight: 900 !important;
+            box-shadow: 0 10px 22px rgba(24, 122, 89, 0.24) !important;
+        }}
+        .st-key-housing_submit_recommendation button:hover,
+        div[data-testid="stForm"] div[data-testid="stFormSubmitButton"] button:hover {{
+            background: #126247 !important;
+            border-color: #126247 !important;
+            box-shadow: 0 12px 26px rgba(24, 122, 89, 0.30) !important;
+        }}
+        [class*="st-key-housing_open_mode_"] div[data-testid="stButton"] {{
+            margin-top: 0.55rem;
+        }}
+        [class*="st-key-housing_open_mode_"] button {{
+            min-height: 2.1rem !important;
+            background: #ffffff !important;
+            border: 1.5px solid var(--qj-primary) !important;
+            color: var(--qj-primary-ink) !important;
+            font-size: 0.82rem !important;
+            font-weight: 880 !important;
+            box-shadow: 0 3px 8px rgba(24, 122, 89, 0.10) !important;
+        }}
+        [class*="st-key-housing_open_mode_"] button:hover {{
+            background: var(--qj-primary-soft) !important;
+            color: var(--qj-text) !important;
+            box-shadow: 0 6px 14px rgba(24, 122, 89, 0.16) !important;
+        }}
+        .stElementContainer.st-key-career_explore_button div[data-testid="stButton"] > button {{
+            min-height: 3.15rem !important;
+            background: linear-gradient(180deg, #2F95D8 0%, #257FBE 100%) !important;
+            border: 2px solid #1E679A !important;
+            color: #ffffff !important;
+            font-size: 1.04rem !important;
+            font-weight: 900 !important;
+            margin-top: 0.2rem !important;
+            box-shadow: 0 12px 24px rgba(37, 127, 190, 0.30) !important;
+        }}
+        .stElementContainer.st-key-career_explore_button div[data-testid="stButton"] > button:hover {{
+            background: linear-gradient(180deg, #2888C7 0%, #1E679A 100%) !important;
+            border-color: #1E679A !important;
+            filter: none !important;
+            transform: translateY(-2px);
+            box-shadow: 0 16px 30px rgba(37, 127, 190, 0.36) !important;
+        }}
+        .stElementContainer.st-key-career_explore_button div[data-testid="stButton"] > button:focus-visible {{
+            box-shadow: 0 0 0 4px rgba(59, 167, 245, 0.28), 0 12px 24px rgba(37, 127, 190, 0.30) !important;
+        }}
         [class*="st-key-career_evidence_button_"] button {{
             background: #EAF6FF !important;
             border-color: #BDE7FF !important;
             color: #257FBE !important;
             box-shadow: none !important;
         }}
-        .st-key-career_explore_button button:hover,
         [class*="st-key-career_evidence_button_"] button:hover {{
             background: #D7F0FF !important;
             border-color: #93D6FF !important;
             filter: none;
         }}
-        .st-key-career_explore_button button:focus-visible,
         [class*="st-key-career_evidence_button_"] button:focus-visible {{
             box-shadow: 0 0 0 3px rgba(59, 167, 245, 0.22) !important;
         }}
@@ -1805,7 +1899,7 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             .block-container {{ padding: 1.15rem 0.9rem 2.5rem; }}
             .qj-header-title {{ font-size: 2rem; }}
             .qj-page-hero {{
-                height: 130px;
+                height: 200px;
                 margin-bottom: 1.25rem;
                 border-radius: 18px;
             }}
