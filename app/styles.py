@@ -1381,6 +1381,16 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             padding: 0;
             line-height: 1.15;
         }}
+        div[data-testid="stHorizontalBlock"]:has(.qj-column-heading) {{
+            align-items: flex-start !important;
+        }}
+        div[data-testid="stHorizontalBlock"]:has(.qj-column-heading) > div[data-testid="column"] {{
+            align-self: flex-start !important;
+        }}
+        div[data-testid="stHorizontalBlock"]:has(.qj-column-heading) > div[data-testid="column"] > div[data-testid="stVerticalBlock"] {{
+            align-content: flex-start !important;
+            justify-content: flex-start !important;
+        }}
         @media (max-width: 1440px) {{
             .qj-page-hero {{ height: 150px; }}
         }}
