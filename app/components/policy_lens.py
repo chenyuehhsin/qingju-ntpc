@@ -132,6 +132,7 @@ def render_policy_lens(
     career_policy: pd.DataFrame | None = None,
     career_policy_md: str = "",
     career_ladder: pd.DataFrame | None = None,
+    nursing_policy_lens: dict | None = None,
 ) -> None:
     st.markdown(
         """
@@ -171,7 +172,9 @@ def render_policy_lens(
         if career_policy is None:
             st.warning("尚未載入 Career Policy Lens Phase 7 輸出。")
         else:
-            render_career_policy_observations(career_policy, career_policy_md, career_ladder)
+            render_career_policy_observations(
+                career_policy, career_policy_md, career_ladder, nursing_policy_lens
+            )
     with housing_tab:
         render_housing_policy_lens(policy, towns, cities)
 
@@ -373,19 +376,22 @@ def render_career_policy_observations(
     career_policy: pd.DataFrame,
     career_policy_md: str,
     career_ladder: pd.DataFrame | None = None,
+    nursing_policy_lens: dict | None = None,
 ) -> None:
     source_options = [
-        "護理師",
-        "建築／室內設計助理（資料建構中）",
-        "餐旅／觀光服務人員（資料建構中）",
+        "護理師｜完整示範",
+        "建築／室內設計助理｜資料建構中",
+        "餐旅／觀光服務人員｜資料建構中",
     ]
     nursing_source = source_options[0]
     selected_source = st.selectbox(
         "目前分析來源職業",
         options=source_options,
         index=0,
-        key="policy_career_source_select",
+        key="policy_career_source_dropdown",
     )
+    if selected_source is None:
+        selected_source = nursing_source
     st.caption("目前完整示範：護理師｜其他職業保留擴充入口")
 
     if st.session_state.get("policy_career_active_source_occupation") != selected_source:
@@ -395,7 +401,7 @@ def render_career_policy_observations(
 
     if selected_source != nursing_source:
         st.info(
-            "此來源職業的政策觀察資料建構中。未來將依相同架構整合轉職需求、技能缺口、台灣職缺訊號、課程供給與政策工具分流。"
+            "此來源職業的政策觀察資料建構中。未來將依相同架構整合轉職壓力、技能缺口、台灣職缺訊號、課程供給與政策工具分流。"
             "目前完整示範案例為：護理師。"
         )
         return
@@ -416,7 +422,7 @@ def render_career_policy_observations(
             return
         st.session_state.policy_career_view = "overview"
 
-    _render_career_policy_overview(career_policy, career_policy_md, paths)
+    _render_nursing_policy_dashboard(nursing_policy_lens, career_policy, career_policy_md, paths)
     return
 
     context = career_policy.iloc[0]
@@ -593,6 +599,284 @@ def render_career_policy_observations(
             - 不產生轉職成功率、ranking、career score 或政策補助金額。
             """
         )
+
+
+def _render_nursing_policy_dashboard(
+    nursing_policy_lens: dict | None,
+    career_policy: pd.DataFrame,
+    career_policy_md: str,
+    paths: pd.DataFrame,
+) -> None:
+    if not nursing_policy_lens:
+        # Fallback to the existing overview when the demo JSON is unavailable.
+        _render_career_policy_overview(career_policy, career_policy_md, paths)
+        return
+
+    st.markdown(
+        """
+        <div class="qj-policy-section-head">
+            <div class="qj-policy-section-title">護理人力政策觀察｜留任改善與轉職支持</div>
+            <div class="qj-policy-section-copy">本頁不預測個人轉職成功率，而是整合護理人力現況、工作條件訊號、技能可轉移性與訓練資源，協助青年局判斷政策應優先放在留才、開課、補助、媒合，或補充調查。</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.info(
+        "關鍵結論：護理人力問題不是單純「缺人就多開課」。對想留下的人，政策應改善工作條件與留任支持；"
+        "對想轉換的人，政策應提供跨域課程、補助與實務媒合。"
+    )
+
+    _render_nursing_kpi_cards(nursing_policy_lens.get("status_cards", []))
+
+    trend_charts = nursing_policy_lens.get("trend_charts", [])
+    trend = trend_charts[0] if trend_charts else None
+    matrix_col, trend_col, summary_col = st.columns([1.35, 1.2, 1.0], gap="medium")
+    with matrix_col:
+        st.markdown("#### 問題診斷矩陣")
+        st.plotly_chart(
+            _build_nursing_diagnosis_matrix(nursing_policy_lens.get("diagnosis_matrix", {})),
+            use_container_width=True,
+            config={"displayModeBar": False},
+        )
+        st.caption(
+            "政策用途：區分哪些路徑需要改善工作條件，哪些路徑適合轉職支持，不把所有問題都視為開課問題。"
+        )
+    with trend_col:
+        st.markdown("#### 部屬醫院護理留任壓力變化")
+        if trend and trend.get("points"):
+            st.plotly_chart(
+                _build_nursing_trend_chart(trend),
+                use_container_width=True,
+                config={"displayModeBar": False},
+            )
+            st.caption("demo 僅呈現已整理資料點，不代表完整年度趨勢。")
+        else:
+            st.info("護理留任壓力趨勢資料待補。")
+    with summary_col:
+        st.markdown("#### 政策判斷摘要")
+        _render_policy_analysis_card("留任改善", "高需求但高留任風險，不應只靠多開課。")
+        _render_policy_analysis_card(
+            "轉職支持", "保留護理專業，轉向醫療資訊、臨床資料管理、個案管理等相鄰路徑。"
+        )
+        _render_policy_analysis_card(
+            "資料補強", "目前缺少離職後流向、課後就業率、轉職後薪資變化與青年轉職意願資料。"
+        )
+
+    _render_nursing_policy_split()
+    _render_nursing_evidence_matrix(nursing_policy_lens.get("transition_paths", []))
+
+    for limitation in nursing_policy_lens.get("limitations", []) or []:
+        st.info(str(limitation))
+
+    with st.expander("查看護理師詳細分析、青年職涯與培訓背景、資料明細與模型輸出", expanded=True):
+        st.markdown("#### 查看護理師各轉職路徑詳細分析")
+        _render_policy_path_cards(paths)
+        st.markdown("#### 查看整體青年職涯與培訓背景指標")
+        _render_nursing_youth_background(career_policy, career_policy_md)
+        st.markdown("#### 資料明細與模型輸出")
+        st.markdown("**Skill Gap**")
+        _render_skill_gap_table(career_policy)
+        st.markdown("**Market evidence**")
+        _render_market_evidence_table(career_policy)
+        st.markdown("**Training Gap**")
+        _render_training_gap_table(career_policy)
+        st.markdown("**Technical fields**")
+        _render_all_paths_technical_table(paths)
+        _render_career_policy_limitations()
+
+
+def _render_nursing_kpi_cards(status_cards: list[dict]) -> None:
+    if not status_cards:
+        return
+    cards_html = "".join(
+        f'<div class="qj-career-policy-card"><span>{html.escape(str(card.get("label", "")))}</span>'
+        f'<b>{html.escape(str(card.get("value", "資料待補")))}</b>'
+        f'<small>{html.escape(str(card.get("note", "")))}</small></div>'
+        for card in status_cards[:4]
+    )
+    st.markdown(f'<div class="qj-career-policy-grid">{cards_html}</div>', unsafe_allow_html=True)
+
+
+def _render_nursing_policy_split() -> None:
+    st.markdown("### 政策分流：留任改善 vs 轉職支持")
+    left, right = st.columns(2, gap="medium")
+    with left:
+        with st.container(border=True):
+            st.markdown("**留任改善**")
+            st.caption(
+                "適用情境：需求訊號高、留任 / 吸引力風險高、技能缺口低，代表問題不在訓練不足，而在工作條件與職涯支持。"
+            )
+            st.markdown("**政策工具**")
+            for item in [
+                "改善排班與休假彈性",
+                "追蹤護病比與夜班負擔",
+                "降低行政填報負擔",
+                "留任支持與職涯分級",
+                "與衛生局、醫療院所合作改善職場環境",
+            ]:
+                st.markdown(f"- {item}")
+            st.markdown("**需要資料**")
+            for item in [
+                "護病比月資料",
+                "護理人員年齡分布",
+                "離職原因問卷",
+                "加班 / 輪班 / 休假資料",
+                "留任措施前後比較",
+            ]:
+                st.markdown(f"- {item}")
+    with right:
+        with st.container(border=True):
+            st.markdown("**轉職支持**")
+            st.caption(
+                "適用情境：青年仍希望離開臨床，但可保留護理專業，轉向醫療資訊、臨床資料管理、個案管理、長照協調等相鄰路徑。"
+            )
+            st.markdown("**政策工具**")
+            for item in [
+                "免費線上資源與技能自評",
+                "短期跨域課程",
+                "完成 prerequisite 後取得補助資格",
+                "進階課程 / 證照 / 專題補助",
+                "醫院資訊部門、研究單位、長照機構實習與媒合",
+            ]:
+                st.markdown(f"- {item}")
+            st.markdown("**需要資料**")
+            for item in [
+                "青年探索紀錄",
+                "skill gap 統計",
+                "課程時數與費用",
+                "報名人數與結訓率",
+                "課後就業率",
+                "轉職後薪資變化",
+            ]:
+                st.markdown(f"- {item}")
+
+
+def _render_nursing_evidence_matrix(transition_paths: list[dict]) -> None:
+    st.markdown("### 護理師轉職與留任路徑 Evidence Matrix")
+    if not transition_paths:
+        st.info("目前沒有可顯示的護理師轉職與留任路徑。")
+        return
+    rows = [
+        {
+            "路徑": path.get("路徑", "資料待補"),
+            "需求訊號": path.get("市場需求", "資料待補"),
+            "留任 / 吸引力風險": path.get("留任／吸引力風險", "資料待補"),
+            "技能缺口": path.get("技能缺口", "資料待補"),
+            "課程供給": path.get("現有課程供給", "資料待補"),
+            "建議政策工具": path.get("建議政策工具", "資料待補"),
+            "資料可信度": path.get("資料可信度", "資料待補"),
+        }
+        for path in transition_paths
+    ]
+    st.dataframe(
+        pd.DataFrame(rows),
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "路徑": st.column_config.TextColumn("路徑", width="medium"),
+            "需求訊號": st.column_config.TextColumn("需求訊號"),
+            "留任 / 吸引力風險": st.column_config.TextColumn("留任 / 吸引力風險"),
+            "技能缺口": st.column_config.TextColumn("技能缺口"),
+            "課程供給": st.column_config.TextColumn("課程供給"),
+            "建議政策工具": st.column_config.TextColumn("建議政策工具", width="large"),
+            "資料可信度": st.column_config.TextColumn("資料可信度"),
+        },
+    )
+    st.caption("「需求訊號」代表資料訊號的相對強弱，不是精準市場預測。")
+
+
+def _render_nursing_youth_background(career_policy: pd.DataFrame, career_policy_md: str) -> None:
+    context = career_policy.iloc[0]
+    st.markdown(
+        f"""
+        <div class="qj-career-policy-grid">
+            <div class="qj-career-policy-card"><span>新北青年母體</span><b>{int(float(context['ntpc_population_18_35'])):,}</b><small>歷史 snapshot｜Exact 18–35｜{html.escape(str(context['ntpc_population_age_harmonization']))}</small></div>
+            <div class="qj-career-policy-card"><span>有轉換工作打算</span><b>{float(context['mol_transition_intention_percent']):.1f}%</b><small>Proxy 15–29｜{html.escape(str(context['mol_transition_age_harmonization']))}</small></div>
+            <div class="qj-career-policy-card"><span>近一年參加教育訓練</span><b>{float(context['mol_training_participation_percent']):.1f}%</b><small>Proxy 15–29｜{html.escape(str(context['mol_training_age_harmonization']))}</small></div>
+            <div class="qj-career-policy-card"><span>訓練資訊 / 費用障礙</span><b>{float(context['mol_no_course_info_percent']):.1f}% / {float(context['mol_fee_barrier_percent']):.1f}%</b><small>未參訓者｜單選主因｜Proxy</small></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "年齡範圍不同：新北人口為 Exact 18–35；MOL 勞動與培訓指標為全台 15–29 Proxy。人口資料為歷史 snapshot，不作同期比較。"
+    )
+    for observation in _extract_policy_observations(career_policy_md)[:5]:
+        st.caption(f"- {observation}")
+
+
+def _build_nursing_diagnosis_matrix(matrix: dict) -> go.Figure:
+    nodes = matrix.get("nodes", [])
+    colors = ["#C2410C", "#0F766E", "#2F6F9F", "#7C5C99"]
+    text_positions = ["top center", "middle left", "middle right", "bottom center"]
+    fig = go.Figure()
+    for index, node in enumerate(nodes):
+        fig.add_trace(
+            go.Scatter(
+                x=[float(node.get("market_demand", 0))],
+                y=[float(node.get("retention_risk", 0))],
+                mode="markers+text",
+                text=[str(node.get("name", ""))],
+                textposition=text_positions[index % len(text_positions)],
+                marker={
+                    "size": 22 if index == 0 else 15,
+                    "color": colors[index % len(colors)],
+                    "line": {"color": "#FFFFFF", "width": 1},
+                },
+                customdata=[[str(node.get("market_label", "")), str(node.get("risk_label", ""))]],
+                hovertemplate="%{text}<br>需求訊號：%{customdata[0]}<br>留任／吸引力風險：%{customdata[1]}<extra></extra>",
+                showlegend=False,
+            )
+        )
+    fig.add_vline(x=2, line_dash="dash", line_color="#CBD5E1")
+    fig.add_hline(y=2, line_dash="dash", line_color="#CBD5E1")
+    fig.update_layout(
+        height=300,
+        margin={"l": 8, "r": 8, "t": 12, "b": 4},
+        plot_bgcolor="#F8FAFC",
+        paper_bgcolor="rgba(0,0,0,0)",
+        xaxis={
+            "title": "需求訊號（低 → 高）",
+            "range": [0.65, 3.35],
+            "tickvals": [1, 2, 3],
+            "ticktext": ["低", "中", "高"],
+            "gridcolor": "#E2E8F0",
+        },
+        yaxis={
+            "title": "留任 / 吸引力風險（低 → 高）",
+            "range": [0.65, 3.35],
+            "tickvals": [1, 2, 3],
+            "ticktext": ["低", "中", "高"],
+            "gridcolor": "#E2E8F0",
+        },
+    )
+    return fig
+
+
+def _build_nursing_trend_chart(chart: dict) -> go.Figure:
+    points = chart.get("points", [])
+    fig = go.Figure(
+        go.Scatter(
+            x=[str(point.get("year", "")) for point in points],
+            y=[float(point.get("value", 0)) for point in points],
+            mode="lines+markers+text",
+            text=[f"{float(point.get('value', 0)):.2f}%" for point in points],
+            textposition="top center",
+            line={"color": "#0F766E", "width": 3},
+            marker={"color": "#0F766E", "size": 9},
+            hovertemplate="%{x}<br>%{y:.2f}%<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        height=240,
+        margin={"l": 8, "r": 8, "t": 12, "b": 4},
+        plot_bgcolor="#F8FAFC",
+        paper_bgcolor="rgba(0,0,0,0)",
+        showlegend=False,
+        yaxis={"title": str(chart.get("y_label", "")), "rangemode": "tozero", "gridcolor": "#E2E8F0"},
+        xaxis={"title": None, "type": "category"},
+    )
+    return fig
 
 
 def _render_career_policy_overview(

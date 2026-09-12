@@ -24,6 +24,7 @@ from data_loader import (
     load_career_learning_ladder_phase8,
     load_career_policy_lens_phase7,
     load_dashboard_data,
+    load_nursing_policy_lens,
     load_policy_lens_data,
 )
 from recommendation_view import render_dashboard_view
@@ -305,11 +306,20 @@ def main() -> None:
             policy = load_policy_lens_data()
             career_policy, career_policy_md = load_career_policy_lens_phase7()
             career_ladder = load_career_learning_ladder_phase8()
+            nursing_policy_lens = load_nursing_policy_lens()
             towns, cities = load_boundaries()
         except Exception as exc:
             st.error(f"Policy Lens data loading failed: {exc}")
             st.stop()
-        render_policy_lens(policy, towns, cities, career_policy, career_policy_md, career_ladder)
+        render_policy_lens(
+            policy,
+            towns,
+            cities,
+            career_policy,
+            career_policy_md,
+            career_ladder,
+            nursing_policy_lens,
+        )
         return
 
     if page != "青年安居推薦":

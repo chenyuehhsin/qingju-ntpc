@@ -32,6 +32,7 @@ METRO_LINES_GEOJSON = PROJECT_ROOT / "data" / "processed" / "transport" / "metro
 YOUBIKE_STATIONS_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "youbike_stations.csv"
 HOUSING_BENCHMARK_CSV = PROJECT_ROOT / "data" / "processed" / "housing" / "moi_independent_suite_rent_benchmark.csv"
 POLICY_LENS_CSV = PROJECT_ROOT / "data" / "processed" / "policy" / "policy_lens_v0.csv"
+NURSING_POLICY_LENS_JSON = PROJECT_ROOT / "data" / "processed" / "policy" / "nursing_policy_lens.json"
 CAREER_POLICY_LENS_PHASE7_CSV = PROJECT_ROOT / "outputs" / "career" / "career_policy_lens_phase7.csv"
 CAREER_POLICY_LENS_PHASE7_MD = PROJECT_ROOT / "outputs" / "career" / "career_policy_lens_phase7.md"
 CAREER_LEARNING_LADDER_PHASE8_CSV = PROJECT_ROOT / "outputs" / "career" / "career_learning_ladder_phase8.csv"
@@ -1221,6 +1222,23 @@ def load_policy_lens_data() -> pd.DataFrame:
     if missing_values:
         raise RuntimeError(f"Policy Lens v0 rows have missing required values: {missing_values}")
     return policy.reset_index(drop=True)
+
+
+@st.cache_data(show_spinner=False)
+def load_nursing_policy_lens() -> dict[str, Any] | None:
+    """Read the static nursing Policy Lens demo content from processed data.
+
+    Returns the parsed dict, or None when the optional file is unavailable or
+    malformed. This only reads an existing processed JSON; it does not compute
+    metrics or modify data.
+    """
+    if not NURSING_POLICY_LENS_JSON.exists():
+        return None
+    try:
+        payload = json.loads(NURSING_POLICY_LENS_JSON.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    return payload if isinstance(payload, dict) else None
 
 
 @st.cache_data(show_spinner=False)
