@@ -622,7 +622,6 @@ def _render_explore_section(demo_career_presets: pd.DataFrame) -> tuple[str, str
         st.session_state.career_selected_path = None
         st.rerun()
 
-    _render_method_note_expander()
     return selected_source, selected
 
 
@@ -1208,7 +1207,6 @@ def _render_demo_preset_detail(row: pd.Series) -> None:
             ]
         )
         st.dataframe(display, hide_index=True, use_container_width=True)
-    _render_method_note_expander()
 
 
 def _render_course_table(course_mapping: pd.DataFrame) -> None:
@@ -1300,17 +1298,6 @@ def _render_method_limitations_expander() -> None:
                 <b>新北人口（109年10月／2020）</b>：僅 historical snapshot；Exact 18–35，不能視為目前人口或與 2026 行政區資料同期比較。<br>
                 本頁不代表轉職成功機率，也沒有合成單一職涯分數。<br>
                 高相關職缺來自中文 alias + JOB_DETAIL relevance QA，只代表目前公開資料中可追溯的職缺證據。
-            </div>
-            """
-        )
-
-
-def _render_method_note_expander() -> None:
-    with st.expander("資料與方法說明", expanded=False):
-        _html(
-            """
-            <div class="qj-panel qj-note">
-                護理師案例已有較完整 evidence demo；建築／室內設計助理與餐旅／觀光服務人員目前為半自動候選與人工確認案例，用於展示系統可擴充到不同青年背景。系統不是由 LLM 憑空推薦，而是以技能、知識、任務、職缺與訓練資料建立 evidence profile，LLM 主要用於文字解釋與資料助理。
             </div>
             """
         )
