@@ -628,40 +628,6 @@ def _render_nursing_policy_dashboard(
 
     _render_nursing_kpi_cards(nursing_policy_lens.get("status_cards", []))
 
-    trend_charts = nursing_policy_lens.get("trend_charts", [])
-    trend = trend_charts[0] if trend_charts else None
-    matrix_col, trend_col, summary_col = st.columns([1.35, 1.2, 1.0], gap="medium")
-    with matrix_col:
-        st.markdown("#### 問題診斷矩陣")
-        st.plotly_chart(
-            _build_nursing_diagnosis_matrix(nursing_policy_lens.get("diagnosis_matrix", {})),
-            use_container_width=True,
-            config={"displayModeBar": False},
-        )
-        st.caption(
-            "政策用途：區分哪些路徑需要改善工作條件，哪些路徑適合轉職支持，不把所有問題都視為開課問題。"
-        )
-    with trend_col:
-        st.markdown("#### 部屬醫院護理留任壓力變化")
-        if trend and trend.get("points"):
-            st.plotly_chart(
-                _build_nursing_trend_chart(trend),
-                use_container_width=True,
-                config={"displayModeBar": False},
-            )
-            st.caption("demo 僅呈現已整理資料點，不代表完整年度趨勢。")
-        else:
-            st.info("護理留任壓力趨勢資料待補。")
-    with summary_col:
-        st.markdown("#### 政策判斷摘要")
-        _render_policy_analysis_card("留任改善", "高需求但高留任風險，不應只靠多開課。")
-        _render_policy_analysis_card(
-            "轉職支持", "保留護理專業，轉向醫療資訊、臨床資料管理、個案管理等相鄰路徑。"
-        )
-        _render_policy_analysis_card(
-            "資料補強", "目前缺少離職後流向、課後就業率、轉職後薪資變化與青年轉職意願資料。"
-        )
-
     _render_nursing_policy_split()
     _render_nursing_evidence_matrix(nursing_policy_lens.get("transition_paths", []))
 
