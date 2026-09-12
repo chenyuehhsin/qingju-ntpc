@@ -16,6 +16,7 @@ from custom_workplace import GEOCODING_SOURCE, build_custom_dashboard_data, geoc
 from components.career_evidence_viewer import render_career_evidence_viewer
 from components.overview import render_comparison_dashboard
 from components.policy_lens import render_policy_lens
+from components.qingju_assistant import render_qingju_assistant
 from data_loader import (
     MODE_ORDER,
     load_boundaries,
@@ -271,6 +272,7 @@ def main() -> None:
     if st.session_state.get("app_page") != current_page:
         st.session_state.app_page = current_page
     apply_styles(current_page)
+    render_qingju_assistant(current_page)
 
     page = render_top_nav(page_options, current_page)
     render_page_hero(page)
