@@ -325,9 +325,9 @@ def render_career_evidence_viewer(
 
 def _ce_radar_fig(row: pd.Series) -> go.Figure:
     dims = [
-        ("轉職距離", *_ce_distance_metric(row)),
+        ("轉職接近度", *_ce_distance_metric(row)),
         ("能力沿用", *_ce_reuse_metric(row)),
-        ("學習負擔", *_ce_burden_metric(row)),
+        ("學習輕鬆度", *_ce_burden_metric(row)),
         ("市場訊號", *_ce_market_metric(row)),
     ]
     cats = [d[0] for d in dims]
@@ -759,9 +759,9 @@ def _tm_metric_html(icon: str, label: str, value: str, filled: int) -> str:
 def _ce_distance_metric(row: pd.Series) -> tuple[str, int]:
     span = _row_transition_span(row)
     return {
-        "High skill reuse": ("近", 3),
+        "High skill reuse": ("高", 3),
         "Partial skill reuse": ("中", 2),
-        "Major reskilling": ("遠", 1),
+        "Major reskilling": ("低", 1),
     }.get(span, ("中", 2))
 
 
@@ -776,7 +776,7 @@ def _ce_reuse_metric(row: pd.Series) -> tuple[str, int]:
 
 def _ce_burden_metric(row: pd.Series) -> tuple[str, int]:
     burden = _row_learning_burden(row).strip().lower()
-    return {"low": ("低", 3), "medium": ("中", 2), "high": ("高", 1)}.get(burden, ("中", 2))
+    return {"low": ("高", 3), "medium": ("中", 2), "high": ("低", 1)}.get(burden, ("中", 2))
 
 
 def _ce_market_metric(row: pd.Series) -> tuple[str, int]:
@@ -847,9 +847,9 @@ def _ce_card_html(row: pd.Series, index: int) -> str:
     name = str(row["target_occupation_name"])
     badge_text, badge_cls = _ce_badge(row)
     metrics = (
-        _tm_metric_html(_IC_DIST, "轉職距離", *_ce_distance_metric(row))
+        _tm_metric_html(_IC_DIST, "轉職接近度", *_ce_distance_metric(row))
         + _tm_metric_html(_IC_REUSE, "能力沿用", *_ce_reuse_metric(row))
-        + _tm_metric_html(_IC_BURDEN, "學習負擔", *_ce_burden_metric(row))
+        + _tm_metric_html(_IC_BURDEN, "學習輕鬆度", *_ce_burden_metric(row))
         + _tm_metric_html(_IC_MARKET, "市場訊號", *_ce_market_metric(row))
     )
     return (
@@ -957,9 +957,9 @@ def _ce_info_html(row: pd.Series, index: int) -> str:
     name = str(row["target_occupation_name"])
     badge_text, badge_cls = _ce_badge(row)
     metrics = (
-        _tm_metric_html(_IC_DIST, "轉職距離", *_ce_distance_metric(row))
+        _tm_metric_html(_IC_DIST, "轉職接近度", *_ce_distance_metric(row))
         + _tm_metric_html(_IC_REUSE, "能力沿用", *_ce_reuse_metric(row))
-        + _tm_metric_html(_IC_BURDEN, "學習負擔", *_ce_burden_metric(row))
+        + _tm_metric_html(_IC_BURDEN, "學習輕鬆度", *_ce_burden_metric(row))
         + _tm_metric_html(_IC_MARKET, "市場訊號", *_ce_market_metric(row))
     )
     return (
