@@ -353,8 +353,8 @@ def _ce_radar_fig(row: pd.Series) -> go.Figure:
             "bgcolor": "rgba(255,255,255,0.55)",
         },
         showlegend=False,
-        height=270,
-        margin={"l": 55, "r": 55, "t": 22, "b": 22},
+        height=250,
+        margin={"l": 68, "r": 68, "t": 44, "b": 20},
         paper_bgcolor="rgba(0,0,0,0)",
     )
     return fig
@@ -697,7 +697,7 @@ def _inject_transition_card_styles() -> None:
         [class*="st-key-career_path_row_ok_"]{border-left:6px solid #2E9E6B !important;background:#F4FBF7 !important;}
         [class*="st-key-career_path_row_mid_"]{border-left:6px solid #3BA7F5 !important;background:#F3FAFF !important;}
         [class*="st-key-career_path_row_warn_"]{border-left:6px solid #E0983B !important;background:#FEF9F1 !important;}
-        [class*="st-key-career_path_row_"] div[data-testid="stPopover"]{margin-top:0.6rem;}
+        [class*="st-key-career_path_row_"] div[data-testid="stPopover"]{margin-top:2.2rem;}
         .qj-info-head{display:flex;align-items:center;gap:0.5rem;margin-bottom:0.15rem;}
         .qj-tm-rank-ok{background:#2E9E6B;}
         .qj-tm-rank-mid{background:#3BA7F5;}
@@ -912,6 +912,48 @@ def _relevant_courses(row: pd.Series, course_mapping: pd.DataFrame, limit: int =
     return []
 
 
+def _extract_number(value: object) -> float:
+    match = re.search(r"(\d[\d,]*(?:\.\d+)?)", _clean(value))
+    if not match:
+        return 0.0
+    try:
+        return float(match.group(1).replace(",", ""))
+    except ValueError:
+        return 0.0
+
+
+def _courses_resource_ranges(row: pd.Series, course_mapping: pd.DataFrame) -> tuple[int, list[float], list[float]]:
+    """(course_count, per_course_hours, per_course_fees) over the actual related courses."""
+    if _is_beauty_row(row):
+        parsed = _parse_phase5_courses(row.get("matched_training_courses", ""))
+        hours = [v for v in (_extract_number(c.get("training_hours")) for c in parsed) if v > 0]
+        fees = [v for v in (_extract_number(c.get("fee")) for c in parsed) if v > 0]
+        return len(parsed), hours, fees
+    code = _clean(row.get("target_occupation_code", ""))
+    if code and "target_occupation_code" in course_mapping.columns:
+        subset = course_mapping.loc[course_mapping["target_occupation_code"].astype(str).eq(code)].copy()
+        if not subset.empty:
+            subset = subset.drop_duplicates(subset=["course_code"])
+            hours = [float(v) for v in pd.to_numeric(subset.get("training_hours"), errors="coerce").dropna()]
+            fees = [float(v) for v in pd.to_numeric(subset.get("fee_per_person"), errors="coerce").dropna()]
+            return len(subset), hours, fees
+    return 0, [], []
+
+
+def _hours_range_display(values: list[float]) -> str:
+    if not values:
+        return "未知"
+    lo, hi = min(values), max(values)
+    return _hours(lo) if lo == hi else f"{lo:.0f} ~ {hi:.0f} h"
+
+
+def _fee_range_display(values: list[float]) -> str:
+    if not values:
+        return "未知"
+    lo, hi = min(values), max(values)
+    return _money(lo) if lo == hi else f"NT$ {lo:,.0f} ~ {hi:,.0f}"
+
+
 def _ce_info_html(row: pd.Series, index: int) -> str:
     name = str(row["target_occupation_name"])
     badge_text, badge_cls = _ce_badge(row)
@@ -973,20 +1015,23 @@ def _render_card_evidence_popover(
     row: pd.Series,
     demo_job_evidence: pd.DataFrame,
     crc_external_market: pd.DataFrame,
+    course_mapping: pd.DataFrame,
 ) -> None:
     name = str(row["target_occupation_name"])
+    course_count, course_hours, course_fees = _courses_resource_ranges(row, course_mapping)
+    course_hours_display = _hours_range_display(course_hours)
+    course_fee_display = _fee_range_display(course_fees)
     _html(
         '<div class="qj-pop-eyebrow">🔀 轉職路徑</div>'
         f'<div class="qj-pop-title">{escape(_occupation_zh(_current_source_background()))}'
         f'<span class="qj-tm-arrow">→</span>{escape(_occupation_zh(name))}</div>'
     )
-    st.plotly_chart(_ce_radar_fig(row), use_container_width=True)
     _html(
         f'{_detail_block("路徑定位", _path_reason(row))}'
         f'{_detail_block("可沿用能力", _shared_skill_chips(row))}'
         f'{_detail_block("需補強缺口技能", _skill_chip_list(_row_missing_skills(row)))}'
         '<div class="qj-pop-line"><b>培訓資源</b>：'
-        f'對應課程 {_number(row.get("matched_course_count"))} 門 ｜ 時數 {_hours(row.get("total_training_hours"))} ｜ 費用 {_money(row.get("estimated_direct_course_cost"))}</div>'
+        f'對應課程 {course_count} 門 ｜ 時數 {course_hours_display} ｜ 費用 {course_fee_display}</div>'
     )
     st.markdown("**台灣市場證據**")
     if _is_beauty_row(row):
@@ -1016,9 +1061,17 @@ def _render_path_cards(
         with st.container(border=True, key=f"career_path_row_{badge_cls}_{index}"):
             info_col, course_col = st.columns([2, 1], gap="large", vertical_alignment="top")
             with info_col:
-                _html(_ce_info_html(row, index))
+                text_col, radar_col = st.columns([1.15, 1], gap="medium", vertical_alignment="center")
+                with text_col:
+                    _html(_ce_info_html(row, index))
+                with radar_col:
+                    st.plotly_chart(
+                        _ce_radar_fig(row),
+                        use_container_width=True,
+                        key=f"career_radar_{badge_cls}_{index}",
+                    )
                 with st.popover("查看轉職證據" + "\u200b" * index, use_container_width=True):
-                    _render_card_evidence_popover(row, demo_job_evidence, crc_external_market)
+                    _render_card_evidence_popover(row, demo_job_evidence, crc_external_market, course_mapping)
             with course_col:
                 all_courses = _relevant_courses(row, course_mapping, limit=999)
                 if all_courses:

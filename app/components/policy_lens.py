@@ -138,13 +138,35 @@ def render_policy_lens(
         <div class="qj-policy-header">
             <h1 class="qj-visually-hidden">青年局 Policy Lens</h1>
             <div class="qj-page-intro">分開觀察青年職涯與安居資料訊號，作為政策端快速掃描工具。</div>
-            <div class="qj-policy-alert">Policy v0 為政策篩選與探索工具，不代表正式政策優先順序。</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    career_tab, housing_tab = st.tabs(["職涯政策觀察", "安居政策觀察"])
+    st.markdown(
+        """
+        <style>
+        [class*="st-key-policy_lens_toggle"] [data-baseweb="tab-list"]{
+            background:#EDF1F4;border-radius:12px;padding:5px;gap:5px;
+            display:inline-flex;border:none;box-shadow:inset 0 0 0 1px #E1E8EE;}
+        [class*="st-key-policy_lens_toggle"] [data-baseweb="tab-highlight"],
+        [class*="st-key-policy_lens_toggle"] [data-baseweb="tab-border"]{display:none !important;}
+        [class*="st-key-policy_lens_toggle"] button[data-baseweb="tab"]{
+            height:auto;padding:0.42rem 1.25rem;border-radius:9px;background:transparent;
+            margin:0;transition:all .15s ease;}
+        [class*="st-key-policy_lens_toggle"] button[data-baseweb="tab"] p{
+            font-weight:700;font-size:0.95rem;color:#54626D;margin:0;}
+        [class*="st-key-policy_lens_toggle"] button[data-baseweb="tab"]:hover{background:#E3E9EE;}
+        [class*="st-key-policy_lens_toggle"] button[data-baseweb="tab"][aria-selected="true"]{
+            background:#F7C948;box-shadow:0 2px 6px rgba(203,161,53,0.35);}
+        [class*="st-key-policy_lens_toggle"] button[data-baseweb="tab"][aria-selected="true"]:hover{background:#F5BE2E;}
+        [class*="st-key-policy_lens_toggle"] button[data-baseweb="tab"][aria-selected="true"] p{color:#3A2E00;}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    with st.container(key="policy_lens_toggle"):
+        career_tab, housing_tab = st.tabs(["職涯政策觀察", "安居政策觀察"])
     with career_tab:
         if career_policy is None:
             st.warning("尚未載入 Career Policy Lens Phase 7 輸出。")
