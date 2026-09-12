@@ -1,0 +1,474 @@
+from __future__ import annotations
+
+import base64
+import sys
+from pathlib import Path
+from typing import Any
+
+import streamlit as st
+
+APP_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = APP_DIR.parent
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+
+from custom_workplace import GEOCODING_SOURCE, build_custom_dashboard_data, geocode_address
+from components.career_evidence_viewer import render_career_evidence_viewer
+from components.overview import render_comparison_dashboard
+from components.policy_lens import render_policy_lens
+from data_loader import (
+    MODE_ORDER,
+    load_boundaries,
+    load_career_evidence_data,
+    load_career_learning_ladder_phase8,
+    load_career_policy_lens_phase7,
+    load_dashboard_data,
+    load_policy_lens_data,
+)
+from recommendation_view import render_dashboard_view
+from styles import apply_styles
+
+
+NO_PRESET_LABEL = "無"
+DEFAULT_PRESET_LABEL = "港墘站｜內湖"
+
+
+def _apply_quick_preset(preset_addresses: dict[str, str]) -> None:
+    preset_label = st.session_state.get("quick_preset", NO_PRESET_LABEL)
+    if preset_label != NO_PRESET_LABEL:
+        st.session_state.workplace_address = preset_addresses[preset_label]
+
+
+def _mark_manual_address(preset_addresses: dict[str, str]) -> None:
+    address = st.session_state.get("workplace_address", "").strip()
+    if address and address not in preset_addresses.values():
+        st.session_state.quick_preset = NO_PRESET_LABEL
+
+
+def _load_custom_workplace(address: str) -> None:
+    geocode = geocode_address(address)
+    st.session_state.custom_workplace_data = build_custom_dashboard_data(address, geocode)
+    st.session_state.custom_geocode = geocode
+    st.session_state.active_workplace_address = address
+    st.session_state.active_workplace_input_address = address
+    st.session_state.active_workplace_source = GEOCODING_SOURCE
+
+
+def _load_preset_workplace(preset_label: str, preset_workplaces: dict[str, dict[str, Any]]) -> None:
+    preset = preset_workplaces[preset_label]
+    workplace_id = preset.get("workplace_id")
+    if not workplace_id:
+        raise RuntimeError(f"{preset_label} is a custom quick example and has no precomputed workplace_id.")
+    dashboard_data = load_dashboard_data(workplace_id)
+    st.session_state.custom_workplace_data = dashboard_data
+    _, _, _, destination = dashboard_data
+    st.session_state.custom_geocode = {
+        "lat": destination["destination_lat"],
+        "lon": destination["destination_lon"],
+        "source": "TDX station preset",
+    }
+    st.session_state.active_workplace_address = f"{preset_label}（快速範例）"
+    st.session_state.active_workplace_input_address = preset["address"]
+    st.session_state.active_workplace_source = "TDX station preset"
+
+
+def _load_fixed_quick_example(preset_label: str, preset_workplaces: dict[str, dict[str, Any]]) -> None:
+    preset = preset_workplaces[preset_label]
+    geocode = {
+        "lat": float(preset["lat"]),
+        "lon": float(preset["lon"]),
+        "source": str(preset["source"]),
+        "display_name": str(preset["source_name"]),
+    }
+    address = str(preset["address"])
+    st.session_state.custom_workplace_data = build_custom_dashboard_data(address, geocode)
+    st.session_state.custom_geocode = geocode
+    st.session_state.active_workplace_address = f"{preset_label}（快速範例 Beta）"
+    st.session_state.active_workplace_input_address = address
+    st.session_state.active_workplace_source = str(preset["source"])
+
+
+def _load_quick_example(preset_label: str, preset_workplaces: dict[str, dict[str, Any]]) -> None:
+    preset = preset_workplaces[preset_label]
+    if preset.get("workplace_id"):
+        _load_preset_workplace(preset_label, preset_workplaces)
+        return
+    if preset.get("lat") and preset.get("lon"):
+        _load_fixed_quick_example(preset_label, preset_workplaces)
+        return
+
+    address = str(preset["address"])
+    _load_custom_workplace(address)
+    st.session_state.active_workplace_address = f"{preset_label}（快速範例 Beta）"
+    st.session_state.active_workplace_input_address = address
+
+
+def _render_housing_control_center(
+    view_options: list[str],
+    preset_addresses: dict[str, str],
+    preset_options: list[str],
+    preset_workplaces: dict[str, dict[str, Any]],
+    show_recommendation_mode: bool = True,
+    show_heading: bool = True,
+) -> None:
+    if show_heading:
+        st.markdown("### 青年安居｜設定我的條件")
+        st.caption("從租金、通勤與生活機能，找到適合自己的新北生活圈。")
+    form_sync = st.session_state.pop("housing_form_sync", None)
+    if isinstance(form_sync, dict):
+        for key, value in form_sync.items():
+            st.session_state[key] = value
+    st.session_state.setdefault("housing_view_mode_draft", st.session_state.housing_view_mode)
+    st.session_state.setdefault("housing_recommendation_mode_draft", st.session_state.housing_recommendation_mode)
+    st.session_state.setdefault("workplace_address_draft", st.session_state.workplace_address)
+    st.session_state.setdefault("quick_preset_draft", st.session_state.quick_preset)
+    with st.form("housing_recommendation_controls"):
+        selected_view = st.segmented_control(
+            "查看方式",
+            view_options,
+            label_visibility="visible",
+            key="housing_view_mode_draft",
+        )
+        if show_recommendation_mode:
+            selected_mode = st.segmented_control(
+                "推薦模式",
+                MODE_ORDER,
+                label_visibility="visible",
+                key="housing_recommendation_mode_draft",
+            )
+        else:
+            selected_mode = st.session_state.housing_recommendation_mode_draft
+            st.caption("比較模式會同時呈現四種偏好。")
+        target_address = st.text_input(
+            "工作地點",
+            key="workplace_address_draft",
+            placeholder="例如：台北市內湖區瑞光路",
+        )
+        selected_preset = st.selectbox(
+            "快速範例",
+            preset_options,
+            key="quick_preset_draft",
+        )
+        st.markdown("固定條件：`大眾運輸`　`獨立套房`")
+        submitted = st.form_submit_button(
+            "開始 / 更新推薦",
+            type="primary",
+            use_container_width=True,
+        )
+    if not submitted:
+        return
+
+    st.session_state.housing_view_mode = str(selected_view)
+    st.session_state.housing_recommendation_mode = str(selected_mode)
+    try:
+        selected_preset = str(selected_preset)
+        if selected_preset != NO_PRESET_LABEL:
+            st.session_state.workplace_address = preset_addresses[selected_preset]
+            st.session_state.quick_preset = selected_preset
+            st.session_state.housing_form_sync = {
+                "housing_view_mode_draft": str(selected_view),
+                "housing_recommendation_mode_draft": str(selected_mode),
+                "workplace_address_draft": preset_addresses[selected_preset],
+                "quick_preset_draft": selected_preset,
+            }
+            with st.spinner(f"載入快速範例：{selected_preset}..."):
+                _load_quick_example(selected_preset, preset_workplaces)
+        else:
+            target_address = str(target_address).strip()
+            if not target_address:
+                st.error("請輸入工作地址，或先選擇一個快速範例。")
+                return
+            st.session_state.workplace_address = target_address
+            st.session_state.quick_preset = NO_PRESET_LABEL
+            st.session_state.housing_form_sync = {
+                "housing_view_mode_draft": str(selected_view),
+                "housing_recommendation_mode_draft": str(selected_mode),
+                "workplace_address_draft": target_address,
+                "quick_preset_draft": NO_PRESET_LABEL,
+            }
+            with st.spinner("定位工作地址並計算 16 個生活圈通勤時間..."):
+                _load_custom_workplace(target_address)
+    except Exception as exc:
+        st.session_state.custom_workplace_data = None
+        st.session_state.custom_geocode = None
+        st.session_state.active_workplace_address = None
+        st.session_state.active_workplace_input_address = None
+        st.session_state.active_workplace_source = None
+        st.error(f"工作地址處理失敗：{exc}")
+        return
+    st.rerun()
+
+
+def render_top_nav(page_options: list[str], current_page: str) -> str:
+    with st.container(border=True):
+        brand_col, nav_col = st.columns([0.78, 1.22], gap="medium")
+        with brand_col:
+            st.markdown(
+                """
+                <div class="qj-top-nav-brand">
+                    <div class="qj-top-nav-title">青聚新北｜青年安居 × 就業 × 交通</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        with nav_col:
+            nav_links = st.columns(len(page_options), gap="small")
+            for nav_col, option in zip(nav_links, page_options):
+                with nav_col:
+                    if st.button(
+                        option,
+                        key=f"top_nav_{option}",
+                        type="primary" if option == current_page else "secondary",
+                        use_container_width=True,
+                    ):
+                        st.session_state.app_page = option
+                        st.rerun()
+    return current_page
+
+
+def render_page_hero(page_name: str) -> None:
+    """Render the page-specific banner from the repository's local assets."""
+    hero_images = {
+        "青年職涯探索": "hero_career.png",
+        "青年安居推薦": "hero_housing.png",
+        "青年局 Policy Lens": "hero_policy.png",
+    }
+    hero_name = hero_images.get(page_name)
+    hero_path = PROJECT_ROOT / "assets" / "illustrations" / str(hero_name)
+
+    if hero_path.is_file():
+        image_data = base64.b64encode(hero_path.read_bytes()).decode("ascii")
+        st.markdown(
+            '<div class="qj-page-hero">'
+            f'<img src="data:image/png;base64,{image_data}" alt="" />'
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        return
+
+    st.markdown(
+        '<div class="qj-page-hero qj-page-hero-fallback" role="img" '
+        'aria-label="頁面橫幅"></div>',
+        unsafe_allow_html=True,
+    )
+
+
+def main() -> None:
+    st.set_page_config(
+        page_title="青聚新北",
+        page_icon="Q",
+        layout="wide",
+        initial_sidebar_state="collapsed",
+    )
+    page_options = ["青年職涯探索", "青年安居推薦", "青年局 Policy Lens"]
+    current_page = st.session_state.get("app_page", "青年職涯探索")
+    if current_page == "Career Evidence Viewer":
+        current_page = "青年職涯探索"
+    if current_page == "青年生活圈推薦":
+        current_page = "青年安居推薦"
+    if current_page not in page_options:
+        current_page = "青年職涯探索"
+    if st.session_state.get("app_page") != current_page:
+        st.session_state.app_page = current_page
+    apply_styles(current_page)
+
+    page = render_top_nav(page_options, current_page)
+    render_page_hero(page)
+    if page == "青年職涯探索":
+        try:
+            (
+                candidates_v35,
+                training_v4,
+                course_mapping,
+                demo_job_evidence,
+                beauty_phase5,
+                crc_external_market,
+                demo_career_presets,
+            ) = load_career_evidence_data()
+        except Exception as exc:
+            st.error(f"Career evidence data loading failed: {exc}")
+            st.stop()
+        render_career_evidence_viewer(
+            candidates_v35,
+            training_v4,
+            course_mapping,
+            demo_job_evidence,
+            beauty_phase5,
+            crc_external_market,
+            demo_career_presets,
+        )
+        return
+    if page == "青年局 Policy Lens":
+        try:
+            policy = load_policy_lens_data()
+            career_policy, career_policy_md = load_career_policy_lens_phase7()
+            career_ladder = load_career_learning_ladder_phase8()
+            towns, cities = load_boundaries()
+        except Exception as exc:
+            st.error(f"Policy Lens data loading failed: {exc}")
+            st.stop()
+        render_policy_lens(policy, towns, cities, career_policy, career_policy_md, career_ladder)
+        return
+
+    if page != "青年安居推薦":
+        page = "青年安居推薦"
+
+    view_options = ["比較四種模式", "查看單一模式"]
+    legacy_view = st.session_state.get("main_view")
+    if "housing_view_mode" not in st.session_state:
+        st.session_state.housing_view_mode = "查看單一模式" if legacy_view in MODE_ORDER else "比較四種模式"
+    if "housing_recommendation_mode" not in st.session_state:
+        st.session_state.housing_recommendation_mode = legacy_view if legacy_view in MODE_ORDER else MODE_ORDER[0]
+    if st.session_state.housing_view_mode not in view_options:
+        st.session_state.housing_view_mode = "比較四種模式"
+    if st.session_state.housing_recommendation_mode not in MODE_ORDER:
+        st.session_state.housing_recommendation_mode = MODE_ORDER[0]
+
+    preset_workplaces = {
+        "港墘站｜內湖": {
+            "address": "台北市內湖區瑞光路",
+            "workplace_id": "gangqian_neihu",
+        },
+        "市政府站｜信義": {
+            "address": "台北市信義區市府路",
+            "workplace_id": "taipei_city_hall_xinyi",
+        },
+        "台北車站｜中正": {
+            "address": "台北市中正區忠孝西路一段",
+            "workplace_id": "taipei_main_zhongzheng",
+        },
+        "南港站｜南港": {
+            "address": "台北市南港區忠孝東路七段",
+            "workplace_id": "nangang_nangang",
+        },
+        "新板特區": {
+            "address": "新北市板橋區新府路",
+            "workplace_id": "xinban_special_district",
+        },
+        "新莊副都心": {
+            "address": "新北市新莊區新北大道四段188號",
+            "workplace_id": "xinzhuang_fuduxin",
+        },
+        "汐止科學園區": {
+            "address": "新北市汐止區大同路二段182號",
+            "workplace_id": "xizhi_science_park",
+        },
+        "中和科技園區": {
+            "address": "新北市中和區橋和路282號",
+            "workplace_id": "zhonghe_tech_park",
+        },
+        "土城產業園區": {
+            "address": "新北市土城區中央路四段23號",
+            "workplace_id": "tucheng_industrial_park",
+        },
+    }
+    preset_addresses = {label: preset["address"] for label, preset in preset_workplaces.items()}
+    preset_options = [NO_PRESET_LABEL, *preset_addresses.keys()]
+    if "workplace_address" not in st.session_state:
+        st.session_state.workplace_address = preset_addresses[DEFAULT_PRESET_LABEL]
+    if "quick_preset" not in st.session_state:
+        st.session_state.quick_preset = DEFAULT_PRESET_LABEL
+    if "custom_workplace_data" not in st.session_state:
+        st.session_state.custom_workplace_data = None
+    if "custom_geocode" not in st.session_state:
+        st.session_state.custom_geocode = None
+    if "active_workplace_address" not in st.session_state:
+        st.session_state.active_workplace_address = None
+    if "active_workplace_input_address" not in st.session_state:
+        st.session_state.active_workplace_input_address = None
+    if "active_workplace_source" not in st.session_state:
+        st.session_state.active_workplace_source = None
+    if st.session_state.quick_preset not in preset_options:
+        st.session_state.quick_preset = NO_PRESET_LABEL
+
+    if st.session_state.custom_workplace_data is None:
+        try:
+            with st.spinner("載入預設快速範例：港墘站｜內湖..."):
+                _load_preset_workplace(DEFAULT_PRESET_LABEL, preset_workplaces)
+        except Exception as exc:
+            st.session_state.custom_workplace_data = None
+            st.session_state.custom_geocode = None
+            st.session_state.active_workplace_address = None
+            st.session_state.active_workplace_input_address = None
+            st.session_state.active_workplace_source = None
+            st.error(f"預設快速範例載入失敗：{exc}")
+
+    st.markdown(
+        """
+        <div class="qj-housing-page-intro">
+            <h1 class="qj-visually-hidden">青年安居推薦</h1>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    control_args = (view_options, preset_addresses, preset_options, preset_workplaces)
+    selected_view = str(st.session_state.housing_view_mode)
+    selected_mode = str(st.session_state.housing_recommendation_mode)
+
+    if st.session_state.custom_workplace_data is None:
+        control_col, message_col = st.columns([24, 76], gap="medium")
+        with control_col:
+            _render_housing_control_center(*control_args)
+        with message_col:
+            st.info("請先輸入工作地址並按「開始 / 更新推薦」。")
+        st.stop()
+
+    try:
+        candidates, recommendations, top3, destination = st.session_state.custom_workplace_data
+        towns, cities = load_boundaries()
+    except Exception as exc:
+        st.error(f"Dashboard data loading failed: {exc}")
+        st.stop()
+
+    if selected_view == "比較四種模式":
+        render_comparison_dashboard(
+            candidates,
+            top3,
+            destination,
+            towns,
+            cities,
+            render_controls=lambda: _render_housing_control_center(
+                *control_args,
+                show_recommendation_mode=False,
+                show_heading=False,
+            ),
+        )
+    else:
+        render_dashboard_view(
+            selected_mode,
+            candidates,
+            recommendations,
+            top3,
+            destination,
+            towns,
+            cities,
+            render_controls=lambda: _render_housing_control_center(*control_args),
+        )
+
+    st.markdown("---")
+    with st.expander("資料與方法說明", expanded=False):
+        st.markdown(
+            """
+            <div class="qj-note">
+            <b>主要資料來源與尺度</b><br>
+            <b>租金｜MOI</b>：2026-03 行政區獨立套房租金 benchmark；行政區尺度，屬官方 benchmark，不是即時房源或車站周邊實際租金。<br>
+            <b>通勤｜TDX MaaS</b>：2026-08-24 平日 08:00 情境；代表交通節點至工作地的公共運輸時間，屬 Derived scenario，不是 door-to-door 時間。<br>
+            <b>生活機能｜OSM / Overpass</b>：2026-08-22 snapshot；候選站點周邊 800m POI 的 Derived proxy，不代表完整生活品質。<br>
+            <b>青年人口｜RIS 戶政司</b>：2026-07；新北 29 行政區村里單一年齡彙整，Exact 18–35，不可解讀為 1km / 2km 生活圈人口。<br>
+            <b>地址定位｜OpenStreetMap Nominatim</b>：使用者輸入地址的 External geocoding；結果僅 local cache，避免重複查詢。<br>
+            <br><b>使用限制</b><br>
+            任意工作地址使用 OpenStreetMap Nominatim geocoding；地址解析結果會 local cache，避免重複查詢。<br>
+            目前不是 door-to-door 通勤。<br>
+            目前不包含汽車 / 機車通勤模式。<br>
+            推薦權重為 MVP preference settings，不代表客觀最佳居住選擇。<br>
+            總覽地圖呈現工作地、Top 3 推薦的約15分鐘核心生活圈（1 km）與延伸生活圈（2 km），以及弱化候選點；行政區背景可切換為無、租金、18–35 青年人口數或 18–35 青年人口占比。<br>
+            「15分鐘」為近似探索範圍，實際步行時間依道路與步行速度而異，不代表精準步行 isochrone；生活機能統計目前仍基於 800m 範圍。
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+if __name__ == "__main__":
+    main()

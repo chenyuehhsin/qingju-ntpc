@@ -1,0 +1,17 @@
+candidate_name,district,official_median_rent,official_contract_count,commute_accessibility_minutes,commute_accessibility_workplace_count,commute_accessibility_min_minutes,commute_accessibility_max_minutes,livability_index,policy_linked_record_count,total_rental_record_count,policy_linked_record_share,lat,lon,policy_quadrant,policy_lens_note
+汐止車站,汐止區,14000,928,33.4,9,7.0,62.7,0.336900483882445,437,463,0.9438444924406048,25.0679,121.66113,低租金 × 短通勤,policy screening diagnostic; not a formal priority ranking
+樹林車站,樹林區,13000,242,33.8,9,9.2,64.7,0.6267424907295398,109,117,0.9316239316239316,24.99123,121.42442,低租金 × 短通勤,policy screening diagnostic; not a formal priority ranking
+泰山站,泰山區,10000,202,39.6,9,4.4,79.2,0.2124755489140318,100,101,0.9900990099009901,25.05321,121.43943,低租金 × 短通勤,policy screening diagnostic; not a formal priority ranking
+土城站,土城區,14500,677,41.6,9,11.1,54.7,0.1796775896012713,284,305,0.9311475409836065,24.97313,121.44432,低租金 × 短通勤,policy screening diagnostic; not a formal priority ranking
+鶯歌車站,鶯歌區,14500,122,49.4,9,14.2,71.7,0.1341350601295097,33,34,0.9705882352941176,24.95455,121.35517,低租金 × 長通勤,policy screening diagnostic; not a formal priority ranking
+三峽北大特區,三峽區,10000,744,64.3,9,30.6,91.1,0.5516696909319481,229,253,0.9051383399209486,24.94489,121.37368,低租金 × 長通勤,policy screening diagnostic; not a formal priority ranking
+淡水站,淡水區,10000,2574,66.7,9,39.4,85.5,0.3930818053875408,1166,1328,0.8780120481927711,25.167745,121.445805,低租金 × 長通勤,policy screening diagnostic; not a formal priority ranking
+板橋站,板橋區,16000,1433,26.3,9,5.0,43.2,0.8019162575013639,708,786,0.9007633587786259,25.014098,121.462671,高租金 × 短通勤,policy screening diagnostic; not a formal priority ranking
+頂溪站,永和區,15000,479,36.2,9,18.0,52.0,0.4653831131351945,275,314,0.8757961783439491,25.01308,121.515398,高租金 × 短通勤,policy screening diagnostic; not a formal priority ranking
+三重站,三重區,15000,2135,36.5,9,10.7,59.5,0.4136702720652767,467,757,0.6169088507265522,25.05571,121.48422,高租金 × 短通勤,policy screening diagnostic; not a formal priority ranking
+景安站,中和區,15000,1425,37.9,9,14.9,68.0,0.5507050293729294,791,1001,0.7902097902097902,24.99392,121.505114,高租金 × 短通勤,policy screening diagnostic; not a formal priority ranking
+新莊站,新莊區,15700,838,42.2,9,20.3,86.5,0.3039735090174498,388,435,0.8919540229885058,25.03608,121.45218,高租金 × 長通勤,policy screening diagnostic; not a formal priority ranking
+大坪林站,新店區,15500,649,45.7,9,23.4,73.7,0.7171376811594202,268,433,0.6189376443418014,24.98272,121.54134,高租金 × 長通勤,policy screening diagnostic; not a formal priority ranking
+蘆洲站,蘆洲區,18500,223,47.7,9,27.8,86.6,0.3057299350870118,104,106,0.9811320754716981,25.09152,121.46471,高租金 × 長通勤,policy screening diagnostic; not a formal priority ranking
+林口站,林口區,18000,182,52.2,9,16.9,82.8,0.1654586604679111,79,114,0.6929824561403509,25.0658,121.36134,高租金 × 長通勤,policy screening diagnostic; not a formal priority ranking
+五股區公所,五股區,16000,322,54.5,9,28.3,78.2,0.0297008547008547,128,129,0.9922480620155039,25.082744,121.4383484,高租金 × 長通勤,policy screening diagnostic; not a formal priority ranking

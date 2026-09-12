@@ -1,0 +1,156 @@
+{
+  "created_at": "2026-08-22T16:56:50",
+  "departure_time": "2026-08-24T08:00:00",
+  "departure_timezone": "Asia/Taipei",
+  "destination": {
+    "candidate_name": "港墘站",
+    "district": "內湖區",
+    "station_name": "港墘",
+    "station_operator": "TRTC",
+    "station_uid": "TRTC-BR17",
+    "station_id": "BR17",
+    "lat": 25.08007,
+    "lon": 121.57516,
+    "source_endpoint": "https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/Station/TRTC",
+    "source_update_time": "2023-10-12T00:00:00+08:00",
+    "tdx_update_time": "2023-10-17T00:00:00+08:00"
+  },
+  "routing_endpoint": "https://tdx.transportdata.tw/api/maas/routing",
+  "routing_parameters": {
+    "gc": "1",
+    "top": "5",
+    "transit": "3,4,5,6,7,8,9",
+    "transfer_time": "5,60",
+    "depart": "2026-08-24T08:00:00",
+    "first_mile_mode": "0",
+    "first_mile_time": "10",
+    "last_mile_mode": "0",
+    "last_mile_time": "10"
+  },
+  "station_endpoints": {
+    "TRTC": "https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/Station/TRTC",
+    "TRA": "https://tdx.transportdata.tw/api/basic/v2/Rail/TRA/Station",
+    "TYMC": "https://tdx.transportdata.tw/api/basic/v2/Rail/Metro/Station/TYMC",
+    "NWT_BUS_STATION": "https://tdx.transportdata.tw/api/basic/v2/Bus/Station/City/NewTaipei"
+  },
+  "station_cache_dir": "data/interim/transport/tdx_station_data",
+  "maas_response_dir": "data/interim/transport/tdx_maas_responses",
+  "route_selection": "Fastest route among returned routes with at least one transit section.",
+  "candidate_count": 16,
+  "success_count": 16,
+  "failure_count": 0,
+  "candidate_selection": [
+    {
+      "candidate_name": "汐止車站",
+      "district": "汐止區",
+      "station_name": "汐止",
+      "operator_id": "TRA",
+      "selection_reason": "TRA station anchoring Xizhi's main rail commute corridor."
+    },
+    {
+      "candidate_name": "頂溪站",
+      "district": "永和區",
+      "station_name": "頂溪",
+      "operator_id": "TRTC",
+      "selection_reason": "Central Yonghe MRT station on the Zhonghe-Xinlu line."
+    },
+    {
+      "candidate_name": "景安站",
+      "district": "中和區",
+      "station_name": "景安",
+      "operator_id": "TRTC",
+      "selection_reason": "Major Zhonghe interchange area with MRT access."
+    },
+    {
+      "candidate_name": "大坪林站",
+      "district": "新店區",
+      "station_name": "大坪林",
+      "operator_id": "TRTC",
+      "selection_reason": "Representative Xindian MRT station with direct urban access."
+    },
+    {
+      "candidate_name": "板橋站",
+      "district": "板橋區",
+      "station_name": "板橋",
+      "operator_id": "TRTC",
+      "selection_reason": "Primary Banqiao multimodal hub represented by its MRT station coordinate."
+    },
+    {
+      "candidate_name": "三重站",
+      "district": "三重區",
+      "station_name": "三重",
+      "operator_id": "TRTC",
+      "selection_reason": "Representative Sanchong MRT station on the Zhonghe-Xinlu line."
+    },
+    {
+      "candidate_name": "新莊站",
+      "district": "新莊區",
+      "station_name": "新莊",
+      "operator_id": "TRTC",
+      "selection_reason": "Established MRT node in the older Xinzhuang urban core."
+    },
+    {
+      "candidate_name": "蘆洲站",
+      "district": "蘆洲區",
+      "station_name": "蘆洲",
+      "operator_id": "TRTC",
+      "selection_reason": "Terminal MRT node and representative Luzhou transit anchor."
+    },
+    {
+      "candidate_name": "土城站",
+      "district": "土城區",
+      "station_name": "土城",
+      "operator_id": "TRTC",
+      "selection_reason": "MRT station named for and located in Tucheng, suitable as the district's transit anchor."
+    },
+    {
+      "candidate_name": "泰山站",
+      "district": "泰山區",
+      "station_name": "泰山站",
+      "operator_id": "TYMC",
+      "selection_reason": "Taoyuan Airport MRT A5 station in Taishan, the clearest rail node for the district."
+    },
+    {
+      "candidate_name": "林口站",
+      "district": "林口區",
+      "station_name": "林口站",
+      "operator_id": "TYMC",
+      "selection_reason": "Taoyuan Airport MRT A9 station and the main rail node for Linkou new town."
+    },
+    {
+      "candidate_name": "淡水站",
+      "district": "淡水區",
+      "station_name": "淡水",
+      "operator_id": "TRTC",
+      "selection_reason": "Terminal MRT station and highest-recognition Tamsui transit node."
+    },
+    {
+      "candidate_name": "三峽北大特區",
+      "district": "三峽區",
+      "station_name": "臺北大學正門",
+      "operator_id": "NWT_BUS_STATION",
+      "selection_reason": "TDX bus station at NTPU main gate, representing the dense Sanxia Beida residential area with many bus routes."
+    },
+    {
+      "candidate_name": "樹林車站",
+      "district": "樹林區",
+      "station_name": "樹林",
+      "operator_id": "TRA",
+      "selection_reason": "TRA station and main rail anchor for Shulin."
+    },
+    {
+      "candidate_name": "五股區公所",
+      "district": "五股區",
+      "station_name": "五股區公所(五股公有市場)",
+      "operator_id": "NWT_BUS_STATION",
+      "selection_reason": "TDX bus station at Wugu District Office / public market, representing the district center."
+    },
+    {
+      "candidate_name": "鶯歌車站",
+      "district": "鶯歌區",
+      "station_name": "鶯歌",
+      "operator_id": "TRA",
+      "selection_reason": "TRA station and main rail anchor for Yingge."
+    }
+  ]
+}

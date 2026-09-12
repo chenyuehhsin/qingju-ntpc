@@ -1,0 +1,66 @@
+{
+  "source": "OpenStreetMap via Overpass API",
+  "source_url": "https://overpass-api.de/api/interpreter; https://overpass.kumi.systems/api/interpreter",
+  "download_date": "2026-08-22",
+  "radius_meters": 800,
+  "categories": {
+    "food": {
+      "label": "餐飲",
+      "tags": {
+        "amenity": [
+          "cafe",
+          "restaurant"
+        ]
+      }
+    },
+    "shopping": {
+      "label": "日常採買",
+      "tags": {
+        "shop": [
+          "convenience",
+          "supermarket"
+        ]
+      }
+    },
+    "recreation": {
+      "label": "休閒",
+      "tags": {
+        "leisure": [
+          "fitness_centre",
+          "park",
+          "pitch",
+          "sports_centre",
+          "stadium"
+        ]
+      }
+    },
+    "culture": {
+      "label": "文娛",
+      "tags": {
+        "amenity": [
+          "arts_centre",
+          "cinema",
+          "library",
+          "theatre"
+        ],
+        "tourism": [
+          "gallery",
+          "museum"
+        ]
+      }
+    },
+    "medical": {
+      "label": "基本醫療",
+      "tags": {
+        "amenity": [
+          "clinic",
+          "hospital",
+          "pharmacy"
+        ]
+      }
+    }
+  },
+  "sample_query": "[out:json][timeout:90];\n(\n  nwr(around:800,25.067900,121.661130)[\"amenity\"~\"^(cafe|restaurant)$\"];\n  nwr(around:800,25.067900,121.661130)[\"shop\"~\"^(convenience|supermarket)$\"];\n  nwr(around:800,25.067900,121.661130)[\"leisure\"~\"^(fitness_centre|park|pitch|sports_centre|stadium)$\"];\n  nwr(around:800,25.067900,121.661130)[\"amenity\"~\"^(arts_centre|cinema|library|theatre)$\"];\n  nwr(around:800,25.067900,121.661130)[\"tourism\"~\"^(gallery|museum)$\"];\n  nwr(around:800,25.067900,121.661130)[\"amenity\"~\"^(clinic|hospital|pharmacy)$\"];\n);\nout center tags;",
+  "cache_dir": "data/raw/livability/osm_overpass_800m_2026-08-22",
+  "notes": "One Overpass query is executed per candidate node and cached as immutable raw JSON if not already present."
+}
