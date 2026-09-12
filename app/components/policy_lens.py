@@ -627,19 +627,22 @@ def _render_nursing_policy_dashboard(
         "對想轉換的人，政策應提供跨域課程、補助與實務媒合。"
     )
 
-    _render_nursing_kpi_cards(nursing_policy_lens.get("status_cards", []))
+    st.markdown("#### 整體青年職涯與培訓背景指標")
+    _render_nursing_youth_background(career_policy, career_policy_md)
 
     _render_nursing_policy_split()
+
+    st.markdown("#### 護理人力現況指標")
+    _render_nursing_kpi_cards(nursing_policy_lens.get("status_cards", []))
+
     _render_nursing_evidence_matrix(nursing_policy_lens.get("transition_paths", []))
 
     for limitation in nursing_policy_lens.get("limitations", []) or []:
         st.info(str(limitation))
 
-    with st.expander("查看護理師詳細分析、青年職涯與培訓背景、資料明細與模型輸出", expanded=True):
+    with st.expander("查看護理師詳細分析、資料明細與模型輸出", expanded=True):
         st.markdown("#### 查看護理師各轉職路徑詳細分析")
         _render_policy_path_cards(paths)
-        st.markdown("#### 查看整體青年職涯與培訓背景指標")
-        _render_nursing_youth_background(career_policy, career_policy_md)
         st.markdown("#### 資料明細與模型輸出")
         st.markdown("**Skill Gap**")
         _render_skill_gap_chart(career_policy)
