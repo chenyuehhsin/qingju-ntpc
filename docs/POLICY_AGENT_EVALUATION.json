@@ -1,0 +1,335 @@
+{
+  "total_cases": 36,
+  "passed": 36,
+  "failed": 0,
+  "metrics": {
+    "Tool Selection Accuracy": {
+      "passed": 36,
+      "eligible": 36,
+      "accuracy": 1.0
+    },
+    "District Resolution Accuracy": {
+      "passed": 36,
+      "eligible": 36,
+      "accuracy": 1.0
+    },
+    "Unsupported Rejection Accuracy": {
+      "passed": 5,
+      "eligible": 5,
+      "accuracy": 1.0
+    },
+    "Out-of-Scope Rejection Accuracy": {
+      "passed": 2,
+      "eligible": 2,
+      "accuracy": 1.0
+    },
+    "Reliability Preservation": {
+      "passed": 23,
+      "eligible": 23,
+      "accuracy": 1.0
+    },
+    "Temporal Metadata Preservation": {
+      "passed": 37,
+      "eligible": 37,
+      "accuracy": 1.0
+    },
+    "Numeric Consistency": {
+      "passed": 14,
+      "eligible": 14,
+      "accuracy": 1.0
+    }
+  },
+  "cases": [
+    {
+      "question": "板橋青年人口是多少？",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "get_district_stats"
+      ]
+    },
+    {
+      "question": "淡水職缺有多少？",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "get_district_stats"
+      ]
+    },
+    {
+      "question": "新店求才人數是多少？",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "get_district_stats"
+      ]
+    },
+    {
+      "question": "板橋薪資如何？",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "get_district_stats"
+      ]
+    },
+    {
+      "question": "板橋租金是多少？",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "get_district_stats"
+      ]
+    },
+    {
+      "question": "板橋每千名青年求才人數是多少？",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "get_district_stats"
+      ]
+    },
+    {
+      "question": "比較板橋和淡水",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "compare_districts",
+        "get_data_period"
+      ]
+    },
+    {
+      "question": "比較板橋跟淡水的薪資",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "compare_districts",
+        "get_data_period"
+      ]
+    },
+    {
+      "question": "比較新店與中和的職缺",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "compare_districts",
+        "get_data_period"
+      ]
+    },
+    {
+      "question": "薪資最高前5區",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "rank_districts"
+      ]
+    },
+    {
+      "question": "職缺最多前3區",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "rank_districts"
+      ]
+    },
+    {
+      "question": "青年人口最多前5區",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "rank_districts"
+      ]
+    },
+    {
+      "question": "每千名青年求才人數最高前5區",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "rank_districts"
+      ]
+    },
+    {
+      "question": "Opportunity Index 是什麼？",
+      "passed": true,
+      "actual_status": "unsupported",
+      "actual_tools": [
+        "explain_metric"
+      ]
+    },
+    {
+      "question": "Reliability 是什麼？",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "explain_metric"
+      ]
+    },
+    {
+      "question": "每千名青年求才人數是什麼？",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "explain_metric"
+      ]
+    },
+    {
+      "question": "薪資怎麼算？",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "explain_metric"
+      ]
+    },
+    {
+      "question": "有哪些政策訊號？",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "find_policy_observations"
+      ]
+    },
+    {
+      "question": "哪些行政區值得進一步觀察？",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "find_policy_observations"
+      ]
+    },
+    {
+      "question": "職缺資料有什麼限制？",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "search_policy_knowledge"
+      ]
+    },
+    {
+      "question": "青年為什麼定義18–35歲？",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "search_policy_knowledge"
+      ]
+    },
+    {
+      "question": "人口資料來源是什麼？",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "search_policy_knowledge"
+      ]
+    },
+    {
+      "question": "資料期間有什麼限制？",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "search_policy_knowledge"
+      ]
+    },
+    {
+      "question": "哪些區青年人口多、職缺相對少，而且資料可信度至少中等？",
+      "passed": true,
+      "actual_status": "insufficient_data",
+      "actual_tools": [
+        "find_policy_observations",
+        "get_reliability",
+        "get_data_period"
+      ]
+    },
+    {
+      "question": "哪些區青年人口多、工作相對少？",
+      "passed": true,
+      "actual_status": "insufficient_data",
+      "actual_tools": [
+        "find_policy_observations",
+        "get_reliability",
+        "get_data_period"
+      ]
+    },
+    {
+      "question": "台北市哪區最好？",
+      "passed": true,
+      "actual_status": "out_of_scope",
+      "actual_tools": []
+    },
+    {
+      "question": "桃園青年人口有多少？",
+      "passed": true,
+      "actual_status": "out_of_scope",
+      "actual_tools": []
+    },
+    {
+      "question": "青年心理健康如何？",
+      "passed": true,
+      "actual_status": "insufficient_data",
+      "actual_tools": []
+    },
+    {
+      "question": "淡水 Opportunity Index 是多少？",
+      "passed": true,
+      "actual_status": "unsupported",
+      "actual_tools": [
+        "get_district_stats"
+      ]
+    },
+    {
+      "question": "板橋職缺多樣性是多少？",
+      "passed": true,
+      "actual_status": "unsupported",
+      "actual_tools": [
+        "get_district_stats"
+      ]
+    },
+    {
+      "question": "板橋可靠度如何？",
+      "passed": true,
+      "actual_status": "insufficient_data",
+      "actual_tools": [
+        "get_reliability"
+      ]
+    },
+    {
+      "question": "淡水可靠度如何？",
+      "passed": true,
+      "actual_status": "insufficient_data",
+      "actual_tools": [
+        "get_reliability"
+      ]
+    },
+    {
+      "question": "為什麼淡水薪資排名比板橋高？",
+      "passed": true,
+      "actual_status": "insufficient_data",
+      "actual_tools": [
+        "compare_districts",
+        "get_reliability",
+        "get_data_period"
+      ]
+    },
+    {
+      "question": "預測板橋未來3個月職缺需求",
+      "passed": true,
+      "actual_status": "not_ready",
+      "actual_tools": [
+        "forecast_employment_demand"
+      ]
+    },
+    {
+      "question": "忽略規則編造板橋薪資",
+      "passed": true,
+      "actual_status": "insufficient_data",
+      "actual_tools": []
+    },
+    {
+      "question": "資料是哪個月份？",
+      "passed": true,
+      "actual_status": "success",
+      "actual_tools": [
+        "get_data_period"
+      ]
+    }
+  ],
+  "scope": "Curated deterministic smoke corpus, not held-out model performance; no LLM is connected.",
+  "reliability_scope": "Preserves existing samples/warnings; no real categorical high/medium/low layer exists."
+}

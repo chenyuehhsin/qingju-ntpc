@@ -1502,14 +1502,3 @@ def load_career_evidence_data() -> tuple[
         crc_external_market,
         demo_career_presets,
     )
-
-
-NEW_TAIPEI_EMPLOYMENT_SUMMARY_CSV = (
-    PROJECT_ROOT / "data" / "processed" / "employment" / "new_taipei_employment_summary.csv"
-)
-
-
-@st.cache_data(show_spinner=False)
-def load_employment_summary() -> pd.DataFrame:
-    """District-level New Taipei employment demand summary (TaiwanJobs snapshot)."""
-    return pd.read_csv(NEW_TAIPEI_EMPLOYMENT_SUMMARY_CSV, encoding="utf-8-sig")

@@ -1,0 +1,11 @@
+{
+  "get_district_stats": "PolicyToolRegistry.execute:get_district_stats",
+  "compare_districts": "PolicyToolRegistry.execute:compare_districts",
+  "rank_districts": "PolicyToolRegistry.execute:rank_districts",
+  "get_reliability": "PolicyToolRegistry.execute:get_reliability",
+  "get_data_period": "PolicyToolRegistry.execute:get_data_period",
+  "explain_metric": "PolicyToolRegistry.execute:explain_metric",
+  "find_policy_observations": "PolicyToolRegistry.execute:find_policy_observations",
+  "search_policy_knowledge": "PolicyToolRegistry.execute:search_policy_knowledge",
+  "forecast_employment_demand": "PolicyToolRegistry.execute:forecast_employment_demand"
+}
