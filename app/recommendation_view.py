@@ -97,7 +97,7 @@ def _render_single_mode_overview_page(
         render_controls()
         _render_market_overview(candidates, destination)
     with middle:
-        st.markdown("### 推薦生活圈 Top 3")
+        st.markdown('<div class="qj-column-heading"><h3>推薦生活圈 Top 3</h3></div>', unsafe_allow_html=True)
         render_recommendation_cards(
             mode,
             mode_rows,
@@ -107,7 +107,7 @@ def _render_single_mode_overview_page(
     with right:
         map_title, map_cta = st.columns([0.57, 0.43], gap="small")
         with map_title:
-            st.markdown("### 生活圈分布地圖")
+            st.markdown('<div class="qj-column-heading"><h3>生活圈分布地圖</h3></div>', unsafe_allow_html=True)
         with map_cta:
             st.markdown(
                 """

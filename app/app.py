@@ -114,7 +114,7 @@ def _render_housing_control_center(
     show_heading: bool = True,
 ) -> None:
     if show_heading:
-        st.markdown("### 青年安居｜設定我的條件")
+        st.markdown('<div class="qj-column-heading"><h3>青年安居｜設定我的條件</h3></div>', unsafe_allow_html=True)
         st.caption("從租金、通勤與生活機能，找到適合自己的新北生活圈。")
     form_sync = st.session_state.pop("housing_form_sync", None)
     if isinstance(form_sync, dict):
