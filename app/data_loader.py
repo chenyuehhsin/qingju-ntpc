@@ -1066,6 +1066,28 @@ def load_detail_metro_lines(candidate_name: str) -> dict[str, Any]:
     return json.loads(filtered.to_crs("EPSG:4326").to_json())
 
 
+@st.cache_data(show_spinner=False)
+def load_metro_lines() -> dict[str, Any]:
+    """Return all metro line shapes from the processed geojson (whole region, unfiltered).
+
+    Reads existing processed data only; line colors come from each feature's
+    line_color property. Returns an empty FeatureCollection if unavailable.
+    """
+    empty = {"type": "FeatureCollection", "features": []}
+    if not METRO_LINES_GEOJSON.exists():
+        return empty
+    lines = gpd.read_file(METRO_LINES_GEOJSON)
+    if lines.empty or "geometry" not in lines:
+        return empty
+    if lines.crs is None:
+        lines = lines.set_crs("EPSG:4326")
+    for column in lines.columns:
+        if column == lines.geometry.name:
+            continue
+        lines[column] = lines[column].map(lambda value: "" if pd.isna(value) else str(value))
+    return json.loads(lines.to_crs("EPSG:4326").to_json())
+
+
 def _safe_poi_slug(value: str) -> str:
     mapping = {
         "汐止車站": "xizhi_station",

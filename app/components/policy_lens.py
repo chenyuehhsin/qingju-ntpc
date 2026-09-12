@@ -30,6 +30,7 @@ from data_loader import (
     DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT,
     DISTRICT_ANALYSIS_LAYER_YOUTH_SHARE,
     load_district_analysis_table,
+    load_metro_lines,
     money,
 )
 
@@ -1528,6 +1529,33 @@ def _translate_policy_observation(text: str) -> str:
     return translations.get(text, text)
 
 
+def _add_policy_metro_lines(map_obj: folium.Map, metro_lines: dict) -> None:
+    """Draw all metro lines using each line's own color; used only for the 交通可達 view."""
+    features = metro_lines.get("features", []) if isinstance(metro_lines, dict) else []
+    if not features:
+        return
+
+    def line_style(feature: dict) -> dict:
+        properties = feature.get("properties", {})
+        color = str(properties.get("line_color") or "#4F83A6")
+        return {"color": color, "weight": 3.4, "opacity": 0.8}
+
+    group = folium.FeatureGroup(name="捷運路線", show=True)
+    folium.GeoJson(
+        metro_lines,
+        name="捷運路線",
+        style_function=line_style,
+        control=False,
+        tooltip=folium.GeoJsonTooltip(
+            fields=["line_name_zh", "line_id"],
+            aliases=["路線", "Line"],
+            labels=True,
+            sticky=False,
+        ),
+    ).add_to(group)
+    group.add_to(map_obj)
+
+
 def build_policy_map(
     policy: pd.DataFrame,
     towns: gpd.GeoDataFrame,
@@ -1558,6 +1586,8 @@ def build_policy_map(
     _fit_policy_bounds(map_obj, policy)
     _add_policy_boundaries(map_obj, towns, cities)
     _add_policy_district_analysis_layer(map_obj, towns, district_analysis_layer)
+    if view == "交通可達":
+        _add_policy_metro_lines(map_obj, load_metro_lines())
 
     for _, row in policy.iterrows():
         value = float(row[view_config["field"]])
