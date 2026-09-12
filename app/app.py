@@ -142,9 +142,10 @@ def _render_housing_control_center(
             selected_mode = st.session_state.housing_recommendation_mode_draft
             st.caption("比較模式會同時呈現四種偏好。")
         target_address = st.text_input(
-            "工作地點",
+            "工作地點（尚未完善）",
             key="workplace_address_draft",
             placeholder="例如：台北市內湖區瑞光路",
+            disabled=True,
         )
         selected_preset = st.selectbox(
             "快速範例",
