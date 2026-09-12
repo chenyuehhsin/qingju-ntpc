@@ -1635,9 +1635,11 @@ def build_policy_map(
     if view == "交通可達":
         _add_policy_metro_lines(map_obj, load_metro_lines())
 
+    value_span = max_value - min_value
     for _, row in policy.iterrows():
         value = float(row[view_config["field"]])
-        radius = 9.0
+        normalized = (value - min_value) / value_span if value_span > 0 else 0.5
+        radius = 6.0 + normalized * 10.0
         color = color_map(value)
         tooltip = _integrated_policy_tooltip(row)
 
