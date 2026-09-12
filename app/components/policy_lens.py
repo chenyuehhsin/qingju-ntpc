@@ -43,15 +43,6 @@ TRANSPARENT_TILE_DATA_URI = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABA
 NLSC_LANDUSE_TILE_URL = "https://wmts.nlsc.gov.tw/wmts/LUIMAP/default/GoogleMapsCompatible/{z}/{y}/{x}"
 NLSC_LANDUSE_ATTR = "國土利用現況調查｜內政部國土測繪中心 NLSC"
 POLICY_VIEWS = {
-    "綜合政策訊號": {
-        "field": "policy_signal_rule_count",
-        "title": "綜合政策訊號",
-        "unit": "rules",
-        "caption": "只顯示該生活圈所屬行政區命中的透明 policy rules 數量；不是 composite score 或 ranking。",
-        "low_color": "#E8EEF0",
-        "high_color": "#0F766E",
-        "higher_label": "命中規則越多",
-    },
     "居住成本": {
         "field": "official_median_rent",
         "title": "居住成本",
@@ -203,8 +194,8 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
         selected_view = st.segmented_control(
             "地圖強調焦點",
             options=list(POLICY_VIEWS.keys()),
-            default="綜合政策訊號",
-            key="policy_view",
+            default="居住成本",
+            key="policy_view_focus",
         )
     with district_col:
         selected_district_layer = st.segmented_control(
@@ -221,7 +212,7 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
             key="policy_basemap",
     )
     if selected_view is None:
-        selected_view = "綜合政策訊號"
+        selected_view = "居住成本"
     if selected_district_layer is None:
         selected_district_layer = DISTRICT_ANALYSIS_LAYER_RENT
     if selected_basemap is None:
@@ -297,25 +288,6 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
     else:
         st.caption(f"有效行政區：{len(youth_job_data)} 區｜資料缺值不補值")
         st.plotly_chart(build_youth_job_scatter(youth_job_data), use_container_width=True)
-
-    with st.expander("查看完整政策介入矩陣", expanded=False):
-        st.caption(
-            "完整清單保留各規則的長文字與所有命中行政區；不代表政策優先順序或正式政策處方。"
-        )
-        if intervention_matrix.empty:
-            st.info("目前沒有足夠的有效行政區資料建立政策介入矩陣。")
-        else:
-            st.dataframe(
-                intervention_matrix,
-                hide_index=True,
-                use_container_width=True,
-                column_config={
-                    "資料訊號": st.column_config.TextColumn("資料訊號", width="large"),
-                    "政策觀察": st.column_config.TextColumn("政策觀察", width="large"),
-                    "可評估工具": st.column_config.TextColumn("可評估政策方向", width="large"),
-                    "涉及行政區": st.column_config.TextColumn("涉及行政區", width="large"),
-                },
-            )
 
     with st.expander("資料來源、方法與限制", expanded=False):
         render_policy_method_notes()
