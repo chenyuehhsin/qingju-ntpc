@@ -6,10 +6,231 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 from assistant_service import LABELS, answer_question, load_context
 from policy_agent.contracts import SessionContext
 from policy_agent.orchestrator import PolicyAgentOrchestrator
+
+_DRAG_STORAGE_KEY = "qingjuAssistantPos"
+_ASSISTANT_SELECTOR = ".st-key-qingju_assistant"
+
+
+_DRAG_SCRIPT = """
+<script>
+(function() {
+    const doc = window.parent.document;
+    const win = window.parent;
+    const STORAGE_KEY = "__STORAGE_KEY__";
+    const SELECTOR = "__SELECTOR__";
+    const MARGIN_WIDE = {x: 22, y: 20};
+    const MARGIN_NARROW = {x: 12, y: 12};
+    const THRESHOLD = 4;
+
+    // Streamlit destroys this component's iframe on every rerun, which kills the
+    // closures below while leaving them registered on the parent document. Each
+    // instance claims a generation so stale handlers detach themselves.
+    const generation = (win.__qjPinGeneration || 0) + 1;
+    win.__qjPinGeneration = generation;
+
+    function current() {
+        return win.__qjPinGeneration === generation;
+    }
+
+    function on(target, type, handler, options) {
+        function wrapped(ev) {
+            if (!current()) {
+                target.removeEventListener(type, wrapped, options);
+                return;
+            }
+            handler(ev);
+        }
+        target.addEventListener(type, wrapped, options);
+    }
+
+    function clamp(value, min, max) {
+        return Math.min(Math.max(value, min), max);
+    }
+
+    function viewport() {
+        return {w: doc.documentElement.clientWidth, h: doc.documentElement.clientHeight};
+    }
+
+    function init() {
+        const el = doc.querySelector(SELECTOR);
+        // Wait for layout: the anchor is derived from the rendered size.
+        if (!el || !el.offsetWidth || !el.offsetHeight) { return false; }
+        el.style.touchAction = "none";
+
+        // Desired position in viewport coordinates. `anchored` keeps the default
+        // bottom-right placement responsive until the user drags the assistant.
+        const state = {left: 0, top: 0, anchored: true};
+
+        try {
+            const saved = JSON.parse(win.localStorage.getItem(STORAGE_KEY) || "null");
+            if (saved && typeof saved.left === "number" && typeof saved.top === "number") {
+                state.left = saved.left;
+                state.top = saved.top;
+                state.anchored = false;
+            }
+        } catch (err) { /* ignore unreadable or malformed storage */ }
+
+        function resolveAnchor() {
+            const vp = viewport();
+            const margin = vp.w <= 600 ? MARGIN_NARROW : MARGIN_WIDE;
+            state.left = vp.w - el.offsetWidth - margin.x;
+            state.top = vp.h - el.offsetHeight - margin.y;
+        }
+
+        function clampState() {
+            const vp = viewport();
+            state.left = clamp(state.left, 0, Math.max(0, vp.w - el.offsetWidth));
+            state.top = clamp(state.top, 0, Math.max(0, vp.h - el.offsetHeight));
+        }
+
+        // `position: fixed` is only viewport-relative when no ancestor creates a
+        // containing block (transform, filter, backdrop-filter, contain...).
+        // Streamlit's DOM does create such ancestors, which makes the element
+        // scroll away with the content. Measuring the rendered rect and
+        // correcting the offset keeps it pinned whatever the containing block is.
+        function pin() {
+            const rect = el.getBoundingClientRect();
+            const dx = state.left - rect.left;
+            const dy = state.top - rect.top;
+            if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) { return; }
+            const currentLeft = parseFloat(el.style.left) || 0;
+            const currentTop = parseFloat(el.style.top) || 0;
+            el.style.left = (currentLeft + dx) + "px";
+            el.style.top = (currentTop + dy) + "px";
+        }
+
+        el.style.right = "auto";
+        el.style.bottom = "auto";
+        if (state.anchored) { resolveAnchor(); } else { clampState(); }
+        el.style.left = state.left + "px";
+        el.style.top = state.top + "px";
+        pin();
+
+        let queued = false;
+        function schedulePin() {
+            if (queued) { return; }
+            queued = true;
+            win.requestAnimationFrame(function() {
+                queued = false;
+                pin();
+            });
+        }
+
+        // Capture phase catches scrolling of any Streamlit container, not just
+        // the window, so the assistant follows every scrollable ancestor.
+        on(win, "scroll", schedulePin, true);
+        on(win, "wheel", schedulePin, {passive: true, capture: true});
+        on(win, "resize", function() {
+            if (state.anchored) { resolveAnchor(); } else { clampState(); }
+            schedulePin();
+        });
+        if (win.visualViewport) {
+            on(win.visualViewport, "resize", schedulePin);
+            on(win.visualViewport, "scroll", schedulePin);
+        }
+        // Reruns and popover open/close reflow the layout without a scroll event.
+        if (win.__qjPinObserver) {
+            try { win.__qjPinObserver.disconnect(); } catch (err) { /* already gone */ }
+        }
+        const observer = new win.MutationObserver(function() {
+            if (!current()) {
+                observer.disconnect();
+                return;
+            }
+            schedulePin();
+        });
+        observer.observe(doc.body, {childList: true, subtree: true});
+        win.__qjPinObserver = observer;
+
+        let dragging = false;
+        let moved = false;
+        let startX = 0, startY = 0, startLeft = 0, startTop = 0;
+
+        on(el, "mousedown", function(ev) {
+            if (ev.button !== 0) { return; }
+            const rect = el.getBoundingClientRect();
+            dragging = true;
+            moved = false;
+            startX = ev.clientX;
+            startY = ev.clientY;
+            startLeft = rect.left;
+            startTop = rect.top;
+        });
+
+        on(doc, "mousemove", function(ev) {
+            if (!dragging) { return; }
+            const dx = ev.clientX - startX;
+            const dy = ev.clientY - startY;
+            if (!moved && (Math.abs(dx) > THRESHOLD || Math.abs(dy) > THRESHOLD)) {
+                moved = true;
+                state.anchored = false;
+                el.style.cursor = "grabbing";
+                doc.body.style.userSelect = "none";
+            }
+            if (moved) {
+                ev.preventDefault();
+                state.left = startLeft + dx;
+                state.top = startTop + dy;
+                clampState();
+                pin();
+            }
+        });
+
+        on(doc, "mouseup", function() {
+            if (!dragging) { return; }
+            dragging = false;
+            el.style.cursor = "";
+            doc.body.style.userSelect = "";
+            if (!moved) { return; }
+            try {
+                win.localStorage.setItem(
+                    STORAGE_KEY, JSON.stringify({left: state.left, top: state.top})
+                );
+            } catch (err) { /* storage unavailable */ }
+            // Swallow only the click that ends a real drag, so a plain click
+            // still opens the popover.
+            el.dataset.qjSuppressClick = "1";
+            win.setTimeout(function() { el.dataset.qjSuppressClick = "0"; }, 0);
+        });
+
+        on(el, "click", function(ev) {
+            if (el.dataset.qjSuppressClick === "1") {
+                ev.preventDefault();
+                ev.stopPropagation();
+            }
+        }, true);
+
+        return true;
+    }
+
+    if (win.__qjPinRetry) { win.clearInterval(win.__qjPinRetry); }
+    if (!init()) {
+        win.__qjPinRetry = win.setInterval(function() {
+            if (!current() || init()) { win.clearInterval(win.__qjPinRetry); }
+        }, 150);
+        win.setTimeout(function() { win.clearInterval(win.__qjPinRetry); }, 10000);
+    }
+})();
+</script>
+"""
+
+
+def _render_drag_script() -> None:
+    """Keep the assistant pinned to the viewport and make it mouse-draggable.
+
+    Streamlit reruns the whole script on every interaction, so the dragged
+    position is persisted client-side (parent window localStorage) and
+    re-applied on each rerun.
+    """
+    script = _DRAG_SCRIPT.replace("__STORAGE_KEY__", _DRAG_STORAGE_KEY).replace(
+        "__SELECTOR__", _ASSISTANT_SELECTOR
+    )
+    components.html(script, height=0, width=0)
 
 
 def render_qingju_assistant(page: str) -> None:
@@ -19,8 +240,9 @@ def render_qingju_assistant(page: str) -> None:
     <style>
     .st-key-qingju_assistant {
       position:fixed!important; right:22px; bottom:20px; width:128px!important;
-      z-index:10000; background:transparent; padding:0!important;
+      z-index:10000; background:transparent; padding:0!important; cursor:grab;
     }
+    .st-key-qingju_assistant:active { cursor:grabbing; }
     .st-key-qingju_assistant [data-testid="stPopoverButton"] {
       position:relative; margin-top:92px; min-height:38px; width:128px;
       border-radius:24px; border:1px solid #acd5bd; background:#edf8ef; color:#24523b;
@@ -48,6 +270,7 @@ def render_qingju_assistant(page: str) -> None:
     }
     </style>
     """.replace("IMAGE", image), unsafe_allow_html=True)
+    _render_drag_script()
     with st.container(key="qingju_assistant"):
         with st.popover("青聚小幫手", use_container_width=True):
             with st.container(key="qingju_assistant_content"):
