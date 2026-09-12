@@ -82,3 +82,5 @@ qingju-newtaipei/
 └── .kiro/
     └── steering/
 ```
+
+Milestone 4A 本機 AWS 整合：[部署手冊](docs/AWS_LOCAL_DEPLOYMENT.md) · [本機完成報告](docs/MILESTONE4A_REPORT.md)。目前 AWS_DEPLOYMENT_BLOCKED，未部署雲端資源。

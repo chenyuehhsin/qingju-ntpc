@@ -1,0 +1,63 @@
+{
+  "boto3": "1.43.92",
+  "botocore": "1.43.92",
+  "operations": {
+    "s3": {
+      "HeadBucket": true,
+      "CreateBucket": true,
+      "GetBucketLocation": true,
+      "GetBucketTagging": true,
+      "PutBucketTagging": true,
+      "PutPublicAccessBlock": true,
+      "HeadObject": true,
+      "PutObject": true,
+      "ListObjectsV2": true
+    },
+    "bedrock-agent": {
+      "ListKnowledgeBases": true,
+      "GetKnowledgeBase": true,
+      "CreateKnowledgeBase": true,
+      "ListTagsForResource": true,
+      "ListDataSources": true,
+      "GetDataSource": true,
+      "CreateDataSource": true,
+      "StartIngestionJob": true,
+      "GetIngestionJob": true,
+      "DeleteDataSource": true,
+      "DeleteKnowledgeBase": true
+    },
+    "bedrock-agentcore-control": {
+      "CreateGateway": true,
+      "ListGateways": true,
+      "GetGateway": true,
+      "ListTagsForResource": true,
+      "ListGatewayTargets": true,
+      "CreateGatewayTarget": true,
+      "GetGatewayTarget": true,
+      "DeleteGatewayTarget": true,
+      "DeleteGateway": true
+    },
+    "lambda": {
+      "GetFunction": true,
+      "CreateFunction": true,
+      "ListTags": true,
+      "Invoke": true,
+      "DeleteFunction": true
+    },
+    "bedrock-agent-runtime": {
+      "Retrieve": true
+    },
+    "sts": {
+      "GetCallerIdentity": true
+    }
+  },
+  "features": {
+    "MANAGED_KB": true,
+    "MANAGED_EMBEDDINGS": true,
+    "NATIVE_KB_CONNECTOR": true,
+    "AWS_IAM_GATEWAY": true
+  },
+  "supported": true,
+  "missing": [],
+  "scope": "SDK schemas only; credentials, region availability and IAM not verified"
+}
