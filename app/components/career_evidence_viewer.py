@@ -612,7 +612,7 @@ def _render_explore_section(demo_career_presets: pd.DataFrame) -> tuple[str, str
             key="career_learning_horizon",
         )
     with action_col:
-        if st.button("探索可能路徑", use_container_width=True, key="career_explore_button"):
+        if st.button("探索可能路徑", use_container_width=False, key="career_explore_button"):
             st.session_state.career_view_layer = "discovery"
             st.session_state.career_selected_path = None
 
