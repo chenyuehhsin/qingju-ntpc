@@ -1620,6 +1620,22 @@ def apply_styles(page: str = "青年安居推薦") -> None:
         .st-key-housing_mode_card_2 [data-testid="stVerticalBlockBorderWrapper"] {{ border-color: #E8A05A !important; }}
         .st-key-housing_mode_card_3,
         .st-key-housing_mode_card_3 [data-testid="stVerticalBlockBorderWrapper"] {{ border-color: #A98BC8 !important; }}
+        .qj-mode-card-title {{
+            color: #243238;
+            font-size: 1.08rem;
+            font-weight: 900;
+            letter-spacing: -0.01em;
+            line-height: 1.3;
+        }}
+        .qj-mode-card-title .qj-mode-card-area {{
+            color: #65747a;
+            font-size: 0.86rem;
+            font-weight: 700;
+        }}
+        [class*="st-key-housing_mode_card_0"] .qj-mode-card-title {{ color: #4F9E7A; }}
+        [class*="st-key-housing_mode_card_1"] .qj-mode-card-title {{ color: #4E8FB5; }}
+        [class*="st-key-housing_mode_card_2"] .qj-mode-card-title {{ color: #D98A3D; }}
+        [class*="st-key-housing_mode_card_3"] .qj-mode-card-title {{ color: #9070B4; }}
         .st-key-career_explore_button button {{
             background: #CFE3F2 !important;
             border: 1px solid #9FC3DE !important;
