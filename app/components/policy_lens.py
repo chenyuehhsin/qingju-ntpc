@@ -664,58 +664,65 @@ def _render_nursing_kpi_cards(status_cards: list[dict]) -> None:
     st.markdown(f'<div class="qj-career-policy-grid">{cards_html}</div>', unsafe_allow_html=True)
 
 
+def _render_nursing_policy_split_card(
+    title: str, scenario: str, tools: list[str], needed_data: list[str]
+) -> None:
+    with st.container(border=True):
+        st.markdown(f"**{title}**")
+        st.caption(scenario)
+        tools_col, data_col = st.columns(2, gap="medium")
+        with tools_col:
+            st.markdown("**政策工具**")
+            for item in tools:
+                st.markdown(f"- {item}")
+        with data_col:
+            st.markdown("**需要資料**")
+            for item in needed_data:
+                st.markdown(f"- {item}")
+
+
 def _render_nursing_policy_split() -> None:
     st.markdown("### 政策分流：留任改善 vs 轉職支持")
     left, right = st.columns(2, gap="medium")
     with left:
-        with st.container(border=True):
-            st.markdown("**留任改善**")
-            st.caption(
-                "適用情境：需求訊號高、留任 / 吸引力風險高、技能缺口低，代表問題不在訓練不足，而在工作條件與職涯支持。"
-            )
-            st.markdown("**政策工具**")
-            for item in [
+        _render_nursing_policy_split_card(
+            "留任改善",
+            "適用情境：需求訊號高、留任 / 吸引力風險高、技能缺口低，代表問題不在訓練不足，而在工作條件與職涯支持。",
+            [
                 "改善排班與休假彈性",
                 "追蹤護病比與夜班負擔",
                 "降低行政填報負擔",
                 "留任支持與職涯分級",
                 "與衛生局、醫療院所合作改善職場環境",
-            ]:
-                st.markdown(f"- {item}")
-            st.markdown("**需要資料**")
-            for item in [
+            ],
+            [
                 "護病比月資料",
                 "護理人員年齡分布",
                 "離職原因問卷",
                 "加班 / 輪班 / 休假資料",
                 "留任措施前後比較",
-            ]:
-                st.markdown(f"- {item}")
+            ],
+        )
     with right:
-        with st.container(border=True):
-            st.markdown("**轉職支持**")
-            st.caption(
-                "適用情境：青年仍希望離開臨床，但可保留護理專業，轉向醫療資訊、臨床資料管理、個案管理、長照協調等相鄰路徑。"
-            )
-            st.markdown("**政策工具**")
-            for item in [
+        _render_nursing_policy_split_card(
+            "轉職支持",
+            "適用情境：青年仍希望離開臨床，但可保留護理專業，轉向醫療資訊、臨床資料管理、個案管理、長照協調等相鄰路徑。",
+            [
                 "免費線上資源與技能自評",
                 "短期跨域課程",
                 "完成 prerequisite 後取得補助資格",
                 "進階課程 / 證照 / 專題補助",
                 "醫院資訊部門、研究單位、長照機構實習與媒合",
-            ]:
-                st.markdown(f"- {item}")
-            st.markdown("**需要資料**")
-            for item in [
+            ],
+            [
                 "青年探索紀錄",
                 "skill gap 統計",
                 "課程時數與費用",
                 "報名人數與結訓率",
                 "課後就業率",
                 "轉職後薪資變化",
-            ]:
-                st.markdown(f"- {item}")
+            ],
+        )
 
 
 def _render_nursing_evidence_matrix(transition_paths: list[dict]) -> None:
