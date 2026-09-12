@@ -374,6 +374,32 @@ def render_career_policy_observations(
     career_policy_md: str,
     career_ladder: pd.DataFrame | None = None,
 ) -> None:
+    source_options = [
+        "護理師",
+        "建築／室內設計助理（資料建構中）",
+        "餐旅／觀光服務人員（資料建構中）",
+    ]
+    nursing_source = source_options[0]
+    selected_source = st.selectbox(
+        "目前分析來源職業",
+        options=source_options,
+        index=0,
+        key="policy_career_source_select",
+    )
+    st.caption("目前完整示範：護理師｜其他職業保留擴充入口")
+
+    if st.session_state.get("policy_career_active_source_occupation") != selected_source:
+        st.session_state.policy_career_view = "overview"
+        st.session_state.selected_policy_path = None
+        st.session_state.policy_career_active_source_occupation = selected_source
+
+    if selected_source != nursing_source:
+        st.info(
+            "此來源職業的政策觀察資料建構中。未來將依相同架構整合轉職需求、技能缺口、台灣職缺訊號、課程供給與政策工具分流。"
+            "目前完整示範案例為：護理師。"
+        )
+        return
+
     paths = _career_policy_paths(career_policy, career_ladder)
     path_names = paths["target_occupation_name"].dropna().astype(str).tolist()
     if "policy_career_view" not in st.session_state:
@@ -578,8 +604,8 @@ def _render_career_policy_overview(
     st.markdown(
         """
         <div class="qj-policy-section-head">
-            <div class="qj-policy-section-title">職涯政策觀察</div>
-            <div class="qj-policy-section-copy">整合青年統計、轉職 feasibility、TaiwanJobs 市場訊號與職訓課程證據；不產生成功率、排名或補助金額。</div>
+            <div class="qj-policy-section-title">職涯政策觀察｜從來源職業出發的轉職與培訓路徑</div>
+            <div class="qj-policy-section-copy">從選定的來源職業出發，觀察其轉職與培訓路徑的需求、技能缺口、市場訊號與課程供給；這不是所有目標職業的通用頁，也不產生成功率、排名或補助金額。</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -604,7 +630,7 @@ def _render_career_policy_overview(
         "潛在課程覆蓋可作為課程供給訊號，不代表完整 curriculum 或技能已補足。",
         "High=0 應解讀為公開市場證據不足，不代表職涯不存在。",
     ]
-    st.markdown("### 可檢視的轉職與培訓路徑")
+    st.markdown("### 護理師可檢視的轉職與培訓路徑")
     st.caption(
         "結合轉職可行性、培訓課程與市場訊號，協助青年局判斷哪些路徑值得先補資料或設計支持工具。"
     )
@@ -669,7 +695,7 @@ def _render_policy_path_cards(paths: pd.DataFrame) -> None:
             title = str(row["target_occupation_name"])
             with columns[offset]:
                 with st.container(border=True, key=f"policy_career_path_{index}"):
-                    st.markdown(f"**{_occupation_zh(title)}**")
+                    st.markdown(f"**護理師 → {_occupation_zh(title)}**")
                     st.caption(title)
                     st.caption(f"政策介入：{_intervention_zh(str(row.get('policy_intervention_types', '')))}")
                     st.caption(f"市場訊號：{_market_status_label(row)}｜學習負擔：{_learning_burden_zh(row.get('learning_burden'))}")
