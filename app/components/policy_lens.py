@@ -642,7 +642,7 @@ def _render_nursing_policy_dashboard(
         _render_nursing_youth_background(career_policy, career_policy_md)
         st.markdown("#### 資料明細與模型輸出")
         st.markdown("**Skill Gap**")
-        _render_skill_gap_table(career_policy)
+        _render_skill_gap_chart(career_policy)
         st.markdown("**Market evidence**")
         _render_market_evidence_table(career_policy)
         st.markdown("**Training Gap**")
@@ -1053,6 +1053,35 @@ def _render_policy_evidence_reason(value: object) -> None:
         with st.expander("查看證據理由", expanded=False):
             for reason in reasons[4:]:
                 st.caption(f"- {reason}")
+
+
+def _render_skill_gap_chart(career_policy: pd.DataFrame) -> None:
+    skill_gap = _common_skill_gaps(career_policy).head(8)
+    if skill_gap.empty:
+        st.info("目前沒有可整理的 missing skill。")
+        return
+    chart_data = skill_gap.copy()
+    chart_data["技能"] = chart_data["skill"].map(_skill_zh)
+    chart_data = chart_data.sort_values("path_count")
+    figure = px.bar(
+        chart_data,
+        x="path_count",
+        y="技能",
+        orientation="h",
+        text="path_count",
+        labels={"path_count": "出現路徑數", "技能": ""},
+        color_discrete_sequence=["#8FCBAA"],
+    )
+    figure.update_layout(
+        height=280,
+        margin={"l": 4, "r": 4, "t": 8, "b": 4},
+        plot_bgcolor="#F8FAFC",
+        paper_bgcolor="rgba(0,0,0,0)",
+        showlegend=False,
+        xaxis={"dtick": 1, "gridcolor": "#E2E8F0", "title": "出現路徑數"},
+    )
+    st.plotly_chart(figure, use_container_width=True, config={"displayModeBar": False})
+    st.caption("橫軸為該技能出現在幾條探索路徑（分母為 8 條），代表跨路徑共通的技能缺口，不是需求人數或重要度。")
 
 
 def _render_skill_gap_table(career_policy: pd.DataFrame) -> None:
