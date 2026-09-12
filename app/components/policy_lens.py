@@ -133,7 +133,7 @@ def render_policy_lens(
         """
         <div class="qj-policy-header">
             <h1 class="qj-visually-hidden">青年局 Policy Lens</h1>
-            <div class="qj-page-intro">分開觀察青年職涯與安居資料訊號，作為政策端快速掃描工具。</div>
+            <div class="qj-page-intro">分開觀察青年職涯、安居與跨資料政策訊號，作為政策端快速掃描工具。</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -162,7 +162,9 @@ def render_policy_lens(
         unsafe_allow_html=True,
     )
     with st.container(key="policy_lens_toggle"):
-        career_tab, housing_tab = st.tabs(["職涯政策觀察", "安居政策觀察"])
+        career_tab, housing_tab, ai_tab = st.tabs(
+            ["職涯政策觀察", "安居政策觀察", "AI 青年政策智慧儀表板"]
+        )
     with career_tab:
         if career_policy is None:
             st.warning("尚未載入 Career Policy Lens Phase 7 輸出。")
@@ -172,6 +174,71 @@ def render_policy_lens(
             )
     with housing_tab:
         render_housing_policy_lens(policy, towns, cities)
+    with ai_tab:
+        render_ai_policy_dashboard(policy, towns, career_policy)
+
+
+def render_ai_policy_dashboard(
+    policy: pd.DataFrame,
+    towns: gpd.GeoDataFrame,
+    career_policy: pd.DataFrame | None,
+) -> None:
+    """Render the cross-domain entry point without inventing a policy score.
+
+    This page deliberately reuses the evidence already supplied to the two
+    neighbouring Policy Lens tabs.  It is an AI-assisted reading surface, not
+    a new model, ranking, prediction, or policy prescription.
+    """
+    career_path_count = 0 if career_policy is None else len(career_policy)
+    living_area_count = int(policy["candidate_name"].nunique()) if "candidate_name" in policy else len(policy)
+    district_count = int(towns["district"].nunique()) if "district" in towns else len(towns)
+
+    st.markdown(
+        """
+        <div class="qj-policy-section-head">
+            <div class="qj-policy-section-title">AI 青年政策智慧儀表板</div>
+            <div class="qj-policy-section-copy">把職涯與安居分支中已揭露的資料範圍、政策訊號與限制放在同一個閱讀入口。AI 小幫手只依青聚既有資料回答，並保留來源、期間與限制。</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    cards = [
+        ("行政區資料範圍", f"{district_count} 區", "新北市行政區資料；不等同於車站生活圈。"),
+        ("安居觀察生活圈", f"{living_area_count} 個", "租金、通勤與生活機能皆保留原始資料尺度。"),
+        ("職涯政策路徑", f"{career_path_count} 條", "未載入時不補算；不代表轉職成功率。"),
+        ("政策判讀方式", "可追溯", "每個回答都應回看資料來源、期間與限制。"),
+    ]
+    cards_html = "".join(
+        f'<div class="qj-career-policy-card"><span>{html.escape(label)}</span>'
+        f'<b>{html.escape(value)}</b><small>{html.escape(note)}</small></div>'
+        for label, value, note in cards
+    )
+    st.markdown(f'<div class="qj-career-policy-grid">{cards_html}</div>', unsafe_allow_html=True)
+
+    st.markdown("### 三個政策觀察分支")
+    branch_columns = st.columns(3, gap="medium")
+    branches = [
+        ("職涯政策觀察", "查看青年職涯、轉職、技能缺口、訓練與市場證據。"),
+        ("安居政策觀察", "查看租金、交通可達性、生活機能與行政區政策背景。"),
+        ("AI 青年政策智慧儀表板", "跨分支整理可問的資料問題，並由小幫手提供可追溯回答。"),
+    ]
+    for column, (title, copy) in zip(branch_columns, branches):
+        with column:
+            with st.container(border=True):
+                st.markdown(f"**{title}**")
+                st.caption(copy)
+
+    st.info(
+        "可在右下角開啟「青聚小幫手」，例如詢問「哪些行政區值得進一步觀察？」或「板橋目前青年人口有多少？」。"
+        "系統不產生綜合政策排名、個人成功率、因果推論或未經資料支持的政策處方。"
+    )
+    with st.expander("AI 回答的資料範圍與使用方式", expanded=False):
+        st.markdown(
+            "- 小幫手使用此網站既有的行政區、職涯、安居與 Policy Lens 資料。\n"
+            "- 回答會揭露資料來源、資料期間、樣本與已知限制；資料不足時會明確說明。\n"
+            "- 行政區資料、車站生活圈、不同年度與不同年齡定義不能直接當作同一尺度比較。"
+        )
 
 
 def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, cities: gpd.GeoDataFrame) -> None:
