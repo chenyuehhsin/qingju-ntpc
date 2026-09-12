@@ -39,6 +39,9 @@ POLICY_BASEMAP_MINIMAL = "極簡底圖"
 POLICY_BASEMAP_STREET = "街道地圖"
 POLICY_BASEMAP_OPTIONS = [POLICY_BASEMAP_MINIMAL, POLICY_BASEMAP_STREET]
 TRANSPARENT_TILE_DATA_URI = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+# NLSC 國土利用現況調查 (public land-use survey) WMTS, used as the land-use basemap.
+NLSC_LANDUSE_TILE_URL = "https://wmts.nlsc.gov.tw/wmts/LUIMAP/default/GoogleMapsCompatible/{z}/{y}/{x}"
+NLSC_LANDUSE_ATTR = "國土利用現況調查｜內政部國土測繪中心 NLSC"
 POLICY_VIEWS = {
     "綜合政策訊號": {
         "field": "policy_signal_rule_count",
@@ -1621,7 +1624,11 @@ def build_policy_map(
         control_scale=True,
         prefer_canvas=True,
     )
-    _add_policy_basemap(map_obj, basemap)
+    if view == "生活機能":
+        _add_policy_landuse_basemap(map_obj)
+        _add_ntpc_focus_mask(map_obj, towns)
+    else:
+        _add_policy_basemap(map_obj, basemap)
     _fit_policy_bounds(map_obj, policy)
     _add_policy_boundaries(map_obj, towns, cities)
     _add_policy_district_analysis_layer(map_obj, towns, district_analysis_layer)
@@ -2101,6 +2108,45 @@ def render_policy_method_notes() -> None:
         """,
         unsafe_allow_html=True,
     )
+
+
+def _add_policy_landuse_basemap(map_obj: folium.Map) -> None:
+    """Use the NLSC public land-use survey tiles as the basemap (for the 生活機能 view)."""
+    folium.TileLayer(
+        tiles=NLSC_LANDUSE_TILE_URL,
+        name="土地使用分區",
+        attr=NLSC_LANDUSE_ATTR,
+        overlay=False,
+        control=False,
+        show=True,
+    ).add_to(map_obj)
+
+
+def _add_ntpc_focus_mask(map_obj: folium.Map, towns: gpd.GeoDataFrame) -> None:
+    """Dim everything outside New Taipei City so the land-use basemap highlights NTPC."""
+    ntpc = towns[towns["COUNTYNAME"] == "新北市"]
+    if ntpc.empty:
+        return
+    from shapely.geometry import box, mapping
+    from shapely.ops import unary_union
+
+    try:
+        ntpc_area = unary_union(list(ntpc.geometry))
+        outer = box(120.9, 24.4, 122.3, 25.7)
+        mask = outer.difference(ntpc_area)
+    except Exception:
+        return
+    folium.GeoJson(
+        data=mapping(mask),
+        name="新北聚焦遮罩",
+        control=False,
+        style_function=lambda _feature: {
+            "fillColor": "#F1EEE6",
+            "color": "#F1EEE6",
+            "weight": 0,
+            "fillOpacity": 0.8,
+        },
+    ).add_to(map_obj)
 
 
 def _add_policy_basemap(map_obj: folium.Map, basemap: str) -> None:
