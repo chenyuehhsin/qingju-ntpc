@@ -261,9 +261,46 @@ def render_qingju_assistant(page: str) -> None:
     }
     .st-key-qingju_assistant_content [data-testid="stFormSubmitButton"] { margin-top:0; }
     @keyframes qj-assistant-bob { 50% { transform:translateY(-4px) rotate(2deg); } }
+    /* Phones: shrink the floating trigger so it covers less of the screen, and
+       let the panel use nearly the full width instead of the 500px desktop card.
+       The 600px breakpoint matches MARGIN_NARROW in the positioning script. */
     @media(max-width:600px) {
-      .st-key-qingju_assistant { right:12px; bottom:max(12px,env(safe-area-inset-bottom)); }
-      [data-testid="stPopoverBody"]:has(.st-key-qingju_assistant_content) { max-height:65dvh; }
+      .st-key-qingju_assistant {
+        right:12px; bottom:max(12px,env(safe-area-inset-bottom)); width:108px!important;
+      }
+      .st-key-qingju_assistant [data-testid="stPopoverButton"] {
+        margin-top:78px; min-height:34px; width:108px; font-size:12px;
+        white-space:nowrap; padding-inline:6px;
+      }
+      .st-key-qingju_assistant [data-testid="stPopoverButton"]::before {
+        width:78px; height:87px; left:15px; bottom:32px;
+      }
+      /* Streamlit sets min-width:400px on stPopoverBody, and min-width beats
+         width, so the panel stayed 400px wide and ran off screen below ~424px.
+         Releasing the floor lets it track the viewport. */
+      [data-testid="stPopoverBody"]:has(.st-key-qingju_assistant_content) {
+        min-width:0!important;
+        width:calc(100vw - 16px)!important; max-width:calc(100vw - 16px)!important;
+        max-height:82dvh; padding:14px; border-radius:16px;
+      }
+      .st-key-qingju_assistant_content [data-testid="stDataFrame"] { overflow-x:auto; }
+    }
+    @media(max-width:380px) {
+      .st-key-qingju_assistant { width:92px!important; }
+      .st-key-qingju_assistant [data-testid="stPopoverButton"] {
+        margin-top:66px; min-height:32px; width:92px; font-size:11.5px;
+        /* 5 CJK characters must stay on one line in this narrow button. */
+        white-space:nowrap; padding-inline:4px;
+      }
+      .st-key-qingju_assistant [data-testid="stPopoverButton"]::before {
+        width:66px; height:73px; left:13px; bottom:28px;
+      }
+      /* Width stays at the 600px tier's calc(100vw - 16px): the popover is
+         placed with its right edge inset 16px, so anything wider is pushed
+         off the left edge. Only the inner spacing tightens here. */
+      [data-testid="stPopoverBody"]:has(.st-key-qingju_assistant_content) {
+        max-height:86dvh; padding:12px;
+      }
     }
     @media(prefers-reduced-motion:reduce) {
       .st-key-qingju_assistant button::before { animation:none!important; }
