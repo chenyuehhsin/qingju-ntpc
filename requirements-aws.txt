@@ -1,3 +1,0 @@
-# Local AWS development only; do not replace website requirements.txt.
-boto3==1.43.92
-botocore==1.43.92

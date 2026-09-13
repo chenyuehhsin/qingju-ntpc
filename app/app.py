@@ -16,7 +16,6 @@ from custom_workplace import GEOCODING_SOURCE, build_custom_dashboard_data, geoc
 from components.career_evidence_viewer import render_career_evidence_viewer
 from components.overview import render_comparison_dashboard
 from components.policy_lens import render_policy_lens
-from components.qingju_assistant import render_qingju_assistant
 from data_loader import (
     MODE_ORDER,
     load_boundaries,
@@ -24,7 +23,6 @@ from data_loader import (
     load_career_learning_ladder_phase8,
     load_career_policy_lens_phase7,
     load_dashboard_data,
-    load_nursing_policy_lens,
     load_policy_lens_data,
 )
 from recommendation_view import render_dashboard_view
@@ -114,81 +112,51 @@ def _render_housing_control_center(
     show_heading: bool = True,
 ) -> None:
     if show_heading:
-        st.markdown('<div class="qj-column-heading"><h3>青年安居｜設定我的條件</h3></div>', unsafe_allow_html=True)
+        st.markdown("### 青年安居｜設定我的條件")
         st.caption("從租金、通勤與生活機能，找到適合自己的新北生活圈。")
-    form_sync = st.session_state.pop("housing_form_sync", None)
-    if isinstance(form_sync, dict):
-        for key, value in form_sync.items():
-            st.session_state[key] = value
-    st.session_state.setdefault("housing_view_mode_draft", st.session_state.housing_view_mode)
-    st.session_state.setdefault("housing_recommendation_mode_draft", st.session_state.housing_recommendation_mode)
-    st.session_state.setdefault("workplace_address_draft", st.session_state.workplace_address)
-    st.session_state.setdefault("quick_preset_draft", st.session_state.quick_preset)
-    with st.form("housing_recommendation_controls"):
-        selected_view = st.segmented_control(
-            "查看方式",
-            view_options,
+    st.segmented_control(
+        "查看方式",
+        view_options,
+        label_visibility="visible",
+        key="housing_view_mode",
+    )
+    if show_recommendation_mode:
+        st.segmented_control(
+            "推薦模式",
+            MODE_ORDER,
             label_visibility="visible",
-            key="housing_view_mode_draft",
+            key="housing_recommendation_mode",
         )
-        if show_recommendation_mode:
-            selected_mode = st.segmented_control(
-                "推薦模式",
-                MODE_ORDER,
-                label_visibility="visible",
-                key="housing_recommendation_mode_draft",
-            )
-        else:
-            selected_mode = st.session_state.housing_recommendation_mode_draft
-            st.caption("比較模式會同時呈現四種偏好。")
-        target_address = st.text_input(
-            "工作地點（尚未完善）",
-            key="workplace_address_draft",
-            placeholder="例如：台北市內湖區瑞光路",
-            disabled=True,
-        )
-        selected_preset = st.selectbox(
-            "快速範例",
-            preset_options,
-            key="quick_preset_draft",
-        )
-        st.markdown("固定條件：`大眾運輸`　`獨立套房`")
-        submitted = st.form_submit_button(
-            "開始 / 更新推薦",
-            type="primary",
-            use_container_width=True,
-        )
-    if not submitted:
+    else:
+        st.caption("比較模式會同時呈現四種偏好。")
+    st.text_input(
+        "工作地點",
+        key="workplace_address",
+        placeholder="例如：台北市內湖區瑞光路",
+        on_change=_mark_manual_address,
+        args=(preset_addresses,),
+    )
+    st.selectbox(
+        "快速範例",
+        preset_options,
+        key="quick_preset",
+        on_change=_apply_quick_preset,
+        args=(preset_addresses,),
+    )
+    st.markdown("固定條件：`大眾運輸`　`獨立套房`")
+    if not st.button("開始 / 更新推薦", use_container_width=True, key="housing_submit_recommendation"):
         return
 
-    st.session_state.housing_view_mode = str(selected_view)
-    st.session_state.housing_recommendation_mode = str(selected_mode)
+    target_address = st.session_state.workplace_address.strip()
+    if not target_address:
+        st.error("請輸入工作地址，或先選擇一個快速範例。")
+        return
     try:
-        selected_preset = str(selected_preset)
+        selected_preset = st.session_state.get("quick_preset", NO_PRESET_LABEL)
         if selected_preset != NO_PRESET_LABEL:
-            st.session_state.workplace_address = preset_addresses[selected_preset]
-            st.session_state.quick_preset = selected_preset
-            st.session_state.housing_form_sync = {
-                "housing_view_mode_draft": str(selected_view),
-                "housing_recommendation_mode_draft": str(selected_mode),
-                "workplace_address_draft": preset_addresses[selected_preset],
-                "quick_preset_draft": selected_preset,
-            }
             with st.spinner(f"載入快速範例：{selected_preset}..."):
                 _load_quick_example(selected_preset, preset_workplaces)
         else:
-            target_address = str(target_address).strip()
-            if not target_address:
-                st.error("請輸入工作地址，或先選擇一個快速範例。")
-                return
-            st.session_state.workplace_address = target_address
-            st.session_state.quick_preset = NO_PRESET_LABEL
-            st.session_state.housing_form_sync = {
-                "housing_view_mode_draft": str(selected_view),
-                "housing_recommendation_mode_draft": str(selected_mode),
-                "workplace_address_draft": target_address,
-                "quick_preset_draft": NO_PRESET_LABEL,
-            }
             with st.spinner("定位工作地址並計算 16 個生活圈通勤時間..."):
                 _load_custom_workplace(target_address)
     except Exception as exc:
@@ -274,53 +242,27 @@ def main() -> None:
     if st.session_state.get("app_page") != current_page:
         st.session_state.app_page = current_page
     apply_styles(current_page)
-    render_qingju_assistant(current_page)
 
     page = render_top_nav(page_options, current_page)
     render_page_hero(page)
     if page == "青年職涯探索":
         try:
-            (
-                candidates_v35,
-                training_v4,
-                course_mapping,
-                demo_job_evidence,
-                beauty_phase5,
-                crc_external_market,
-                demo_career_presets,
-            ) = load_career_evidence_data()
+            candidates_v35, training_v4, course_mapping, demo_job_evidence, beauty_phase5, crc_external_market = load_career_evidence_data()
         except Exception as exc:
             st.error(f"Career evidence data loading failed: {exc}")
             st.stop()
-        render_career_evidence_viewer(
-            candidates_v35,
-            training_v4,
-            course_mapping,
-            demo_job_evidence,
-            beauty_phase5,
-            crc_external_market,
-            demo_career_presets,
-        )
+        render_career_evidence_viewer(candidates_v35, training_v4, course_mapping, demo_job_evidence, beauty_phase5, crc_external_market)
         return
     if page == "青年局 Policy Lens":
         try:
             policy = load_policy_lens_data()
             career_policy, career_policy_md = load_career_policy_lens_phase7()
             career_ladder = load_career_learning_ladder_phase8()
-            nursing_policy_lens = load_nursing_policy_lens()
             towns, cities = load_boundaries()
         except Exception as exc:
             st.error(f"Policy Lens data loading failed: {exc}")
             st.stop()
-        render_policy_lens(
-            policy,
-            towns,
-            cities,
-            career_policy,
-            career_policy_md,
-            career_ladder,
-            nursing_policy_lens,
-        )
+        render_policy_lens(policy, towns, cities, career_policy, career_policy_md, career_ladder)
         return
 
     if page != "青年安居推薦":
