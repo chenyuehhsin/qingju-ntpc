@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import json
 import os
+from pathlib import Path
 
 from .config import Blocked
-from policy_agent.registry import PolicyToolRegistry
 
 
 MODEL_ID = os.environ.get("QINGJU_BEDROCK_MODEL_ID", "amazon.nova-lite-v1:0")
+SNAPSHOT_PATH = Path(__file__).resolve().parents[2] / "data" / "processed" / "ai_youth_dashboard" / "official_dashboard_snapshot.json"
 MAX_QUESTION_LENGTH = 500
 MAX_TOPIC_LENGTH = 80
 SYSTEM_PROMPT = """你是「AI 青年政策智慧儀表板」的證據整理助手。
@@ -31,23 +32,52 @@ def _clean_text(value, label, maximum):
     return value
 
 
-def _evidence(question, topic, registry):
-    """Return only deterministic, tool-produced evidence for model context."""
-    knowledge = registry.execute("search_policy_knowledge", {"query": question})
-    period = registry.execute("get_data_period", {})
+def _load_snapshot(snapshot=None):
+    if snapshot is not None:
+        return snapshot
+    try:
+        return json.loads(SNAPSHOT_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise Blocked("AI youth-policy source snapshot is unavailable") from exc
+
+
+def _evidence(question, topic, snapshot=None):
+    """Return the independent dashboard snapshot, never Qingju New Taipei data."""
+    source = _load_snapshot(snapshot)
+    payloads = source.get("api_payloads", {})
+    scope = payloads.get("data_scope")
+    if not isinstance(scope, dict):
+        raise Blocked("AI youth-policy source snapshot is invalid")
+    attention = payloads.get("policy_attention", {})
+    selected_topic = next((item for item in attention.get("topics", []) if item.get("topic_name_zh") == topic), None)
+    sources = [{
+        "source_agency": scope.get("source_agency"),
+        "survey_name": round_.get("survey_name"),
+        "survey_year": round_.get("survey_year"),
+        "reference_period": round_.get("reference_period"),
+        "sample_size": round_.get("sample_size"),
+        "survey_url": round_.get("survey_url"),
+        "methodology_url": round_.get("methodology_url"),
+    } for round_ in scope.get("rounds", [])]
+    limitations = [scope.get("note"), attention.get("disclaimer_zh"), attention.get("ranking_note_zh")]
+    if selected_topic:
+        limitations.extend(selected_topic.get("limitations", []))
     return {
         "question": question,
         "topic": topic or "不限主題",
-        "knowledge": knowledge,
-        "data_period": period,
+        "source_project": source.get("source_project"),
+        "data_scope": scope,
+        "dashboard_data": payloads,
+        "sources": [item for item in sources if item.get("survey_name")],
+        "limitations": [item for item in limitations if item],
     }
 
 
-def answer_policy_question(question, topic=None, *, registry=None, client=None, model_id=None):
+def answer_policy_question(question, topic=None, *, snapshot=None, client=None, model_id=None):
     question = _clean_text(question, "question", MAX_QUESTION_LENGTH)
     if topic is not None:
         topic = _clean_text(topic, "topic", MAX_TOPIC_LENGTH)
-    evidence = _evidence(question, topic, registry or PolicyToolRegistry())
+    evidence = _evidence(question, topic, snapshot)
     if client is None:
         import boto3
         client = boto3.client("bedrock-runtime", region_name=os.environ.get("AWS_REGION", "us-west-2"))
@@ -68,8 +98,8 @@ def answer_policy_question(question, topic=None, *, registry=None, client=None, 
         "status": "success",
         "model_id": model_id or MODEL_ID,
         "answer": answer,
-        "evidence": evidence["knowledge"].get("evidence", []),
-        "sources": evidence["knowledge"].get("sources", []),
-        "data_period": evidence["data_period"].get("data_period", {}),
-        "limitations": evidence["knowledge"].get("limitations", []) + evidence["data_period"].get("limitations", []),
+        "evidence": {"data_scope": evidence["data_scope"], "source_project": evidence["source_project"]},
+        "sources": evidence["sources"],
+        "data_period": {"survey_years": evidence["data_scope"].get("survey_years", [])},
+        "limitations": evidence["limitations"],
     }
