@@ -272,11 +272,7 @@ def render_ai_policy_dashboard(
         st.info("每一個分數都要連同可用元件、缺漏元件與權重敏感度閱讀；如需看新北在地資料，請切換上方的職涯或安居政策觀察。")
 
     with analyst_tab:
-        st.markdown("### AI 政策分析（獨立功能）")
-        st.markdown(
-            "本功能獨立處理全臺 15–29 歲青年勞工就業調查的政策問題，"
-            "不使用右下角「青聚小幫手」的新北安居、交通或職涯資料。"
-        )
+        st.markdown("### AI 政策分析")
         analysis_cards = [
             ("分析資料範圍", "全臺 15–29 歲", "勞動部青年勞工就業狀況調查，109／111／113 年"),
             ("可分析主題", f"{len(payloads['policy_attention'].get('topics', []))} 項", "依已驗證的官方證據整理，不代表政策績效或因果"),
@@ -290,8 +286,6 @@ def render_ai_policy_dashboard(
             "- 不同性別、年齡或教育程度的青年在已公布指標上有何描述性差異？\n"
             "- 政策關注度排名在不同權重設定下是否穩定？"
         )
-        st.info("此獨立分析服務將在 AWS API 串接完成後啟用問答；目前可先使用本分頁的圖表、政策關注度與資料來源進行查閱。")
-        st.warning("青聚小幫手僅回答新北青聚既有資料。兩個服務完全分開，且不混合運算或互相引用數值。")
 
     with st.expander("資料來源與快照範圍", expanded=False):
         st.markdown(
