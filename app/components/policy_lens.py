@@ -302,7 +302,7 @@ def render_ai_policy_dashboard(
                         with st.expander("來源、資料期間與限制", expanded=False):
                             st.json({key: result.get(key, []) for key in ("sources", "data_period", "limitations")})
                     except Exception:
-                        st.info("AI 政策分析服務尚未完成伺服器端 AWS 設定；目前可使用上方圖表與政策關注度查閱資料。")
+                        st.info("AI 政策分析需要網站伺服器具備 AWS Lambda 呼叫權限；目前可使用上方圖表與政策關注度查閱資料。")
                 else:
                     st.warning("請先輸入問題。")
             st.markdown("#### 可以這樣問")

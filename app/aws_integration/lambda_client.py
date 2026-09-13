@@ -12,9 +12,7 @@ from .config import Blocked
 
 
 def answer_policy_question(question: str, topic: str | None = None) -> dict:
-    function_name = os.environ.get("QINGJU_AI_LAMBDA_NAME", "").strip()
-    if not function_name:
-        raise Blocked("AI policy Lambda is not configured")
+    function_name = os.environ.get("QINGJU_AI_LAMBDA_NAME", "qingju-policy-assistant-tools").strip()
     try:
         import boto3
         response = boto3.client("lambda", region_name=os.environ.get("AWS_REGION", "us-west-2")).invoke(

@@ -10,3 +10,4 @@ streamlit-folium==0.24.0
 plotly==6.1.1
 branca==0.8.2
 urllib3==1.26.20
+boto3==1.43.92
