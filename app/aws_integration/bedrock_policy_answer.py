@@ -67,7 +67,22 @@ def _evidence(question, topic, snapshot=None):
         "topic": topic or "不限主題",
         "source_project": source.get("source_project"),
         "data_scope": scope,
-        "dashboard_data": payloads,
+        # The full chart snapshot is intentionally kept in the website, but it
+        # is too large for an interactive model request.  Sending all chart
+        # cells causes Nova to spend most of the Lambda window reading JSON.
+        # These are the source-backed summaries needed for Q&A; detailed charts
+        # remain visible in the dashboard itself.
+        "dashboard_data": {
+            key: payloads.get(key)
+            for key in (
+                "cards",
+                "service_awareness",
+                "policy_attention",
+                "policy_topics",
+                "policy_sensitivity",
+                "analytics_summary",
+            )
+        },
         "sources": [item for item in sources if item.get("survey_name")],
         "limitations": [item for item in limitations if item],
     }
