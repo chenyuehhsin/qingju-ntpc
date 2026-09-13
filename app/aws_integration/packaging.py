@@ -28,13 +28,12 @@ def package(root):
     allowed = set(files) | {"Dockerfile", "package-manifest.json"}
     if any(p.relative_to(target).as_posix() not in allowed for p in target.rglob("*") if p.is_file()):
         raise Blocked("Unexpected stale build files; inspect context before reuse")
+    # CloudShell currently uses Docker's vfs storage driver.  Keeping the
+    # curated context in one COPY instruction avoids duplicating the whole
+    # Lambda filesystem for every source directory on that driver.
     docker = '''FROM public.ecr.aws/lambda/python:3.13
-COPY requirements.txt requirements-aws.txt ./
+COPY . ./
 RUN pip install --no-cache-dir -r requirements.txt -r requirements-aws.txt
-COPY app/ ./app/
-COPY data/ ./data/
-COPY outputs/ ./outputs/
-COPY knowledge_base/ ./knowledge_base/
 ENV PYTHONPATH=/var/task/app
 CMD ["aws_integration.lambda_handler.handler"]
 '''
