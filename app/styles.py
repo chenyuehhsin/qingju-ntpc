@@ -1324,24 +1324,27 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             border-bottom: 2px solid var(--qj-primary) !important;
         }}
 
-        /* Each supplied illustration is a complete banner, with no text overlaid. */
+        /* Each supplied illustration is a complete banner, with no text overlaid.
+           The banner is never cropped: the image scales proportionally to the
+           available width and the frame, having no height of its own, hugs it. */
         .qj-page-hero {{
             width: 100%;
-            height: 260px;
+            height: auto;
             margin: 0 0 1.5rem;
             overflow: hidden;
             border-radius: 20px;
             box-shadow: 0 3px 12px rgba(23, 50, 77, 0.07);
+            line-height: 0;
         }}
         .qj-page-hero img {{
             display: block;
             width: 100% !important;
-            height: 100% !important;
-            object-fit: cover;
-            object-position: center;
-            border-radius: 20px;
+            height: auto !important;
+            border-radius: inherit;
         }}
+        /* The fallback has no image to size it, so it needs an explicit ratio. */
         .qj-page-hero-fallback {{
+            aspect-ratio: 3 / 1;
             background:
                 radial-gradient(circle at 82% 22%, rgba(255, 255, 255, 0.72), transparent 28%),
                 linear-gradient(112deg, var(--qj-primary-soft), rgba(255, 255, 255, 0.9));
@@ -1390,9 +1393,6 @@ def apply_styles(page: str = "青年安居推薦") -> None:
         div[data-testid="stHorizontalBlock"]:has(.qj-column-heading) > div[data-testid="column"] > div[data-testid="stVerticalBlock"] {{
             align-content: flex-start !important;
             justify-content: flex-start !important;
-        }}
-        @media (max-width: 1440px) {{
-            .qj-page-hero {{ height: 240px; }}
         }}
 
         /* Navigation, selectors, and actions share the same quiet, rounded treatment. */
@@ -1925,12 +1925,17 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             .stApp [data-testid="stAppViewContainer"] .main .block-container,
             .block-container {{ padding: 1.15rem 0.9rem 2.5rem; }}
             .qj-header-title {{ font-size: 2rem; }}
+            /* Desktop crops the banner to a slim strip with a fixed height. On
+               phones that crop hides most of the artwork, so drop the fixed box
+               and let the image size itself from its natural ratio. The frame
+               (rounded corners + shadow) then has no height of its own and hugs
+               the banner exactly at any width; the radius scales with it. */
+            /* Proportional scaling is already the base behaviour; phones only
+               need tighter spacing and a smaller corner radius. */
             .qj-page-hero {{
-                height: 200px;
                 margin-bottom: 1.25rem;
-                border-radius: 18px;
+                border-radius: clamp(12px, 3.4vw, 18px);
             }}
-            .qj-page-hero img {{ border-radius: 18px; }}
             .qj-housing-view-switch {{ margin-top: 0.9rem; }}
             .qj-overview-card {{ min-height: auto; }}
             div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [data-testid="stHorizontalBlock"] {{ flex-wrap: wrap; }}
