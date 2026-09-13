@@ -327,14 +327,24 @@ def _ai_coverage_cards(payloads: dict) -> list[tuple[str, str, str]]:
 
 
 def _ai_chart_layout(fig: go.Figure, height: int = 360) -> go.Figure:
+    chart_text = "#102F4C"
     fig.update_layout(
         height=height, margin=dict(l=10, r=10, t=34, b=12),
         paper_bgcolor="white", plot_bgcolor="white",
-        font=dict(color="#1E3D5A", family="Noto Sans TC, sans-serif"),
-        legend=dict(orientation="h", y=-0.18, x=0),
+        font=dict(color=chart_text, family="Noto Sans TC, sans-serif", size=14),
+        legend=dict(orientation="h", y=-0.18, x=0, font=dict(color=chart_text, size=14)),
+        hoverlabel=dict(bgcolor="#102F4C", bordercolor="#102F4C", font=dict(color="white", size=14)),
+        uniformtext=dict(minsize=12, mode="show"),
     )
-    fig.update_xaxes(gridcolor="#E8EDF2", zerolinecolor="#DCE4EC")
-    fig.update_yaxes(gridcolor="#E8EDF2", zerolinecolor="#DCE4EC")
+    fig.update_xaxes(
+        gridcolor="#D8E0E8", zerolinecolor="#C8D3DE",
+        tickfont=dict(color=chart_text, size=13), title_font=dict(color=chart_text, size=14),
+    )
+    fig.update_yaxes(
+        gridcolor="#D8E0E8", zerolinecolor="#C8D3DE",
+        tickfont=dict(color=chart_text, size=13), title_font=dict(color=chart_text, size=14),
+    )
+    fig.update_traces(textfont=dict(color=chart_text, size=14))
     return fig
 
 
