@@ -289,7 +289,20 @@ def render_ai_policy_dashboard(
                 submitted = st.form_submit_button("依證據回答")
             if submitted:
                 if question.strip():
-                    st.info("此獨立分析服務將於 AWS API 串接完成後提供依證據回答；目前可使用上方圖表與政策關注度查閱資料。")
+                    try:
+                        from aws_integration.lambda_client import answer_policy_question
+                        with st.spinner("正在依官方證據整理回答…"):
+                            result = answer_policy_question(
+                                question,
+                                None if st.session_state["ai_policy_analysis_topic"].startswith("不限主題") else st.session_state["ai_policy_analysis_topic"],
+                            )
+                        st.markdown("#### 回答")
+                        st.write(result["answer"])
+                        st.caption("模型僅根據系統提供的專案證據整理；來源、期間與限制如下。")
+                        with st.expander("來源、資料期間與限制", expanded=False):
+                            st.json({key: result.get(key, []) for key in ("sources", "data_period", "limitations")})
+                    except Exception:
+                        st.info("AI 政策分析服務尚未完成伺服器端 AWS 設定；目前可使用上方圖表與政策關注度查閱資料。")
                 else:
                     st.warning("請先輸入問題。")
             st.markdown("#### 可以這樣問")
