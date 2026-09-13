@@ -273,19 +273,34 @@ def render_ai_policy_dashboard(
 
     with analyst_tab:
         st.markdown("### AI 政策分析")
-        analysis_cards = [
-            ("分析資料範圍", "全臺 15–29 歲", "勞動部青年勞工就業狀況調查，109／111／113 年"),
-            ("可分析主題", f"{len(payloads['policy_attention'].get('topics', []))} 項", "依已驗證的官方證據整理，不代表政策績效或因果"),
-            ("回答規則", "可追溯", "每個數字須有資料來源、期間與限制；資料不足即拒答"),
-        ]
-        _render_ai_dashboard_cards(analysis_cards)
-        st.markdown("#### 可分析的政策問題")
-        st.markdown(
-            "- 哪些青年就業議題的官方證據較充分？\n"
-            "- 109 到 113 年的青年學用相符或政府服務認知有哪些可比較的變化？\n"
-            "- 不同性別、年齡或教育程度的青年在已公布指標上有何描述性差異？\n"
-            "- 政策關注度排名在不同權重設定下是否穩定？"
-        )
+        st.caption("回答一律以已驗證的官方證據為依據：勞動部 15–29 歲青年勞工就業狀況調查 · 109／111／113 年")
+        with st.container(border=True):
+            st.markdown("#### 提問")
+            with st.form("ai_policy_analysis_form", border=False):
+                question = st.text_area(
+                    "問題",
+                    placeholder="例如：目前官方證據最充分、最值得優先看的青年就業議題是哪些？",
+                    max_chars=500,
+                    key="ai_policy_analysis_question",
+                )
+                topics = payloads["policy_attention"].get("topics", [])
+                options = ["不限主題，由系統依問題判斷"] + [item["topic_name_zh"] for item in topics]
+                st.selectbox("限定主題（選填）", options, key="ai_policy_analysis_topic")
+                submitted = st.form_submit_button("依證據回答")
+            if submitted:
+                if question.strip():
+                    st.info("此獨立分析服務將於 AWS API 串接完成後提供依證據回答；目前可使用上方圖表與政策關注度查閱資料。")
+                else:
+                    st.warning("請先輸入問題。")
+            st.markdown("#### 可以這樣問")
+            st.markdown(
+                "[目前官方證據最充分、最值得優先看的青年就業議題是哪些？](#ai-policy-analysis)　"
+                "[公共就業服務認知與使用的關注度分數是怎麼算出來的？](#ai-policy-analysis)\n\n"
+                "[青年在學用相符方面，109 到 113 年的變化是什麼？](#ai-policy-analysis)　"
+                "[不同教育程度的青年在就業服務使用上有什麼差距？](#ai-policy-analysis)　"
+                "[哪些主題的排名會因為權重設定不同而改變？](#ai-policy-analysis)\n\n"
+                "[台灣就業通的使用情形，官方資料顯示什麼？](#ai-policy-analysis)"
+            )
 
     with st.expander("資料來源與快照範圍", expanded=False):
         st.markdown(
