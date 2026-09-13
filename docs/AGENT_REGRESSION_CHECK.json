@@ -1,0 +1,20 @@
+{
+  "baseline": "c604682c89bb69c8aae2c2a1318080a23c16c195",
+  "protected_paths": [
+    "data",
+    "outputs",
+    "app/assistant_service.py",
+    "app/components/policy_lens.py",
+    "app/data_loader.py",
+    "requirements.txt",
+    "scripts/employment",
+    "scripts/population",
+    "scripts/policy"
+  ],
+  "protected_tracked_content_unchanged": true,
+  "opportunity_index": "Absent at baseline; no index or weights introduced",
+  "reliability": "Existing samples/warnings and rules unchanged; no categorical levels introduced",
+  "raw_data": "No raw writes or downloads; raw employment absent in this checkout and ignored by Git",
+  "snapshots_and_provenance": "Tracked data/outputs unchanged, including original source hash metadata",
+  "existing_assistant": "Original service unchanged; UI delegates policy queries to new tools"
+}

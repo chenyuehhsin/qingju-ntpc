@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="policy-pet" viewBox="0 0 100 112" aria-hidden="true" focusable="false">
+          <ellipse class="policy-pet-shadow" cx="50" cy="103" rx="29" ry="5" fill="#143f3224"/>
+          <g class="policy-pet-body">
+            <path d="M49 31C32 31 24 21 27 12c15-1 25 7 24 18M51 29C50 12 62 5 76 9c-1 14-11 22-25 20" fill="#54a980" stroke="#226347" stroke-width="2.5" stroke-linejoin="round"/>
+            <path d="M24 74c-14-9-17 3-8 11l13 3M76 74c14-9 17 3 8 11l-13 3" fill="#b5e3c5" stroke="#226347" stroke-width="2.5"/>
+            <path d="M37 91l-6 9c-2 5 12 6 16-3M63 91l6 9c2 5-12 6-16-3" fill="#226347"/>
+            <path d="M50 28c-24 0-34 21-32 43 1 19 14 27 32 27s31-8 32-27c2-22-8-43-32-43Z" fill="#d3f0ce" stroke="#226347" stroke-width="3"/>
+            <path d="M31 38c-6 5-9 13-9 21" fill="none" stroke="#f7fff1" stroke-width="5" stroke-linecap="round"/>
+            <g class="policy-pet-eyes" fill="#244c3a"><ellipse cx="37" cy="60" rx="3.2" ry="4.3"/><ellipse cx="63" cy="60" rx="3.2" ry="4.3"/></g>
+            <ellipse cx="28" cy="70" rx="6" ry="3" fill="#f0b7a5"/><ellipse cx="72" cy="70" rx="6" ry="3" fill="#f0b7a5"/>
+            <path d="M44 70q6 7 12 0" fill="none" stroke="#244c3a" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M43 86h14" stroke="#84bf91" stroke-width="3" stroke-linecap="round"/>
+          </g>
+        </svg>

@@ -5,13 +5,16 @@ from html import escape
 from textwrap import dedent
 
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 
 
 DEMO_SOURCE = "Registered Nurses"
+ARCHITECTURE_DEMO_SOURCE = "architecture_interior_design_assistant"
+HOSPITALITY_DEMO_SOURCE = "hospitality_tourism_service_staff"
 DEMO_TARGET_DOMAIN = "Technology / AI"
 DEMO_HORIZON = "6 months"
-SOURCE_BACKGROUND_OPTIONS = [DEMO_SOURCE]
+SOURCE_BACKGROUND_OPTIONS = [DEMO_SOURCE, ARCHITECTURE_DEMO_SOURCE, HOSPITALITY_DEMO_SOURCE]
 TARGET_DOMAIN_OPTIONS = ["科技 / AI", "美容 / 醫美 / 個人照護"]
 LEARNING_HORIZON_OPTIONS = ["6 個月"]
 DOMAIN_OUTPUT_LABELS = {
@@ -90,6 +93,8 @@ PATH_CONCLUSIONS = {
 }
 OCCUPATION_ZH = {
     "Registered Nurses": "護理師",
+    "architecture_interior_design_assistant": "建築／室內設計助理",
+    "hospitality_tourism_service_staff": "餐旅／觀光服務人員",
     "Clinical Research Coordinators": "臨床研究協調員",
     "Clinical Data Managers": "臨床資料管理",
     "Health Informatics Specialists": "醫療資訊相關職涯",
@@ -277,6 +282,7 @@ def render_career_evidence_viewer(
     demo_job_evidence: pd.DataFrame,
     beauty_phase5: pd.DataFrame,
     crc_external_market: pd.DataFrame,
+    demo_career_presets: pd.DataFrame,
 ) -> None:
     _html(
         f"""
@@ -293,18 +299,124 @@ def render_career_evidence_viewer(
         st.session_state.career_target_domain = TARGET_DOMAIN_OPTIONS[0]
     if "career_source_background" not in st.session_state:
         st.session_state.career_source_background = DEMO_SOURCE
+    if "career_last_source_background" not in st.session_state:
+        st.session_state.career_last_source_background = st.session_state.career_source_background
     if "career_learning_horizon" not in st.session_state:
         st.session_state.career_learning_horizon = LEARNING_HORIZON_OPTIONS[0]
 
-    if st.session_state.career_view_layer == "evidence" and st.session_state.get("career_selected_path"):
-        domain_label = _current_domain_label()
-        evidence = _representative_paths(candidates_v35, training_v4, beauty_phase5, domain_label)
-        _render_selected_evidence(evidence, course_mapping, demo_job_evidence, crc_external_market, str(st.session_state.career_selected_path))
-        return
+    source_label, domain_label = _render_explore_section(demo_career_presets)
+    evidence = _representative_paths(
+        candidates_v35,
+        training_v4,
+        beauty_phase5,
+        demo_career_presets,
+        source_label,
+        domain_label,
+    )
+    _render_discovery_map(
+        evidence,
+        source_label,
+        domain_label,
+        course_mapping,
+        demo_job_evidence,
+        crc_external_market,
+    )
 
-    domain_label = _render_explore_section()
-    evidence = _representative_paths(candidates_v35, training_v4, beauty_phase5, domain_label)
-    _render_discovery_map(evidence, domain_label)
+
+def _ce_radar_fig(row: pd.Series) -> go.Figure:
+    dims = [
+        ("轉職接近度", *_ce_distance_metric(row)),
+        ("能力沿用", *_ce_reuse_metric(row)),
+        ("學習輕鬆度", *_ce_burden_metric(row)),
+        ("市場訊號", *_ce_market_metric(row)),
+    ]
+    cats = [d[0] for d in dims]
+    labels = [d[1] for d in dims]
+    vals = [d[2] for d in dims]
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatterpolar(
+            r=vals + [vals[0]],
+            theta=cats + [cats[0]],
+            fill="toself",
+            fillcolor="rgba(46,158,107,0.18)",
+            line={"color": "#2E9E6B", "width": 2},
+            marker={"size": 7, "color": "#2E9E6B"},
+            text=[f"{c}：{l}" for c, l in zip(cats, labels)] + [f"{cats[0]}：{labels[0]}"],
+            hovertemplate="%{text}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        polar={
+            "radialaxis": {"range": [0, 3], "tickvals": [1, 2, 3], "tickfont": {"size": 10, "color": "#8A97A0"}, "gridcolor": "#E1EBF2"},
+            "angularaxis": {"tickfont": {"size": 13, "color": "#17324D"}, "gridcolor": "#E1EBF2"},
+            "bgcolor": "rgba(255,255,255,0.55)",
+        },
+        showlegend=False,
+        height=250,
+        margin={"l": 68, "r": 68, "t": 44, "b": 20},
+        paper_bgcolor="rgba(0,0,0,0)",
+    )
+    return fig
+
+
+def _ce_detail_summary_html(row: pd.Series) -> str:
+    return (
+        '<div class="qj-detail-summary">'
+        f'<div class="qj-detail-conclusion">{escape(_path_conclusion(row))}</div>'
+        '<div class="qj-tm-skills"><span class="qj-detail-chips-label">可沿用能力</span>'
+        f'{_shared_skill_chips(row)}</div>'
+        f'<div class="qj-detail-need">需補 {_missing_skill_count(row)} 項技能</div>'
+        "</div>"
+    )
+
+
+def _render_inline_detail(
+    evidence: pd.DataFrame,
+    course_mapping: pd.DataFrame,
+    demo_job_evidence: pd.DataFrame,
+    crc_external_market: pd.DataFrame,
+    selected_name: str,
+) -> None:
+    if selected_name not in set(evidence["target_occupation_name"].astype(str)):
+        return
+    selected = evidence.loc[evidence["target_occupation_name"].eq(selected_name)].iloc[0]
+
+    st.markdown("")
+    with st.container(border=True, key="career_inline_detail_panel"):
+        head_col, close_col = st.columns([0.76, 0.24], gap="small")
+        with head_col:
+            _html(
+                '<div class="qj-detail-eyebrow">🔀 轉職路徑</div>'
+                f'<div class="qj-detail-title">{escape(_occupation_zh(_current_source_background()))}'
+                f'<span class="qj-tm-arrow">→</span>{escape(_occupation_zh(selected_name))}</div>'
+                f'<div class="qj-detail-sub">{escape(selected_name)}</div>'
+            )
+        with close_col:
+            if st.button("收合詳情 ✕", key="career_inline_close", use_container_width=True):
+                st.session_state.career_selected_path = None
+                st.rerun()
+
+        summary_col, radar_col = st.columns([1, 1], gap="medium")
+        with summary_col:
+            _html(_ce_detail_summary_html(selected))
+        with radar_col:
+            st.plotly_chart(_ce_radar_fig(selected), use_container_width=True)
+            _html(
+                '<div class="qj-detail-chart-cap">雷達圖：四項轉職訊號的有利程度（越外圈越有利，3＝最有利）；滑鼠移上可看實際等級。</div>'
+            )
+
+        st.markdown("#### 詳細證據")
+        if _is_demo_row(selected):
+            _render_demo_preset_detail(selected)
+            return
+        if _is_beauty_row(selected):
+            selected_mapping = course_mapping.iloc[0:0].copy()
+        else:
+            selected_mapping = course_mapping.loc[
+                course_mapping["target_occupation_code"].astype(str).eq(str(selected["target_occupation_code"]))
+            ].copy()
+        _render_detail(selected, selected_mapping, demo_job_evidence, crc_external_market)
 
 
 def _render_selected_evidence(
@@ -318,12 +430,6 @@ def _render_selected_evidence(
         selected_name = str(evidence.iloc[0]["target_occupation_name"])
 
     selected = evidence.loc[evidence["target_occupation_name"].eq(selected_name)].iloc[0]
-    if _is_beauty_row(selected):
-        selected_mapping = course_mapping.iloc[0:0].copy()
-    else:
-        selected_mapping = course_mapping.loc[
-            course_mapping["target_occupation_code"].astype(str).eq(str(selected["target_occupation_code"]))
-        ].copy()
     if st.button("← 回到職涯探索", key="career_back_to_discovery"):
         st.session_state.career_view_layer = "discovery"
         st.session_state.career_selected_path = None
@@ -337,15 +443,40 @@ def _render_selected_evidence(
         </div>
         """
     )
+    if _is_demo_row(selected):
+        _render_demo_preset_detail(selected)
+        return
+    if _is_beauty_row(selected):
+        selected_mapping = course_mapping.iloc[0:0].copy()
+    else:
+        selected_mapping = course_mapping.loc[
+            course_mapping["target_occupation_code"].astype(str).eq(str(selected["target_occupation_code"]))
+        ].copy()
     _render_detail(selected, selected_mapping, demo_job_evidence, crc_external_market)
 
 
-def _render_discovery_map(evidence: pd.DataFrame, domain_label: str) -> None:
-    st.markdown("### 探索可能性")
+def _render_discovery_map(
+    evidence: pd.DataFrame,
+    source_label: str,
+    domain_label: str,
+    course_mapping: pd.DataFrame,
+    demo_job_evidence: pd.DataFrame,
+    crc_external_market: pd.DataFrame,
+) -> None:
+    st.markdown("### 探索可能性 × 相關課程")
     _html(
-        '<div class="qj-section-note">代表性案例按產品需求固定展示，不是排序，也不是推薦分數。</div>'
+        f'<div class="qj-section-note">目前背景：{escape(_occupation_zh(source_label))}；探索方向：{escape(domain_label)}。'
+        "左側為代表性轉職路徑（固定展示，非排序或推薦分數），右側是可對應的產業人才投資方案課程。點卡片可在其正下方展開完整證據。</div>"
     )
-    _render_path_cards(evidence)
+    available = set(evidence["target_occupation_name"].astype(str))
+    selected = st.session_state.get("career_selected_path")
+    _render_path_cards(
+        evidence,
+        course_mapping,
+        selected if selected in available else None,
+        demo_job_evidence,
+        crc_external_market,
+    )
 
 
 def _transition_map_html(evidence: pd.DataFrame) -> str:
@@ -370,11 +501,30 @@ def _representative_paths(
     candidates_v35: pd.DataFrame,
     training_v4: pd.DataFrame,
     beauty_phase5: pd.DataFrame,
+    demo_career_presets: pd.DataFrame,
+    source_label: str,
     domain_label: str,
 ) -> pd.DataFrame:
+    if source_label != DEMO_SOURCE:
+        return _demo_representative_paths(demo_career_presets, source_label)
     if domain_label == "美容 / 醫美 / 個人照護":
         return _beauty_representative_paths(beauty_phase5)
     return _technology_representative_paths(candidates_v35, training_v4)
+
+
+def _demo_representative_paths(demo_career_presets: pd.DataFrame, source_label: str) -> pd.DataFrame:
+    available = demo_career_presets.loc[
+        demo_career_presets["source_occupation_id"].astype(str).eq(source_label)
+    ].copy()
+    if available.empty:
+        raise RuntimeError(f"Missing demo career presets for source background: {source_label}")
+    available["_evidence_source"] = "demo_career_preset"
+    available["transition_span_v4"] = available["transition_type"].map(_demo_transition_span)
+    available["learning_burden_level"] = available["learning_burden"]
+    available["market_validation_v4"] = available["market_evidence_status"]
+    available["missing_skills_v4"] = available["missing_skills"]
+    available["shared_top_skills"] = available["transferable_skills"]
+    return available.sort_values("display_order").reset_index(drop=True)
 
 
 def _technology_representative_paths(candidates_v35: pd.DataFrame, training_v4: pd.DataFrame) -> pd.DataFrame:
@@ -425,21 +575,35 @@ def _beauty_representative_paths(beauty_phase5: pd.DataFrame) -> pd.DataFrame:
     return available.sort_values("_order").drop(columns=["_order"]).reset_index(drop=True)
 
 
-def _render_explore_section() -> str:
+def _render_explore_section(demo_career_presets: pd.DataFrame) -> tuple[str, str]:
     source_col, domain_col, horizon_col, action_col, _ = st.columns([0.9, 0.9, 0.9, 0.7, 0.6], gap="medium")
+    current_source = _current_source_background()
+    if st.session_state.get("career_source_background") != current_source:
+        st.session_state.career_source_background = current_source
     with source_col:
-        st.selectbox(
+        selected_source = st.selectbox(
             "目前背景",
             SOURCE_BACKGROUND_OPTIONS,
             format_func=_occupation_display_text,
             key="career_source_background",
         )
+    if selected_source != st.session_state.get("career_last_source_background"):
+        st.session_state.career_last_source_background = selected_source
+        st.session_state.career_view_layer = "discovery"
+        st.session_state.career_selected_path = None
+        st.rerun()
+
+    domain_options = _target_domain_options_for_source(selected_source, demo_career_presets)
+    current_domain = _current_domain_label()
+    if current_domain not in domain_options:
+        current_domain = domain_options[0]
+        st.session_state.career_target_domain = current_domain
     with domain_col:
         selected = st.selectbox(
             "目標領域",
-            TARGET_DOMAIN_OPTIONS,
-            index=TARGET_DOMAIN_OPTIONS.index(_current_domain_label()),
-            key="career_target_domain_selector",
+            domain_options,
+            index=domain_options.index(current_domain),
+            key=f"career_target_domain_selector_{selected_source}",
         )
     with horizon_col:
         st.selectbox(
@@ -448,7 +612,7 @@ def _render_explore_section() -> str:
             key="career_learning_horizon",
         )
     with action_col:
-        if st.button("探索可能路徑", use_container_width=True, key="career_explore_button"):
+        if st.button("探索可能路徑", use_container_width=False, key="career_explore_button"):
             st.session_state.career_view_layer = "discovery"
             st.session_state.career_selected_path = None
 
@@ -458,40 +622,475 @@ def _render_explore_section() -> str:
         st.session_state.career_selected_path = None
         st.rerun()
 
-    _html(
-        '<div class="qj-note">目前是固定展示情境，只支援護理師作為目前背景；目標領域可在科技 / AI 與美容 / 醫美 / 個人照護之間切換。</div>'
+    return selected_source, selected
+
+
+# Monochrome line icons for the transition-signal metrics (stroke = currentColor).
+_IC_DIST = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h14l-3-3M20 16H6l3 3"/></svg>'
+_IC_REUSE = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-5.6 7-5.6s7 2 7 5.6"/></svg>'
+_IC_BURDEN = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a2 2 0 0 1 2 2v14H7a2 2 0 0 0-2 2z"/><path d="M18 6v14"/></svg>'
+_IC_MARKET = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V11M10 20V5M16 20v-6M21 20H3"/></svg>'
+
+
+def _inject_transition_card_styles() -> None:
+    # Re-inject every run: Streamlit rebuilds the DOM on each rerun, so a
+    # once-only guard would drop these styles after any interaction.
+    st.markdown(
+        """
+        <style>
+        .qj-tm-card{display:flex;gap:1.25rem;align-items:stretch;background:#ffffff;
+            border:1px solid #E3EDE7;border-left:5px solid #2E9E6B;border-radius:16px;
+            padding:1rem 1.15rem;margin:0 0 0.4rem;box-shadow:0 2px 8px rgba(23,50,77,0.05);}
+        .qj-tm-card.qj-tm-warn{border-left-color:#D99436;}
+        .qj-tm-card.qj-tm-mid{border-left-color:#3BA7F5;}
+        .qj-tm-main{flex:1 1 auto;min-width:0;}
+        .qj-tm-head{display:flex;align-items:center;gap:0.5rem;margin-bottom:0.28rem;}
+        .qj-tm-rank{display:inline-flex;align-items:center;justify-content:center;
+            width:1.55rem;height:1.55rem;border-radius:50%;background:#2E9E6B;color:#fff;
+            font-weight:900;font-size:0.85rem;flex:0 0 auto;}
+        .qj-tm-card.qj-tm-warn .qj-tm-rank{background:#D99436;}
+        .qj-tm-card.qj-tm-mid .qj-tm-rank{background:#3BA7F5;}
+        .qj-tm-badge{border-radius:999px;font-size:0.74rem;font-weight:800;padding:0.2rem 0.58rem;}
+        .qj-tm-badge-ok{background:#E7F5EE;color:#1C7A50;}
+        .qj-tm-badge-mid{background:#EAF4FF;color:#1E6DA8;}
+        .qj-tm-badge-warn{background:#FBEEDC;color:#9A6415;}
+        .qj-tm-title{font-size:1.26rem;font-weight:900;color:#17324D;line-height:1.15;}
+        .qj-tm-sub{color:#8A97A0;font-size:0.8rem;margin-top:0.05rem;}
+        .qj-tm-desc{color:#4F5F65;font-size:0.9rem;line-height:1.5;margin-top:0.5rem;}
+        .qj-tm-skills{display:flex;flex-wrap:wrap;gap:0.35rem;align-items:center;margin-top:0.6rem;}
+        .qj-tm-skills-label{color:#69777d;font-size:0.8rem;font-weight:800;margin-right:0.15rem;}
+        .qj-tm-chip{background:#EEF7F1;border:1px solid #D7EADF;border-radius:999px;
+            color:#2E7D55;font-size:0.8rem;font-weight:700;padding:0.22rem 0.5rem;}
+        .qj-tm-chip-none{background:#F4F6F5;border-color:#E3E8E6;color:#8A97A0;}
+        .qj-tm-need{color:#8A97A0;font-size:0.8rem;font-weight:700;margin-left:auto;}
+        .qj-tm-metrics{flex:0 0 auto;display:grid;grid-template-columns:repeat(4,minmax(92px,1fr));
+            gap:0.55rem;align-items:start;}
+        .qj-tm-metric{text-align:center;min-width:0;}
+        .qj-tm-ic{color:#5A6B72;display:flex;justify-content:center;margin-bottom:0.16rem;}
+        .qj-tm-mlabel{color:#69777d;font-size:0.76rem;font-weight:700;}
+        .qj-tm-mvalue{color:#17324D;font-size:1.0rem;font-weight:900;margin-top:0.1rem;line-height:1.22;overflow-wrap:anywhere;}
+        .qj-tm-dots{margin-top:0.34rem;display:flex;justify-content:center;gap:4px;}
+        .qj-tm-dots i{width:6px;height:6px;border-radius:50%;background:#D8E3DC;display:inline-block;}
+        .qj-tm-dots i.on{background:#2E9E6B;}
+        .qj-tm-card.qj-tm-compact{flex-direction:column;gap:0.55rem;}
+        .qj-tm-compact .qj-tm-metrics{grid-template-columns:repeat(4,1fr);width:100%;}
+        .qj-course-panel{background:#ffffff;border:1px solid #E3EDE7;border-radius:16px;
+            padding:0.85rem 0.95rem;box-shadow:0 2px 8px rgba(23,50,77,0.05);height:100%;}
+        .qj-course-panel-title{color:#17324D;font-size:1.0rem;font-weight:850;}
+        .qj-course-panel-sub{color:#8A97A0;font-size:0.75rem;margin:0.1rem 0 0.55rem;line-height:1.4;}
+        .qj-course-item{border:1px solid #EDF2EF;border-radius:11px;padding:0.48rem 0.6rem;
+            margin-bottom:0.4rem;background:#FBFDFC;}
+        .qj-course-top{display:flex;align-items:center;gap:0.5rem;justify-content:space-between;}
+        .qj-course-name{color:#243238;font-size:0.89rem;font-weight:800;line-height:1.3;min-width:0;}
+        .qj-course-tag{flex:0 0 auto;background:#E7F5EE;border:1px solid #CDE8DA;border-radius:999px;
+            color:#1C7A50;font-size:0.7rem;font-weight:800;padding:0.14rem 0.44rem;white-space:nowrap;}
+        .qj-course-meta{color:#69777d;font-size:0.77rem;margin-top:0.24rem;}
+        .qj-course-empty{color:#8A97A0;font-size:0.85rem;line-height:1.5;padding:0.5rem 0.2rem;}
+        /* Unified path card (Streamlit bordered container) */
+        [class*="st-key-career_path_row_"]{border-radius:16px !important;border-color:#E3EDE7 !important;
+            box-shadow:0 2px 10px rgba(23,50,77,0.05) !important;padding:0.4rem 0.8rem 0.5rem !important;
+            margin-bottom:0.75rem !important;background:#ffffff !important;}
+        [class*="st-key-career_path_row_"] [data-testid="stVerticalBlock"]{gap:0.3rem;}
+        [class*="st-key-career_path_row_"] [data-testid="stHorizontalBlock"]{align-items:flex-start !important;}
+        [class*="st-key-career_path_row_"] [data-testid="stColumn"]{align-self:flex-start !important;}
+        [class*="st-key-career_path_row_ok_"]{border-left:6px solid #2E9E6B !important;background:#F4FBF7 !important;}
+        [class*="st-key-career_path_row_mid_"]{border-left:6px solid #3BA7F5 !important;background:#F3FAFF !important;}
+        [class*="st-key-career_path_row_warn_"]{border-left:6px solid #E0983B !important;background:#FEF9F1 !important;}
+        [class*="st-key-career_path_row_"] div[data-testid="stPopover"]{margin-top:2.2rem;}
+        .qj-info-head{display:flex;align-items:center;gap:0.5rem;margin-bottom:0.15rem;}
+        .qj-tm-rank-ok{background:#2E9E6B;}
+        .qj-tm-rank-mid{background:#3BA7F5;}
+        .qj-tm-rank-warn{background:#D99436;}
+        .qj-info-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem 0.35rem;
+            margin:0.7rem 0 0.95rem;border-top:1px solid #EDF2EF;padding-top:0.7rem;}
+        .qj-tm-mvalue{overflow-wrap:anywhere;}
+        .qj-course-head{color:#17324D;font-size:1.02rem;font-weight:850;display:flex;align-items:center;gap:0.45rem;}
+        .qj-course-headtag{background:#EAF6FF;border:1px solid #BDE7FF;border-radius:999px;color:#257FBE;
+            font-size:0.7rem;font-weight:800;padding:0.12rem 0.46rem;}
+        .qj-course-subhead{color:#8A97A0;font-size:0.75rem;margin:0.14rem 0 0.55rem;line-height:1.4;}
+        .qj-course-more{color:#69777d;font-size:0.78rem;font-weight:700;padding:0.3rem 0.2rem 0.1rem;}
+        .qj-tm-arrow{color:#3BA7F5;font-weight:800;margin:0 0.28rem;}
+        [class*="st-key-career_inline_detail_panel"]{border:1px solid #9FD3F7 !important;
+            border-left:6px solid #257FBE !important;border-radius:18px !important;
+            background:linear-gradient(180deg,#E9F5FE 0%,#F7FCFF 42%) !important;
+            box-shadow:0 10px 28px rgba(37,127,190,0.18) !important;padding:0.95rem 1.1rem !important;
+            margin:0.55rem 0 0.4rem !important;}
+        .qj-detail-eyebrow{color:#257FBE;font-size:0.76rem;font-weight:850;letter-spacing:0.06em;
+            display:inline-flex;align-items:center;gap:0.35rem;background:#DCEEFB;border-radius:999px;
+            padding:0.16rem 0.55rem;}
+        .qj-detail-title{color:#17324D;font-size:1.6rem;font-weight:900;line-height:1.12;margin-top:0.35rem;}
+        .qj-detail-sub{color:#8A97A0;font-size:0.82rem;margin-top:0.05rem;}
+        .qj-detail-summary{background:#ffffff;border:1px solid #DCEAF3;border-radius:14px;padding:0.8rem 0.9rem;height:100%;}
+        .qj-detail-conclusion{color:#1C4E74;font-size:0.98rem;font-weight:800;line-height:1.5;margin-bottom:0.55rem;}
+        .qj-detail-chips-label{color:#69777d;font-size:0.78rem;font-weight:800;margin-right:0.2rem;}
+        .qj-detail-need{color:#8A6D2F;background:#FBF3E0;border:1px solid #EAD9AF;border-radius:999px;
+            display:inline-block;font-size:0.8rem;font-weight:800;padding:0.18rem 0.55rem;margin-top:0.6rem;}
+        .qj-detail-chart-cap{color:#8A97A0;font-size:0.74rem;line-height:1.4;margin-top:0.15rem;}
+        div[data-testid="stPopoverBody"]{min-width:400px;max-width:540px;}
+        .qj-pop-eyebrow{color:#257FBE;font-size:0.72rem;font-weight:850;background:#DCEEFB;
+            border-radius:999px;display:inline-block;padding:0.14rem 0.5rem;}
+        .qj-pop-title{color:#17324D;font-size:1.22rem;font-weight:900;line-height:1.15;margin:0.32rem 0 0.15rem;}
+        .qj-pop-line{color:#334249;font-size:0.86rem;line-height:1.5;margin-top:0.45rem;}
+        .qj-pop-line b{color:#17324D;}
+        @media(max-width:1100px){.qj-tm-card{flex-direction:column;}
+            .qj-tm-metrics{grid-template-columns:repeat(4,1fr);}
+            .qj-info-metrics{grid-template-columns:repeat(4,1fr);}}
+        </style>
+        """,
+        unsafe_allow_html=True,
     )
-    return selected
 
 
-def _render_path_cards(evidence: pd.DataFrame) -> None:
-    cols = st.columns(len(evidence), gap="medium")
-    for col, (_, row) in zip(cols, evidence.iterrows()):
-        occupation_name = str(row["target_occupation_name"])
-        occupation_class = "qj-career-card-data-scientists" if occupation_name == "Data Scientists" else ""
-        note = PATH_NOTES.get(str(row["target_occupation_name"]), "")
-        if row["target_occupation_name"] == "Health Informatics Specialists" and float(row["training_coverage_ratio"]) >= 0.5:
-            note = ""
-        badge = _badge_html(note)
-        with col:
-            _html(
-                f"""
-                <div class="qj-career-card {_span_class(row)} {occupation_class}">
-                    {_occupation_title_html(occupation_name)}
-                    {badge}
-                    <div class="qj-career-intro">{escape(PATH_INTROS.get(occupation_name, ""))}</div>
-                    <div class="qj-career-card-grid">
-                        {_metric_html("原有能力沿用程度", _row_transition_span(row))}
-                        {_metric_html("學習負擔", _row_learning_burden(row))}
-                        {_metric_html("台灣市場訊號", _market_signal_label(row), translate_value=False)}
-                    </div>
-                </div>
-                """
-            )
-            if st.button("查看證據", key=f"career_evidence_button_{occupation_name}", use_container_width=True):
-                st.session_state.career_selected_path = occupation_name
-                st.session_state.career_view_layer = "evidence"
-                st.rerun()
+def _tm_dots(filled: int) -> str:
+    return "".join('<i class="on"></i>' if index < filled else "<i></i>" for index in range(3))
+
+
+def _tm_metric_html(icon: str, label: str, value: str, filled: int) -> str:
+    return (
+        '<div class="qj-tm-metric">'
+        f'<div class="qj-tm-ic">{icon}</div>'
+        f'<div class="qj-tm-mlabel">{escape(label)}</div>'
+        f'<div class="qj-tm-mvalue">{escape(value)}</div>'
+        f'<div class="qj-tm-dots">{_tm_dots(filled)}</div>'
+        "</div>"
+    )
+
+
+def _ce_distance_metric(row: pd.Series) -> tuple[str, int]:
+    span = _row_transition_span(row)
+    return {
+        "High skill reuse": ("高", 3),
+        "Partial skill reuse": ("中", 2),
+        "Major reskilling": ("低", 1),
+    }.get(span, ("中", 2))
+
+
+def _ce_reuse_metric(row: pd.Series) -> tuple[str, int]:
+    span = _row_transition_span(row)
+    return {
+        "High skill reuse": ("高", 3),
+        "Partial skill reuse": ("中高", 2),
+        "Major reskilling": ("低", 1),
+    }.get(span, ("中", 2))
+
+
+def _ce_burden_metric(row: pd.Series) -> tuple[str, int]:
+    burden = _row_learning_burden(row).strip().lower()
+    return {"low": ("高", 3), "medium": ("中", 2), "high": ("低", 1)}.get(burden, ("中", 2))
+
+
+def _ce_market_metric(row: pd.Series) -> tuple[str, int]:
+    if _clean(row.get("target_occupation_name", "")) in MARKET_VALIDATION_NEEDED_PATHS:
+        return ("待驗證", 1)
+    value = _clean(_row_market_validation(row))
+    return {
+        "Strong": ("強", 3),
+        "強": ("強", 3),
+        "Moderate": ("中等", 2),
+        "中等": ("中等", 2),
+        "Weak": ("弱", 1),
+        "弱": ("弱", 1),
+        "Insufficient public evidence": ("證據不足", 1),
+        "公開市場證據不足": ("證據不足", 1),
+        "Unknown": ("未知", 1),
+        "": ("未知", 1),
+    }.get(value, ("中等", 2))
+
+
+def _ce_badge(row: pd.Series) -> tuple[str, str]:
+    span = _row_transition_span(row)
+    if span == "High skill reuse":
+        return ("最符合現有能力", "ok")
+    if span == "Major reskilling":
+        return ("需大幅補強", "warn")
+    return ("需補部分技能", "mid")
+
+
+def _shared_skill_names(row: pd.Series) -> list[str]:
+    names = []
+    for item in _split_skill_items(_card_transferable_skills(row)):
+        if item.startswith("..."):
+            continue
+        names.append(_skill_zh(_skill_name_from_item(item)))
+    return names
+
+
+def _ce_description(row: pd.Series) -> str:
+    names = _shared_skill_names(row)[:2]
+    if names:
+        return f"現有資料顯示可沿用{ '、'.join(names) }；其他能力缺口仍需進一步確認。"
+    intro = _path_intro(row)
+    return intro or "現有資料整理中，仍需進一步確認。"
+
+
+def _shared_skill_chips(row: pd.Series) -> str:
+    names = _shared_skill_names(row)
+    if not names:
+        return '<span class="qj-tm-chip qj-tm-chip-none">資料整理中</span>'
+    chips = "".join(f'<span class="qj-tm-chip">{escape(name)}</span>' for name in names[:4])
+    if len(names) > 4:
+        chips += f'<span class="qj-tm-chip qj-tm-chip-none">+{len(names) - 4}</span>'
+    return chips
+
+
+def _missing_skill_count(row: pd.Series) -> int:
+    raw = row.get("number_of_missing_skills")
+    try:
+        if raw is not None and not pd.isna(raw):
+            return int(float(raw))
+    except (TypeError, ValueError):
+        pass
+    return len([item for item in _split_skill_items(_card_missing_skills(row)) if not item.startswith("...")])
+
+
+def _ce_card_html(row: pd.Series, index: int) -> str:
+    name = str(row["target_occupation_name"])
+    badge_text, badge_cls = _ce_badge(row)
+    metrics = (
+        _tm_metric_html(_IC_DIST, "轉職接近度", *_ce_distance_metric(row))
+        + _tm_metric_html(_IC_REUSE, "能力沿用", *_ce_reuse_metric(row))
+        + _tm_metric_html(_IC_BURDEN, "學習輕鬆度", *_ce_burden_metric(row))
+        + _tm_metric_html(_IC_MARKET, "市場訊號", *_ce_market_metric(row))
+    )
+    return (
+        f'<div class="qj-tm-card qj-tm-compact qj-tm-{badge_cls}">'
+        '<div class="qj-tm-main">'
+        '<div class="qj-tm-head">'
+        f'<span class="qj-tm-rank">{index + 1}</span>'
+        f'<span class="qj-tm-badge qj-tm-badge-{badge_cls}">{escape(badge_text)}</span>'
+        "</div>"
+        f'<div class="qj-tm-title">{escape(_occupation_zh(name))}</div>'
+        f'<div class="qj-tm-sub">{escape(name)}</div>'
+        f'<div class="qj-tm-desc">{escape(_ce_description(row))}</div>'
+        '<div class="qj-tm-skills">'
+        '<span class="qj-tm-skills-label">可沿用技能</span>'
+        f'{_shared_skill_chips(row)}'
+        f'<span class="qj-tm-need">需補 {_missing_skill_count(row)} 項</span>'
+        "</div>"
+        "</div>"
+        f'<div class="qj-tm-metrics">{metrics}</div>'
+        "</div>"
+    )
+
+
+def _beauty_fee_display(text: object) -> str:
+    raw = _clean(text)
+    match = re.search(r"(\d[\d,]*)", raw)
+    if match:
+        try:
+            return f"NT$ {int(match.group(1).replace(',', '')):,}"
+        except ValueError:
+            return raw
+    return raw
+
+
+def _relevant_courses(row: pd.Series, course_mapping: pd.DataFrame, limit: int = 8) -> list[dict[str, str]]:
+    """Top relevant 產業人才投資方案 courses for a path (real course data only)."""
+    if _is_beauty_row(row):
+        parsed = _parse_phase5_courses(row.get("matched_training_courses", ""))
+        return [
+            {"name": c["course_name"], "provider": "", "hours": _clean(c["training_hours"]), "fee": _beauty_fee_display(c["fee"])}
+            for c in parsed[:limit]
+        ]
+    code = _clean(row.get("target_occupation_code", ""))
+    if code and "target_occupation_code" in course_mapping.columns:
+        subset = course_mapping.loc[course_mapping["target_occupation_code"].astype(str).eq(code)].copy()
+        if not subset.empty:
+            if "mapping_score" in subset.columns:
+                subset = subset.sort_values("mapping_score", ascending=False)
+            subset = subset.drop_duplicates(subset=["course_code"]).head(limit)
+            return [
+                {
+                    "name": _clean(c.get("course_name")),
+                    "provider": _clean(c.get("training_provider")),
+                    "hours": _hours(c.get("training_hours")),
+                    "fee": _money(c.get("fee_per_person")),
+                }
+                for _, c in subset.iterrows()
+            ]
+    return []
+
+
+def _extract_number(value: object) -> float:
+    match = re.search(r"(\d[\d,]*(?:\.\d+)?)", _clean(value))
+    if not match:
+        return 0.0
+    try:
+        return float(match.group(1).replace(",", ""))
+    except ValueError:
+        return 0.0
+
+
+def _courses_resource_ranges(row: pd.Series, course_mapping: pd.DataFrame) -> tuple[int, list[float], list[float]]:
+    """(course_count, per_course_hours, per_course_fees) over the actual related courses."""
+    if _is_beauty_row(row):
+        parsed = _parse_phase5_courses(row.get("matched_training_courses", ""))
+        hours = [v for v in (_extract_number(c.get("training_hours")) for c in parsed) if v > 0]
+        fees = [v for v in (_extract_number(c.get("fee")) for c in parsed) if v > 0]
+        return len(parsed), hours, fees
+    code = _clean(row.get("target_occupation_code", ""))
+    if code and "target_occupation_code" in course_mapping.columns:
+        subset = course_mapping.loc[course_mapping["target_occupation_code"].astype(str).eq(code)].copy()
+        if not subset.empty:
+            subset = subset.drop_duplicates(subset=["course_code"])
+            hours = [float(v) for v in pd.to_numeric(subset.get("training_hours"), errors="coerce").dropna()]
+            fees = [float(v) for v in pd.to_numeric(subset.get("fee_per_person"), errors="coerce").dropna()]
+            return len(subset), hours, fees
+    return 0, [], []
+
+
+def _hours_range_display(values: list[float]) -> str:
+    if not values:
+        return "未知"
+    lo, hi = min(values), max(values)
+    return _hours(lo) if lo == hi else f"{lo:.0f} ~ {hi:.0f} h"
+
+
+def _fee_range_display(values: list[float]) -> str:
+    if not values:
+        return "未知"
+    lo, hi = min(values), max(values)
+    return _money(lo) if lo == hi else f"NT$ {lo:,.0f} ~ {hi:,.0f}"
+
+
+def _ce_info_html(row: pd.Series, index: int) -> str:
+    name = str(row["target_occupation_name"])
+    badge_text, badge_cls = _ce_badge(row)
+    metrics = (
+        _tm_metric_html(_IC_DIST, "轉職接近度", *_ce_distance_metric(row))
+        + _tm_metric_html(_IC_REUSE, "能力沿用", *_ce_reuse_metric(row))
+        + _tm_metric_html(_IC_BURDEN, "學習輕鬆度", *_ce_burden_metric(row))
+        + _tm_metric_html(_IC_MARKET, "市場訊號", *_ce_market_metric(row))
+    )
+    return (
+        f'<div class="qj-info-head"><span class="qj-tm-rank qj-tm-rank-{badge_cls}">{index + 1}</span>'
+        f'<span class="qj-tm-badge qj-tm-badge-{badge_cls}">{escape(badge_text)}</span></div>'
+        f'<div class="qj-tm-title">{escape(_occupation_zh(_current_source_background()))}'
+        f'<span class="qj-tm-arrow">→</span>{escape(_occupation_zh(name))}</div>'
+        f'<div class="qj-tm-sub">{escape(name)}</div>'
+        f'<div class="qj-tm-desc">{escape(_ce_description(row))}</div>'
+        '<div class="qj-tm-skills"><span class="qj-tm-skills-label">可沿用技能</span>'
+        f'{_shared_skill_chips(row)}<span class="qj-tm-need">需補 {_missing_skill_count(row)} 項</span></div>'
+        f'<div class="qj-info-metrics">{metrics}</div>'
+    )
+
+
+def _course_item_html(course: dict[str, str]) -> str:
+    meta = " ｜ ".join(part for part in [course["provider"], course["hours"], course["fee"]] if part and part != "未知")
+    return (
+        '<div class="qj-course-item">'
+        f'<span class="qj-course-name">{escape(course["name"])}</span>'
+        f'<div class="qj-course-meta">{escape(meta)}</div></div>'
+    )
+
+
+def _courses_items_html(courses: list[dict[str, str]]) -> str:
+    if not courses:
+        return '<div class="qj-course-empty">目前沒有可對應的產業人才投資課程；此路徑課程資料待補。</div>'
+    return "".join(_course_item_html(course) for course in courses)
+
+
+def _courses_head_html() -> str:
+    return (
+        '<div class="qj-course-head">相關課程 <span class="qj-course-headtag">產業人才投資</span></div>'
+        '<div class="qj-course-subhead">在職勞工訓練費補助｜結訓後最高 80%（特定對象 100%）</div>'
+    )
+
+
+def _popover_high_jobs(row: pd.Series, demo_job_evidence: pd.DataFrame) -> int:
+    if _is_beauty_row(row):
+        try:
+            return int(float(row.get("taiwanjobs_high_relevance_job_count", 0) or 0))
+        except (TypeError, ValueError):
+            return 0
+    name = _clean(row.get("target_occupation_name", ""))
+    jobs = demo_job_evidence.loc[demo_job_evidence["target_occupation_name"].astype(str).eq(name)]
+    if jobs.empty:
+        return 0
+    return int(jobs["evidence_level"].eq("High").sum())
+
+
+def _render_card_evidence_popover(
+    row: pd.Series,
+    demo_job_evidence: pd.DataFrame,
+    crc_external_market: pd.DataFrame,
+    course_mapping: pd.DataFrame,
+) -> None:
+    name = str(row["target_occupation_name"])
+    course_count, course_hours, course_fees = _courses_resource_ranges(row, course_mapping)
+    course_hours_display = _hours_range_display(course_hours)
+    course_fee_display = _fee_range_display(course_fees)
+    _html(
+        '<div class="qj-pop-eyebrow">🔀 轉職路徑</div>'
+        f'<div class="qj-pop-title">{escape(_occupation_zh(_current_source_background()))}'
+        f'<span class="qj-tm-arrow">→</span>{escape(_occupation_zh(name))}</div>'
+    )
+    _html(
+        f'{_detail_block("路徑定位", _path_reason(row))}'
+        f'{_detail_block("可沿用能力", _shared_skill_chips(row))}'
+        f'{_detail_block("需補強缺口技能", _skill_chip_list(_row_missing_skills(row)))}'
+        '<div class="qj-pop-line"><b>培訓資源</b>：'
+        f'對應課程 {course_count} 門 ｜ 時數 {course_hours_display} ｜ 費用 {course_fee_display}</div>'
+    )
+    st.markdown("**台灣市場證據**")
+    if _is_beauty_row(row):
+        market_label, _ = _ce_market_metric(row)
+        high_jobs = _popover_high_jobs(row, demo_job_evidence)
+        _html(
+            f'<div class="qj-pop-line">市場訊號：{escape(market_label)} ｜ 高相關職缺 {high_jobs} 筆</div>'
+        )
+    else:
+        _render_demo_job_evidence(row, demo_job_evidence)
+        if _clean(row.get("target_occupation_name", "")) == "Clinical Research Coordinators":
+            _render_crc_external_market_crosscheck(crc_external_market)
+    _html('<div class="qj-note">以上為既有輸出的證據訊號，非成功率或推薦分數。</div>')
+
+
+def _render_path_cards(
+    evidence: pd.DataFrame,
+    course_mapping: pd.DataFrame,
+    selected_name: str | None,
+    demo_job_evidence: pd.DataFrame,
+    crc_external_market: pd.DataFrame,
+) -> None:
+    _inject_transition_card_styles()
+    for index, (_, row) in enumerate(evidence.iterrows()):
+        occupation_zh = _occupation_zh(str(row["target_occupation_name"]))
+        _, badge_cls = _ce_badge(row)
+        with st.container(border=True, key=f"career_path_row_{badge_cls}_{index}"):
+            info_col, course_col = st.columns([2, 1], gap="large", vertical_alignment="top")
+            with info_col:
+                text_col, radar_col = st.columns([1.15, 1], gap="medium", vertical_alignment="center")
+                with text_col:
+                    _html(_ce_info_html(row, index))
+                with radar_col:
+                    st.plotly_chart(
+                        _ce_radar_fig(row),
+                        use_container_width=True,
+                        key=f"career_radar_{badge_cls}_{index}",
+                    )
+                with st.popover("查看轉職證據" + "\u200b" * index, use_container_width=True):
+                    _render_card_evidence_popover(row, demo_job_evidence, crc_external_market, course_mapping)
+            with course_col:
+                all_courses = _relevant_courses(row, course_mapping, limit=999)
+                if all_courses:
+                    _html(_courses_head_html() + _courses_items_html(all_courses[:4]))
+                    if len(all_courses) > 4:
+                        with st.popover(
+                            f"＋ 更多課程（共 {len(all_courses)} 堂）" + "\u200b" * index,
+                            use_container_width=True,
+                        ):
+                            _html(
+                                f'<div class="qj-course-head">全部相關課程 · {escape(occupation_zh)}</div>'
+                                f"{_courses_items_html(all_courses)}"
+                            )
+                else:
+                    _html(
+                        '<div class="qj-course-head">相關課程 '
+                        '<span class="qj-course-headtag">產業人才投資</span></div>'
+                        '<div class="qj-course-empty">此示範背景尚未建立對應的產業人才投資課程資料；'
+                        '目前課程對應以「護理師」轉職路徑為主，切換回「護理師」即可看到完整課程。</div>'
+                    )
 
 
 def _render_detail(
@@ -500,55 +1099,36 @@ def _render_detail(
     demo_job_evidence: pd.DataFrame,
     crc_external_market: pd.DataFrame,
 ) -> None:
-    left, right = st.columns([1.08, 0.92], gap="medium")
+    left, right = st.columns([1, 1], gap="medium")
     with left:
-        st.markdown("#### 為什麼值得探索？")
+        st.markdown("##### 技能缺口與補強")
         _html(
             f"""
             <div class="qj-panel">
-                <div class="qj-path-conclusion">{escape(_path_conclusion(row))}</div>
-                {_detail_block("可利用的護理背景", _skill_chip_list(_row_shared_skills(row)))}
+                {_detail_block("需要補強（缺口）技能", _skill_chip_list(_row_missing_skills(row)))}
+                {_detail_block("部分已具備技能", _skill_chip_list(row.get("partially_covered_skills", "")))}
                 {_detail_block("路徑定位", _path_reason(row))}
             </div>
             """
         )
 
-        st.markdown("#### 原有能力可利用程度")
+        st.markdown("##### 培訓資源")
         _html(
             f"""
             <div class="qj-panel">
                 <div class="qj-career-profile-grid">
-                    {_metric_html("能力延續", _row_transition_span(row))}
-                    {_metric_html("學習負擔", _row_learning_burden(row))}
+                    {_metric_html("潛在課程覆蓋", _coverage_label(row), translate_value=False)}
+                    {_metric_html("對應課程數", _number(row.get("matched_course_count")), translate_value=False)}
+                    {_metric_html("可見課程時數", _hours(row.get("total_training_hours")), translate_value=False)}
+                    {_metric_html("可見直接費用", _money(row.get("estimated_direct_course_cost")), translate_value=False)}
                 </div>
-                {_detail_block("部分已具備技能", _skill_chip_list(row.get("partially_covered_skills", "")))}
-            </div>
-            """
-        )
-
-        st.markdown("#### 需要補強的技能")
-        _html(
-            f"""
-            <div class="qj-panel">
-                {_detail_block("缺口技能", _skill_chip_list(_row_missing_skills(row)))}
-            </div>
-            """
-        )
-
-        st.markdown("#### 學習負擔")
-        _html(
-            f"""
-            <div class="qj-panel">
-                <div class="qj-career-profile-grid">
-                    {_metric_html("整體負擔", _row_learning_burden(row))}
-                    {_metric_html("收入中斷估計", row.get("possible_income_interruption", "unknown"))}
-                </div>
+                <div class="qj-note">潛在課程覆蓋只代表目前公開課程供給可能對應到技能缺口，不代表技能已補足。</div>
             </div>
             """
         )
 
     with right:
-        st.markdown("#### 台灣市場證據")
+        st.markdown("##### 台灣市場證據")
         if not _is_beauty_row(row):
             _render_demo_job_evidence(row, demo_job_evidence)
             if _clean(row.get("target_occupation_name", "")) == "Clinical Research Coordinators":
@@ -563,35 +1143,70 @@ def _render_detail(
                         {_metric_html("待確認候選", _number(market_stats["pending_job_count"]), translate_value=False)}
                         {_metric_html("需求人數", _number(market_stats["verified_demand_persons"]), translate_value=False)}
                         {_metric_html("月薪資料", market_stats["salary"], translate_value=False)}
-                        {_metric_html("市場訊號", _market_signal_label(row, market_stats=market_stats), translate_value=False)}
                     </div>
                     <div class="qj-note">只把通過高相關性篩選的 TaiwanJobs 職缺納入主要統計；待確認候選不計入職缺數、需求人數或月薪。</div>
                 </div>
                 """
             )
-        if _is_beauty_row(row):
             _render_phase5_beauty_job_preview(row)
 
-        st.markdown("#### 培訓資源")
-        _html(
-            f"""
-            <div class="qj-panel">
-                <div class="qj-career-profile-grid">
-                    {_metric_html("潛在課程覆蓋", _coverage_label(row), translate_value=False)}
-                    {_metric_html("對應課程數", _number(row.get("matched_course_count")), translate_value=False)}
-                    {_metric_html("可見課程時數", _hours(row.get("total_training_hours")), translate_value=False)}
-                    {_metric_html("可見直接費用", _money(row.get("estimated_direct_course_cost")), translate_value=False)}
-                    {_metric_html("6 個月時間窗", row.get("scenario_6m_feasibility_estimate", "unknown"))}
-                </div>
-                <div class="qj-note">潛在課程覆蓋只代表目前公開課程供給可能對應到技能缺口，不代表技能已補足。</div>
-            </div>
-            """
-        )
     _render_onet_evidence_expander(row, course_mapping)
     if _is_beauty_row(row):
         _render_market_evidence_expander(row)
     _render_course_table_expander(row, course_mapping)
     _render_method_limitations_expander()
+
+
+def _render_demo_preset_detail(row: pd.Series) -> None:
+    left, right = st.columns([1.08, 0.92], gap="medium")
+    with left:
+        st.markdown("#### 為什麼值得探索？")
+        _html(
+            f"""
+            <div class="qj-panel">
+                <div class="qj-path-conclusion">{escape(_path_intro(row))}</div>
+                {_detail_block("來源職業情境", escape(_clean(row.get("source_description", ""))))}
+                {_detail_block("可轉移能力", _skill_chip_list(row.get("transferable_skills", "")))}
+                {_detail_block("需要補強能力", _skill_chip_list(row.get("missing_skills", "")))}
+            </div>
+            """
+        )
+
+    with right:
+        st.markdown("#### Demo 證據狀態")
+        _html(
+            f"""
+            <div class="qj-panel">
+                <div class="qj-career-profile-grid">
+                    {_metric_html("transition type", _transition_type_label(row), translate_value=False)}
+                    {_metric_html("learning burden", _row_learning_burden(row), translate_value=False)}
+                    {_metric_html("evidence level", _card_evidence_level(row), translate_value=False)}
+                    {_metric_html("市場 evidence", row.get("market_evidence_status", "待補強"), translate_value=False)}
+                    {_metric_html("training evidence", row.get("training_evidence_status", "待補強"), translate_value=False)}
+                </div>
+                <div class="qj-note">此案例只作為固定 demo preset；不顯示分數、成功率或自動轉職保證。</div>
+            </div>
+            """
+        )
+
+    with st.expander("查看資料依據：Demo preset 與待補強欄位", expanded=False):
+        display = pd.DataFrame(
+            [
+                {
+                    "欄位": "市場 evidence",
+                    "狀態": _clean(row.get("market_evidence_status", "待補強")) or "待補強",
+                },
+                {
+                    "欄位": "training evidence",
+                    "狀態": _clean(row.get("training_evidence_status", "待補強")) or "待補強",
+                },
+                {
+                    "欄位": "方法註記",
+                    "狀態": _clean(row.get("method_note", "半自動候選＋人工確認 demo")),
+                },
+            ]
+        )
+        st.dataframe(display, hide_index=True, use_container_width=True)
 
 
 def _render_course_table(course_mapping: pd.DataFrame) -> None:
@@ -1175,9 +1790,11 @@ def _span_class(row: pd.Series) -> str:
 
 
 def _occupation_title_html(occupation_name: str) -> str:
+    title_zh = _occupation_zh(occupation_name)
+    subtitle = f'<div class="qj-card-title-sub">{escape(occupation_name)}</div>' if title_zh != occupation_name else ""
     return (
-        f'<div class="qj-card-title">{escape(_occupation_zh(occupation_name))}</div>'
-        f'<div class="qj-card-title-sub">{escape(occupation_name)}</div>'
+        f'<div class="qj-card-title">{escape(title_zh)}</div>'
+        f"{subtitle}"
     )
 
 
@@ -1186,6 +1803,8 @@ def _occupation_option_label(occupation_name: str) -> str:
 
 
 def _occupation_display_text(occupation_name: str) -> str:
+    if occupation_name in SOURCE_BACKGROUND_OPTIONS:
+        return _occupation_zh(occupation_name)
     return f"{_occupation_zh(occupation_name)} ({occupation_name})"
 
 
@@ -1195,11 +1814,39 @@ def _occupation_zh(occupation_name: str) -> str:
 
 def _current_domain_label() -> str:
     value = st.session_state.get("career_target_domain", TARGET_DOMAIN_OPTIONS[0])
-    return value if value in TARGET_DOMAIN_OPTIONS else TARGET_DOMAIN_OPTIONS[0]
+    return _clean(value) or TARGET_DOMAIN_OPTIONS[0]
+
+
+def _current_source_background() -> str:
+    value = st.session_state.get("career_source_background", DEMO_SOURCE)
+    return value if value in SOURCE_BACKGROUND_OPTIONS else DEMO_SOURCE
+
+
+def _target_domain_options_for_source(source_label: str, demo_career_presets: pd.DataFrame) -> list[str]:
+    if source_label == DEMO_SOURCE:
+        return TARGET_DOMAIN_OPTIONS
+    source_rows = demo_career_presets.loc[
+        demo_career_presets["source_occupation_id"].astype(str).eq(source_label)
+    ].sort_values("display_order")
+    options = source_rows["target_domain"].dropna().astype(str).drop_duplicates().tolist()
+    return options or ["跨域探索 demo"]
 
 
 def _is_beauty_row(row: pd.Series) -> bool:
     return _clean(row.get("_evidence_source", "")) == "beauty_phase5"
+
+
+def _is_demo_row(row: pd.Series) -> bool:
+    return _clean(row.get("_evidence_source", "")) == "demo_career_preset"
+
+
+def _demo_transition_span(transition_type: object) -> str:
+    value = _clean(transition_type)
+    if value == "相鄰路徑":
+        return "High skill reuse"
+    if value == "大幅轉換":
+        return "Major reskilling"
+    return "Partial skill reuse"
 
 
 def _row_transition_span(row: pd.Series) -> str:
@@ -1239,9 +1886,56 @@ def _plain_text_html(value: object) -> str:
     return escape(text)
 
 
+def _path_intro(row: pd.Series) -> str:
+    if _is_demo_row(row):
+        return _clean(row.get("description", ""))
+    return PATH_INTROS.get(_clean(row.get("target_occupation_name")), "")
+
+
+def _transition_type_label(row: pd.Series) -> str:
+    if _is_demo_row(row):
+        return _clean(row.get("transition_type", "待補強"))
+    span = _row_transition_span(row)
+    feasibility = _clean(row.get("feasibility_level", ""))
+    if span == "Major reskilling" or feasibility == "Major-reskilling path":
+        return "大幅轉換"
+    if feasibility == "Adjacent candidate":
+        return "相鄰路徑"
+    if feasibility == "Bridge candidate":
+        return "橋接路徑"
+    if span == "High skill reuse":
+        return "相鄰路徑"
+    if span == "Partial skill reuse":
+        return "橋接路徑"
+    return _translate_value(feasibility or span or "待補強")
+
+
+def _card_evidence_level(row: pd.Series) -> str:
+    if _is_demo_row(row):
+        return _clean(row.get("evidence_level", "待補強")) or "待補強"
+    return "完整示範"
+
+
+def _card_transferable_skills(row: pd.Series) -> object:
+    if _is_demo_row(row):
+        return row.get("transferable_skills", "")
+    return _row_shared_skills(row)
+
+
+def _card_missing_skills(row: pd.Series) -> object:
+    if _is_demo_row(row):
+        return row.get("missing_skills", "")
+    return _row_missing_skills(row)
+
+
 def _path_reason(row: pd.Series) -> str:
+    if _is_demo_row(row):
+        return escape(
+            f"此路徑目前被標示為「{_transition_type_label(row)}」，"
+            f"evidence level 為「{_card_evidence_level(row)}」。"
+        )
     parts = [
-        f"此路徑目前被標示為「{_translate_value(_row_transition_span(row))}」。"
+        f"此路徑目前被標示為「{_transition_type_label(row)}」。"
     ]
     if _clean(row.get("target_occupation_name")) == "Data Scientists":
         parts.append("這張卡主要作為大幅重新學習的對照組。")

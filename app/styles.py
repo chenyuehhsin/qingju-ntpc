@@ -1302,7 +1302,7 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             align-items: center;
             min-height: 60px;
         }}
-        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) button {{
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [class*="st-key-top_nav_"] button {{
             min-height: 2.15rem;
             padding: 0.35rem 0.5rem;
             background: transparent !important;
@@ -1314,34 +1314,37 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             font-weight: 780;
             white-space: nowrap;
         }}
-        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) button:hover {{
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [class*="st-key-top_nav_"] button:hover {{
             color: var(--qj-text) !important;
             background: rgba(23, 50, 77, 0.04) !important;
         }}
-        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) button[data-testid="stBaseButton-primary"] {{
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [class*="st-key-top_nav_"] button[data-testid="stBaseButton-primary"] {{
             color: var(--qj-text) !important;
             background: var(--qj-primary-soft) !important;
             border-bottom: 2px solid var(--qj-primary) !important;
         }}
 
-        /* Each supplied illustration is a complete banner, with no text overlaid. */
+        /* Each supplied illustration is a complete banner, with no text overlaid.
+           The banner is never cropped: the image scales proportionally to the
+           available width and the frame, having no height of its own, hugs it. */
         .qj-page-hero {{
             width: 100%;
-            height: 160px;
+            height: auto;
             margin: 0 0 1.5rem;
             overflow: hidden;
             border-radius: 20px;
             box-shadow: 0 3px 12px rgba(23, 50, 77, 0.07);
+            line-height: 0;
         }}
         .qj-page-hero img {{
             display: block;
             width: 100% !important;
-            height: 100% !important;
-            object-fit: cover;
-            object-position: center;
-            border-radius: 20px;
+            height: auto !important;
+            border-radius: inherit;
         }}
+        /* The fallback has no image to size it, so it needs an explicit ratio. */
         .qj-page-hero-fallback {{
+            aspect-ratio: 3 / 1;
             background:
                 radial-gradient(circle at 82% 22%, rgba(255, 255, 255, 0.72), transparent 28%),
                 linear-gradient(112deg, var(--qj-primary-soft), rgba(255, 255, 255, 0.9));
@@ -1381,8 +1384,15 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             padding: 0;
             line-height: 1.15;
         }}
-        @media (max-width: 1440px) {{
-            .qj-page-hero {{ height: 150px; }}
+        div[data-testid="stHorizontalBlock"]:has(.qj-column-heading) {{
+            align-items: flex-start !important;
+        }}
+        div[data-testid="stHorizontalBlock"]:has(.qj-column-heading) > div[data-testid="column"] {{
+            align-self: flex-start !important;
+        }}
+        div[data-testid="stHorizontalBlock"]:has(.qj-column-heading) > div[data-testid="column"] > div[data-testid="stVerticalBlock"] {{
+            align-content: flex-start !important;
+            justify-content: flex-start !important;
         }}
 
         /* Navigation, selectors, and actions share the same quiet, rounded treatment. */
@@ -1406,6 +1416,46 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             color: var(--qj-text) !important;
             box-shadow: 0 3px 10px rgba(23, 50, 77, 0.07);
         }}
+        div[data-testid="stSegmentedControl"] button[data-testid="stBaseButton-segmented_controlActive"] {{
+            background: var(--qj-primary-soft) !important;
+            border-color: var(--qj-primary) !important;
+            color: var(--qj-primary-ink) !important;
+            box-shadow: 0 3px 10px rgba(23, 50, 77, 0.07);
+        }}
+        div[data-testid="stSegmentedControl"] button[data-testid="stBaseButton-segmented_controlActive"] * {{
+            color: var(--qj-primary-ink) !important;
+            border-color: var(--qj-primary) !important;
+        }}
+        div[data-testid="stButtonGroup"] button[data-testid="stBaseButton-segmented_controlActive"] {{
+            background: var(--qj-primary-soft) !important;
+            border-color: var(--qj-primary) !important;
+            color: var(--qj-primary-ink) !important;
+            box-shadow: 0 3px 10px rgba(23, 50, 77, 0.07);
+        }}
+        div[data-testid="stButtonGroup"] button[data-testid="stBaseButton-segmented_controlActive"] * {{
+            color: var(--qj-primary-ink) !important;
+            border-color: var(--qj-primary) !important;
+        }}
+        div[data-testid="stButtonGroup"] button[data-testid="stBaseButton-segmented_control"]:hover {{
+            background: #ffffff !important;
+            border-color: var(--qj-primary) !important;
+            color: var(--qj-primary-ink) !important;
+            box-shadow: none !important;
+        }}
+        div[data-testid="stButtonGroup"] button[data-testid="stBaseButton-segmented_control"]:hover * {{
+            color: var(--qj-primary-ink) !important;
+            border-color: var(--qj-primary) !important;
+        }}
+        div[data-testid="stButtonGroup"] button[data-testid="stBaseButton-segmented_controlActive"]:hover {{
+            background: var(--qj-primary-soft) !important;
+            border-color: var(--qj-primary) !important;
+            color: var(--qj-primary-ink) !important;
+            box-shadow: 0 3px 10px rgba(23, 50, 77, 0.07) !important;
+        }}
+        div[data-testid="stButtonGroup"] button[data-testid="stBaseButton-segmented_controlActive"]:hover * {{
+            color: var(--qj-primary-ink) !important;
+            border-color: var(--qj-primary) !important;
+        }}
         div[data-testid="stSelectbox"] div[data-baseweb="select"] > div,
         div[data-testid="stTextInput"] input {{
             border-color: var(--qj-line);
@@ -1424,31 +1474,85 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             border-radius: var(--qj-radius-control);
             color: #ffffff;
             box-shadow: 0 4px 10px rgba(37, 61, 72, 0.10);
+            cursor: pointer;
+            transition: transform 140ms ease, filter 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
         }}
         div[data-testid="stButton"] button:hover,
         div[data-testid="stFormSubmitButton"] button:hover {{
             background: var(--qj-primary);
             border-color: var(--qj-primary);
             filter: brightness(0.94);
+            transform: translateY(-1px);
+            box-shadow: 0 7px 16px rgba(37, 61, 72, 0.16);
         }}
         div[data-testid="stButton"] button:focus-visible,
         div[data-testid="stFormSubmitButton"] button:focus-visible {{
             box-shadow: 0 0 0 3px var(--qj-primary-soft);
         }}
-        .st-key-career_explore_button button,
+        .st-key-housing_submit_recommendation button,
+        div[data-testid="stForm"] div[data-testid="stFormSubmitButton"] button {{
+            min-height: 2.85rem !important;
+            background: #187A59 !important;
+            border: 1px solid #187A59 !important;
+            color: #ffffff !important;
+            font-size: 0.98rem !important;
+            font-weight: 900 !important;
+            box-shadow: 0 10px 22px rgba(24, 122, 89, 0.24) !important;
+        }}
+        .st-key-housing_submit_recommendation button:hover,
+        div[data-testid="stForm"] div[data-testid="stFormSubmitButton"] button:hover {{
+            background: #126247 !important;
+            border-color: #126247 !important;
+            box-shadow: 0 12px 26px rgba(24, 122, 89, 0.30) !important;
+        }}
+        [class*="st-key-housing_open_mode_"] div[data-testid="stButton"] {{
+            margin-top: 0.55rem;
+        }}
+        [class*="st-key-housing_open_mode_"] button {{
+            min-height: 2.1rem !important;
+            background: #ffffff !important;
+            border: 1.5px solid var(--qj-primary) !important;
+            color: var(--qj-primary-ink) !important;
+            font-size: 0.82rem !important;
+            font-weight: 880 !important;
+            box-shadow: 0 3px 8px rgba(24, 122, 89, 0.10) !important;
+        }}
+        [class*="st-key-housing_open_mode_"] button:hover {{
+            background: var(--qj-primary-soft) !important;
+            color: var(--qj-text) !important;
+            box-shadow: 0 6px 14px rgba(24, 122, 89, 0.16) !important;
+        }}
+        .stElementContainer.st-key-career_explore_button div[data-testid="stButton"] > button {{
+            min-height: 3.15rem !important;
+            background: linear-gradient(180deg, #2F95D8 0%, #257FBE 100%) !important;
+            border: 2px solid #1E679A !important;
+            color: #ffffff !important;
+            font-size: 1.04rem !important;
+            font-weight: 900 !important;
+            margin-top: 0.2rem !important;
+            box-shadow: 0 12px 24px rgba(37, 127, 190, 0.30) !important;
+        }}
+        .stElementContainer.st-key-career_explore_button div[data-testid="stButton"] > button:hover {{
+            background: linear-gradient(180deg, #2888C7 0%, #1E679A 100%) !important;
+            border-color: #1E679A !important;
+            filter: none !important;
+            transform: translateY(-2px);
+            box-shadow: 0 16px 30px rgba(37, 127, 190, 0.36) !important;
+        }}
+        .stElementContainer.st-key-career_explore_button div[data-testid="stButton"] > button:focus-visible {{
+            box-shadow: 0 0 0 4px rgba(59, 167, 245, 0.28), 0 12px 24px rgba(37, 127, 190, 0.30) !important;
+        }}
         [class*="st-key-career_evidence_button_"] button {{
             background: #EAF6FF !important;
             border-color: #BDE7FF !important;
             color: #257FBE !important;
             box-shadow: none !important;
         }}
-        .st-key-career_explore_button button:hover,
         [class*="st-key-career_evidence_button_"] button:hover {{
             background: #D7F0FF !important;
             border-color: #93D6FF !important;
             filter: none;
         }}
-        .st-key-career_explore_button button:focus-visible,
         [class*="st-key-career_evidence_button_"] button:focus-visible {{
             box-shadow: 0 0 0 3px rgba(59, 167, 245, 0.22) !important;
         }}
@@ -1516,6 +1620,33 @@ def apply_styles(page: str = "青年安居推薦") -> None:
         .st-key-housing_mode_card_2 [data-testid="stVerticalBlockBorderWrapper"] {{ border-color: #E8A05A !important; }}
         .st-key-housing_mode_card_3,
         .st-key-housing_mode_card_3 [data-testid="stVerticalBlockBorderWrapper"] {{ border-color: #A98BC8 !important; }}
+        .qj-mode-card-title {{
+            color: #243238;
+            font-size: 1.08rem;
+            font-weight: 900;
+            letter-spacing: -0.01em;
+            line-height: 1.3;
+        }}
+        .qj-mode-card-title .qj-mode-card-area {{
+            color: #65747a;
+            font-size: 0.86rem;
+            font-weight: 700;
+        }}
+        [class*="st-key-housing_mode_card_0"] .qj-mode-card-title {{ color: #4F9E7A; }}
+        [class*="st-key-housing_mode_card_1"] .qj-mode-card-title {{ color: #4E8FB5; }}
+        [class*="st-key-housing_mode_card_2"] .qj-mode-card-title {{ color: #D98A3D; }}
+        [class*="st-key-housing_mode_card_3"] .qj-mode-card-title {{ color: #9070B4; }}
+        .st-key-career_explore_button button {{
+            background: #CFE3F2 !important;
+            border: 1px solid #9FC3DE !important;
+            color: #1F4E6B !important;
+            box-shadow: none !important;
+        }}
+        .st-key-career_explore_button button:hover {{
+            background: #BBD6EC !important;
+            border-color: #7FAFD1 !important;
+            color: #163b52 !important;
+        }}
         .qj-transition-origin, .qj-path-conclusion, .qj-skill-chip {{
             background: var(--qj-primary-soft);
             border-color: var(--qj-primary-border);
@@ -1794,12 +1925,17 @@ def apply_styles(page: str = "青年安居推薦") -> None:
             .stApp [data-testid="stAppViewContainer"] .main .block-container,
             .block-container {{ padding: 1.15rem 0.9rem 2.5rem; }}
             .qj-header-title {{ font-size: 2rem; }}
+            /* Desktop crops the banner to a slim strip with a fixed height. On
+               phones that crop hides most of the artwork, so drop the fixed box
+               and let the image size itself from its natural ratio. The frame
+               (rounded corners + shadow) then has no height of its own and hugs
+               the banner exactly at any width; the radius scales with it. */
+            /* Proportional scaling is already the base behaviour; phones only
+               need tighter spacing and a smaller corner radius. */
             .qj-page-hero {{
-                height: 130px;
                 margin-bottom: 1.25rem;
-                border-radius: 18px;
+                border-radius: clamp(12px, 3.4vw, 18px);
             }}
-            .qj-page-hero img {{ border-radius: 18px; }}
             .qj-housing-view-switch {{ margin-top: 0.9rem; }}
             .qj-overview-card {{ min-height: auto; }}
             div[data-testid="stVerticalBlockBorderWrapper"]:has(.qj-top-nav-brand) [data-testid="stHorizontalBlock"] {{ flex-wrap: wrap; }}

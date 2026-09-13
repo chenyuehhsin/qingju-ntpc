@@ -32,6 +32,7 @@ METRO_LINES_GEOJSON = PROJECT_ROOT / "data" / "processed" / "transport" / "metro
 YOUBIKE_STATIONS_CSV = PROJECT_ROOT / "data" / "processed" / "transport" / "youbike_stations.csv"
 HOUSING_BENCHMARK_CSV = PROJECT_ROOT / "data" / "processed" / "housing" / "moi_independent_suite_rent_benchmark.csv"
 POLICY_LENS_CSV = PROJECT_ROOT / "data" / "processed" / "policy" / "policy_lens_v0.csv"
+NURSING_POLICY_LENS_JSON = PROJECT_ROOT / "data" / "processed" / "policy" / "nursing_policy_lens.json"
 CAREER_POLICY_LENS_PHASE7_CSV = PROJECT_ROOT / "outputs" / "career" / "career_policy_lens_phase7.csv"
 CAREER_POLICY_LENS_PHASE7_MD = PROJECT_ROOT / "outputs" / "career" / "career_policy_lens_phase7.md"
 CAREER_LEARNING_LADDER_PHASE8_CSV = PROJECT_ROOT / "outputs" / "career" / "career_learning_ladder_phase8.csv"
@@ -41,6 +42,7 @@ CAREER_BEAUTY_PHASE5_CSV = PROJECT_ROOT / "outputs" / "career" / "nursing_to_bea
 CAREER_TRAINING_MAPPING_CSV = PROJECT_ROOT / "data" / "processed" / "career" / "career_training_skill_mapping.csv"
 CAREER_DEMO_JOB_EVIDENCE_CSV = PROJECT_ROOT / "data" / "processed" / "career" / "demo_job_evidence.csv"
 CAREER_CRC_EXTERNAL_MARKET_CSV = PROJECT_ROOT / "data" / "processed" / "career" / "clinical_research_external_market_crosscheck.csv"
+CAREER_DEMO_PRESETS_CSV = PROJECT_ROOT / "data" / "processed" / "career" / "demo_career_presets.csv"
 NTPC_BOUNDARY_GEOJSON = PROJECT_ROOT / "data" / "processed" / "geography" / "ntpc_district_boundaries.geojson"
 
 MODE_ORDER = ["省租型", "平衡型", "通勤型", "生活品質型"]
@@ -1064,6 +1066,28 @@ def load_detail_metro_lines(candidate_name: str) -> dict[str, Any]:
     return json.loads(filtered.to_crs("EPSG:4326").to_json())
 
 
+@st.cache_data(show_spinner=False)
+def load_metro_lines() -> dict[str, Any]:
+    """Return all metro line shapes from the processed geojson (whole region, unfiltered).
+
+    Reads existing processed data only; line colors come from each feature's
+    line_color property. Returns an empty FeatureCollection if unavailable.
+    """
+    empty = {"type": "FeatureCollection", "features": []}
+    if not METRO_LINES_GEOJSON.exists():
+        return empty
+    lines = gpd.read_file(METRO_LINES_GEOJSON)
+    if lines.empty or "geometry" not in lines:
+        return empty
+    if lines.crs is None:
+        lines = lines.set_crs("EPSG:4326")
+    for column in lines.columns:
+        if column == lines.geometry.name:
+            continue
+        lines[column] = lines[column].map(lambda value: "" if pd.isna(value) else str(value))
+    return json.loads(lines.to_crs("EPSG:4326").to_json())
+
+
 def _safe_poi_slug(value: str) -> str:
     mapping = {
         "汐止車站": "xizhi_station",
@@ -1223,6 +1247,23 @@ def load_policy_lens_data() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
+def load_nursing_policy_lens() -> dict[str, Any] | None:
+    """Read the static nursing Policy Lens demo content from processed data.
+
+    Returns the parsed dict, or None when the optional file is unavailable or
+    malformed. This only reads an existing processed JSON; it does not compute
+    metrics or modify data.
+    """
+    if not NURSING_POLICY_LENS_JSON.exists():
+        return None
+    try:
+        payload = json.loads(NURSING_POLICY_LENS_JSON.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+@st.cache_data(show_spinner=False)
 def load_career_policy_lens_phase7() -> tuple[pd.DataFrame, str]:
     missing_files = [
         path.relative_to(PROJECT_ROOT)
@@ -1320,7 +1361,15 @@ def load_career_learning_ladder_phase8() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_career_evidence_data() -> tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+]:
     missing_files = [
         path.relative_to(PROJECT_ROOT)
         for path in [
@@ -1330,6 +1379,7 @@ def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
             CAREER_TRAINING_MAPPING_CSV,
             CAREER_DEMO_JOB_EVIDENCE_CSV,
             CAREER_CRC_EXTERNAL_MARKET_CSV,
+            CAREER_DEMO_PRESETS_CSV,
         ]
         if not path.exists()
     ]
@@ -1342,6 +1392,7 @@ def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
     course_mapping = pd.read_csv(CAREER_TRAINING_MAPPING_CSV)
     demo_job_evidence = pd.read_csv(CAREER_DEMO_JOB_EVIDENCE_CSV)
     crc_external_market = pd.read_csv(CAREER_CRC_EXTERNAL_MARKET_CSV)
+    demo_career_presets = pd.read_csv(CAREER_DEMO_PRESETS_CSV)
 
     required_v35 = {
         "target_occupation_code",
@@ -1419,6 +1470,23 @@ def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
         "job_detail_summary",
         "qa_reason",
     }
+    required_demo_presets = {
+        "source_occupation_id",
+        "source_occupation_zh",
+        "source_description",
+        "target_domain",
+        "display_order",
+        "target_occupation_name",
+        "transition_type",
+        "transferable_skills",
+        "missing_skills",
+        "learning_burden",
+        "evidence_level",
+        "market_evidence_status",
+        "training_evidence_status",
+        "description",
+        "method_note",
+    }
     required_beauty = {
         "target_occupation_code",
         "target_occupation_name",
@@ -1455,9 +1523,22 @@ def load_career_evidence_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFram
         ("v4 course mapping", course_mapping, required_mapping),
         ("Demo job evidence", demo_job_evidence, required_demo_job_evidence),
         ("CRC external market cross-check", crc_external_market, required_crc_external_market),
+        ("Demo career presets", demo_career_presets, required_demo_presets),
     ]:
         missing = sorted(required - set(frame.columns))
         if missing:
             raise RuntimeError(f"Career {label} is missing required columns: {missing}")
 
-    return candidates_v35, training_v4, course_mapping, demo_job_evidence, beauty_phase5, crc_external_market
+    for source_id, group in demo_career_presets.groupby("source_occupation_id"):
+        if not 4 <= len(group) <= 5:
+            raise RuntimeError(f"Career demo preset {source_id} must contain 4-5 target paths, found {len(group)}.")
+
+    return (
+        candidates_v35,
+        training_v4,
+        course_mapping,
+        demo_job_evidence,
+        beauty_phase5,
+        crc_external_market,
+        demo_career_presets,
+    )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import json
 import os
 import re
 import tempfile
@@ -16,6 +17,14 @@ from branca.colormap import LinearColormap
 from branca.element import MacroElement, Template
 
 PROJECT_CACHE_DIR = Path(tempfile.gettempdir()) / "qingju_ntpc_cache"
+AI_DASHBOARD_SNAPSHOT_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "data"
+    / "processed"
+    / "ai_youth_dashboard"
+    / "official_dashboard_snapshot.json"
+)
+AI_CHART_COLORS = ["#F5C242", "#1D5D7A", "#4C9173", "#D97950", "#8A6B3D", "#6E86A6"]
 os.environ.setdefault("XDG_CACHE_HOME", str(PROJECT_CACHE_DIR / "xdg"))
 os.environ.setdefault("MPLCONFIGDIR", str(PROJECT_CACHE_DIR / "matplotlib"))
 
@@ -30,6 +39,7 @@ from data_loader import (
     DISTRICT_ANALYSIS_LAYER_YOUTH_COUNT,
     DISTRICT_ANALYSIS_LAYER_YOUTH_SHARE,
     load_district_analysis_table,
+    load_metro_lines,
     money,
 )
 
@@ -38,16 +48,10 @@ POLICY_BASEMAP_MINIMAL = "極簡底圖"
 POLICY_BASEMAP_STREET = "街道地圖"
 POLICY_BASEMAP_OPTIONS = [POLICY_BASEMAP_MINIMAL, POLICY_BASEMAP_STREET]
 TRANSPARENT_TILE_DATA_URI = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+# NLSC 國土利用現況調查 (public land-use survey) WMTS, used as the land-use basemap.
+NLSC_LANDUSE_TILE_URL = "https://wmts.nlsc.gov.tw/wmts/LUIMAP/default/GoogleMapsCompatible/{z}/{y}/{x}"
+NLSC_LANDUSE_ATTR = "國土利用現況調查｜內政部國土測繪中心 NLSC"
 POLICY_VIEWS = {
-    "綜合政策訊號": {
-        "field": "policy_signal_rule_count",
-        "title": "綜合政策訊號",
-        "unit": "rules",
-        "caption": "只顯示該生活圈所屬行政區命中的透明 policy rules 數量；不是 composite score 或 ranking。",
-        "low_color": "#E8EEF0",
-        "high_color": "#0F766E",
-        "higher_label": "命中規則越多",
-    },
     "居住成本": {
         "field": "official_median_rent",
         "title": "居住成本",
@@ -132,26 +136,355 @@ def render_policy_lens(
     career_policy: pd.DataFrame | None = None,
     career_policy_md: str = "",
     career_ladder: pd.DataFrame | None = None,
+    nursing_policy_lens: dict | None = None,
 ) -> None:
     st.markdown(
         """
         <div class="qj-policy-header">
             <h1 class="qj-visually-hidden">青年局 Policy Lens</h1>
-            <div class="qj-page-intro">分開觀察青年職涯與安居資料訊號，作為政策端快速掃描工具。</div>
-            <div class="qj-policy-alert">Policy v0 為政策篩選與探索工具，不代表正式政策優先順序。</div>
+            <div class="qj-page-intro">分開觀察青年職涯、安居與跨資料政策訊號，作為政策端快速掃描工具。</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    career_tab, housing_tab = st.tabs(["職涯政策觀察", "安居政策觀察"])
+    st.markdown(
+        """
+        <style>
+        [class*="st-key-policy_lens_toggle"] [data-baseweb="tab-list"]{
+            background:#EDF1F4;border-radius:12px;padding:5px;gap:5px;
+            display:inline-flex;border:none;box-shadow:inset 0 0 0 1px #E1E8EE;}
+        [class*="st-key-policy_lens_toggle"] [data-baseweb="tab-highlight"],
+        [class*="st-key-policy_lens_toggle"] [data-baseweb="tab-border"]{display:none !important;}
+        [class*="st-key-policy_lens_toggle"] button[data-baseweb="tab"]{
+            height:auto;padding:0.42rem 1.25rem;border-radius:9px;background:transparent;
+            margin:0;transition:all .15s ease;}
+        [class*="st-key-policy_lens_toggle"] button[data-baseweb="tab"] p{
+            font-weight:700;font-size:0.95rem;color:#54626D;margin:0;}
+        [class*="st-key-policy_lens_toggle"] button[data-baseweb="tab"]:hover{background:#E3E9EE;}
+        [class*="st-key-policy_lens_toggle"] button[data-baseweb="tab"][aria-selected="true"]{
+            background:#F7C948;box-shadow:0 2px 6px rgba(203,161,53,0.35);}
+        [class*="st-key-policy_lens_toggle"] button[data-baseweb="tab"][aria-selected="true"]:hover{background:#F5BE2E;}
+        [class*="st-key-policy_lens_toggle"] button[data-baseweb="tab"][aria-selected="true"] p{color:#3A2E00;}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    with st.container(key="policy_lens_toggle"):
+        career_tab, housing_tab, ai_tab = st.tabs(
+            ["職涯政策觀察", "安居政策觀察", "AI 青年政策智慧儀表板"]
+        )
     with career_tab:
         if career_policy is None:
             st.warning("尚未載入 Career Policy Lens Phase 7 輸出。")
         else:
-            render_career_policy_observations(career_policy, career_policy_md, career_ladder)
+            render_career_policy_observations(
+                career_policy, career_policy_md, career_ladder, nursing_policy_lens
+            )
     with housing_tab:
         render_housing_policy_lens(policy, towns, cities)
+    with ai_tab:
+        render_ai_policy_dashboard(policy, towns, career_policy)
+
+
+def render_ai_policy_dashboard(
+    policy: pd.DataFrame,
+    towns: gpd.GeoDataFrame,
+    career_policy: pd.DataFrame | None,
+) -> None:
+    """Render the source dashboard's charts in Qingju's native UI."""
+    _ = policy, towns, career_policy  # This tab intentionally does not mix product datasets.
+    snapshot = _load_ai_dashboard_snapshot()
+    if snapshot is None:
+        st.error("AI 青年政策智慧儀表板的資料快照未載入。")
+        return
+    payloads = snapshot["api_payloads"]
+    scope = payloads["data_scope"]
+
+    st.markdown(
+        """
+        <div class="qj-policy-section-head">
+            <div class="qj-policy-section-title">AI 青年政策智慧儀表板</div>
+            <div class="qj-policy-section-copy">勞動部 15–29 歲青年勞工就業狀況調查 · 109／111／113 年 · 完整保留原專案圖表與資料限制</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        f"資料範圍：{scope['population_definition']}｜{scope['geography_label']}｜"
+        f"{scope['observation_count']:,} 筆官方觀測值。圖表資料以 {snapshot['snapshot_version']} 快照部署。"
+    )
+
+    overview_tab, employment_tab, trends_tab, attention_tab, analyst_tab = st.tabs(
+        ["總覽", "青年就業數據", "歷年趨勢與服務", "政策關注度", "AI 政策分析"]
+    )
+    with overview_tab:
+        st.markdown("### 三大政策領域資料覆蓋")
+        _render_ai_dashboard_cards(_ai_coverage_cards(payloads))
+        st.caption("跨部會資料採並列 contextual linkage；不同年齡範圍、地理尺度或年度不作未經驗證的加減、相關或因果推論。")
+
+        st.markdown("### 青年就業重點數據")
+        _render_ai_dashboard_cards(_ai_headline_cards(payloads["cards"]["cards"]))
+        st.info("四張卡片各自對應一個官方統計表儲存格，不是加總、重新計算的比率或年度變化。")
+        left, right = st.columns(2, gap="medium")
+        blocks = {item["block_id"]: item for item in payloads["distributions"]["blocks"]}
+        with left:
+            _render_ai_distribution(blocks["job_change_reason"], "overview")
+        with right:
+            _render_ai_distribution(blocks["first_job_search_difficulty"], "overview")
+
+    with employment_tab:
+        st.markdown("### 青年就業數據")
+        st.caption("最新可用調查輪次為 113 年；完整保留原專案的 8 組分類圖。每一個比率保留原問卷的母體與題目定義。")
+        blocks = payloads["distributions"]["blocks"]
+        for start in range(0, len(blocks), 2):
+            chart_left, chart_right = st.columns(2, gap="medium")
+            with chart_left:
+                _render_ai_distribution(blocks[start], "employment")
+            if start + 1 < len(blocks):
+                with chart_right:
+                    _render_ai_distribution(blocks[start + 1], "employment")
+        st.warning("調查範圍為全臺 15–29 歲青年勞工，不能直接視為新北市 18–35 歲青年人口或車站生活圈的數值。")
+
+    with trends_tab:
+        st.markdown("### 歷年趨勢與政府服務")
+        st.caption("所有折線只連接原專案判定為可比較的相鄰年度；定義改變處保留斷點。")
+        trend_charts = payloads["trend_charts"]["charts"]
+        for start in range(0, len(trend_charts), 2):
+            chart_left, chart_right = st.columns(2, gap="medium")
+            with chart_left:
+                _render_ai_trend(trend_charts[start])
+            if start + 1 < len(trend_charts):
+                with chart_right:
+                    _render_ai_trend(trend_charts[start + 1])
+        st.markdown("#### 青年對政府就業服務的認知與使用")
+        _render_ai_service_awareness(payloads["service_awareness"])
+        st.markdown("#### 不同青年族群的差異")
+        subgroup_tabs = st.tabs([item["label_zh"] for item in payloads["subgroup_sex"]["dimensions"]])
+        for subgroup_tab, key in zip(subgroup_tabs, ("subgroup_sex", "subgroup_age", "subgroup_education")):
+            with subgroup_tab:
+                _render_ai_subgroup(payloads[key])
+
+    with attention_tab:
+        st.markdown("### 政策關注度")
+        st.caption("原專案將已收集的官方證據整理為閱讀順序；它不是政府績效、政策成敗、預算價值或因果優先順序。")
+        _render_ai_policy_attention(payloads["policy_attention"], payloads["policy_sensitivity"])
+        st.info("每一個分數都要連同可用元件、缺漏元件與權重敏感度閱讀；如需看新北在地資料，請切換上方的職涯或安居政策觀察。")
+
+    with analyst_tab:
+        st.markdown("### AI 政策分析")
+        st.caption("回答一律以已驗證的官方證據為依據：勞動部 15–29 歲青年勞工就業狀況調查 · 109／111／113 年")
+        with st.container(border=True):
+            st.markdown("#### 提問")
+            with st.form("ai_policy_analysis_form", border=False):
+                question = st.text_area(
+                    "問題",
+                    placeholder="例如：目前官方證據最充分、最值得優先看的青年就業議題是哪些？",
+                    max_chars=500,
+                    key="ai_policy_analysis_question",
+                )
+                topics = payloads["policy_attention"].get("topics", [])
+                options = ["不限主題，由系統依問題判斷"] + [item["topic_name_zh"] for item in topics]
+                st.selectbox("限定主題（選填）", options, key="ai_policy_analysis_topic")
+                submitted = st.form_submit_button("依證據回答")
+            if submitted:
+                if question.strip():
+                    st.info("此獨立分析服務將於 AWS API 串接完成後提供依證據回答；目前可使用上方圖表與政策關注度查閱資料。")
+                else:
+                    st.warning("請先輸入問題。")
+            st.markdown("#### 可以這樣問")
+            st.markdown(
+                "[目前官方證據最充分、最值得優先看的青年就業議題是哪些？](#ai-policy-analysis)　"
+                "[公共就業服務認知與使用的關注度分數是怎麼算出來的？](#ai-policy-analysis)\n\n"
+                "[青年在學用相符方面，109 到 113 年的變化是什麼？](#ai-policy-analysis)　"
+                "[不同教育程度的青年在就業服務使用上有什麼差距？](#ai-policy-analysis)　"
+                "[哪些主題的排名會因為權重設定不同而改變？](#ai-policy-analysis)\n\n"
+                "[台灣就業通的使用情形，官方資料顯示什麼？](#ai-policy-analysis)"
+            )
+
+    with st.expander("資料來源與快照範圍", expanded=False):
+        st.markdown(
+            "**來源專案**：AI Youth Policy Intelligence Dashboard（部署快照 2026-09-13）。\n\n"
+            "**主要來源**：勞動部「15–29 歲青年勞工就業狀況調查」109、111、113 年；"
+            "另含教育部教育統計與內政部戶籍人口單齡資料。\n\n"
+            "**使用限制**：就業調查為全臺受僱青年勞工的抽樣調查；教育、人口與就業資料的年齡、母體、地理與期別不同，"
+            "只可依原專案已建立的可比性規則並列閱讀。"
+        )
+
+
+def _render_ai_dashboard_cards(cards: list[tuple[str, str, str]]) -> None:
+    cards_html = "".join(
+        f'<div class="qj-career-policy-card"><span>{html.escape(label)}</span>'
+        f'<b>{html.escape(value)}</b><small>{html.escape(note)}</small></div>'
+        for label, value, note in cards
+    )
+    st.markdown(f'<div class="qj-career-policy-grid">{cards_html}</div>', unsafe_allow_html=True)
+
+
+@st.cache_data(show_spinner=False)
+def _load_ai_dashboard_snapshot() -> dict | None:
+    try:
+        with AI_DASHBOARD_SNAPSHOT_PATH.open(encoding="utf-8") as handle:
+            return json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _ai_headline_cards(cards: list[dict]) -> list[tuple[str, str, str]]:
+    return [
+        (item["title_zh"], f"{item['value']:g}{'%' if item.get('unit') == 'percent' else ''}", f"{item['survey_year']} 年｜{item['note_zh']}")
+        for item in cards if item.get("available")
+    ]
+
+
+def _ai_coverage_cards(payloads: dict) -> list[tuple[str, str, str]]:
+    return [
+        ("官方觀測值", f"{payloads['data_scope']['observation_count']:,}", "已收集的官方統計表儲存格"),
+        ("政策主題", f"{len(payloads['policy_attention'].get('topics', []))} 項", "原專案已建立的可閱讀主題"),
+        ("分類圖表", f"{len(payloads['distributions']['blocks'])} 組", "原專案設定的官方分類圖"),
+        ("歷年趨勢", f"{len(payloads['trend_charts']['charts'])} 組", "含可比性斷點規則"),
+    ]
+
+
+def _ai_chart_layout(fig: go.Figure, height: int = 360) -> go.Figure:
+    chart_text = "#102F4C"
+    fig.update_layout(
+        height=height, margin=dict(l=10, r=10, t=34, b=12),
+        paper_bgcolor="white", plot_bgcolor="white",
+        font=dict(color=chart_text, family="Noto Sans TC, sans-serif", size=14),
+        legend=dict(orientation="h", y=-0.18, x=0, font=dict(color=chart_text, size=14)),
+        hoverlabel=dict(bgcolor="#102F4C", bordercolor="#102F4C", font=dict(color="white", size=14)),
+        uniformtext=dict(minsize=12, mode="show"),
+    )
+    fig.update_xaxes(
+        gridcolor="#D8E0E8", zerolinecolor="#C8D3DE",
+        tickfont=dict(color=chart_text, size=13), title_font=dict(color=chart_text, size=14),
+    )
+    fig.update_yaxes(
+        gridcolor="#D8E0E8", zerolinecolor="#C8D3DE",
+        tickfont=dict(color=chart_text, size=13), title_font=dict(color=chart_text, size=14),
+    )
+    fig.update_traces(textfont=dict(color=chart_text, size=14))
+    return fig
+
+
+def _render_ai_distribution(block: dict, key_prefix: str) -> None:
+    if not block.get("available"):
+        st.info(f"{block['title_zh']}：{block.get('refusal_reason', '沒有可用資料')}")
+        return
+    items = [item for item in block["items"] if item.get("value") is not None]
+    st.markdown(f"#### {block['title_zh']}")
+    st.caption(f"{block['survey_year']} 年 · 樣本 {block.get('sample_size') or '—'} · {block['note_zh']}")
+    if block["chart"] == "composition":
+        fig = go.Figure(go.Pie(
+            labels=[item["short_label"] for item in items], values=[item["value"] for item in items],
+            hole=0.56, marker=dict(colors=AI_CHART_COLORS, line=dict(color="white", width=2)),
+            texttemplate="%{label}<br>%{value:.1f}%", textposition="outside",
+        ))
+        _ai_chart_layout(fig, 330)
+    else:
+        ordered = sorted(items, key=lambda item: item["value"], reverse=True)
+        fig = go.Figure(go.Bar(
+            x=[item["value"] for item in ordered], y=[item["short_label"] for item in ordered], orientation="h",
+            marker_color="#F5C242", text=[f"{item['value']:.1f}%" for item in ordered], textposition="outside", cliponaxis=False,
+        ))
+        fig.update_yaxes(autorange="reversed")
+        fig.update_xaxes(ticksuffix="%", rangemode="tozero")
+        _ai_chart_layout(fig, max(330, len(ordered) * 31 + 80))
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False}, key=f"ai-{key_prefix}-distribution-{block['block_id']}")
+    with st.expander("資料來源與限制", expanded=False):
+        st.caption(f"{block.get('source_table_id', '')} {block.get('source_table_title', '')}")
+        st.markdown(f"[查看官方統計表]({block['source_url']})")
+        if block.get("multi_select_note"):
+            st.caption(block["multi_select_note"])
+
+
+def _render_ai_trend(chart: dict) -> None:
+    st.markdown(f"#### {chart['title_zh']}")
+    st.caption(chart["note_zh"])
+    fig = go.Figure()
+    for color_index, series in enumerate(chart["series"]):
+        points = {point["survey_year"]: point for point in series["points"] if point.get("value") is not None}
+        color = AI_CHART_COLORS[color_index % len(AI_CHART_COLORS)]
+        fig.add_trace(go.Scatter(
+            x=list(points), y=[point["value"] for point in points.values()], mode="markers",
+            marker=dict(size=9, color=color), name=series["name_zh"], legendgroup=series["series_id"],
+            hovertemplate=f"{series['name_zh']}<br>%{{x}} 年：%{{y:.1f}}%<extra></extra>",
+        ))
+        for segment in series["segments"]:
+            if segment["connectable"] and segment["from_year"] in points and segment["to_year"] in points:
+                fig.add_trace(go.Scatter(
+                    x=[segment["from_year"], segment["to_year"]],
+                    y=[points[segment["from_year"]]["value"], points[segment["to_year"]]["value"]],
+                    mode="lines", line=dict(color=color, width=3), showlegend=False,
+                    legendgroup=series["series_id"], hoverinfo="skip",
+                ))
+    fig.update_xaxes(tickvals=chart["survey_years"], title="調查年度（民國）")
+    fig.update_yaxes(ticksuffix="%", rangemode="tozero")
+    _ai_chart_layout(fig)
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False}, key=f"ai-trend-{chart['chart_id']}")
+    if chart.get("has_definition_break"):
+        st.warning("此圖含問卷定義或作答方式變動；斷點兩端不作跨年變化解讀。")
+
+
+def _render_ai_service_awareness(service_data: dict) -> None:
+    if not service_data.get("available"):
+        st.info(service_data.get("reason", "沒有可用資料。"))
+        return
+    fig = go.Figure()
+    for color_index, segment in enumerate(service_data["segments"]):
+        values = []
+        for service in service_data["services"]:
+            lookup = {item["key"]: item["value"] for item in service["segments"]}
+            values.append(lookup.get(segment["key"]))
+        fig.add_trace(go.Bar(
+            name=segment["label_zh"], x=[service["service_label"] for service in service_data["services"]], y=values,
+            marker_color=AI_CHART_COLORS[color_index], hovertemplate="%{x}<br>%{fullData.name}：%{y:.1f}%<extra></extra>",
+        ))
+    fig.update_layout(barmode="stack")
+    fig.update_yaxes(range=[0, 100], ticksuffix="%")
+    _ai_chart_layout(fig, 390)
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False}, key="ai-service-awareness")
+    st.caption(service_data["note"])
+
+
+def _render_ai_subgroup(subgroup: dict) -> None:
+    if not subgroup.get("available"):
+        st.info(subgroup.get("reason", "沒有可用資料。"))
+        return
+    items = subgroup["items"]
+    fig = go.Figure()
+    fig.add_trace(go.Bar(name=items[0]["group_a"], x=[item["short_label"] for item in items], y=[item["value_a"] for item in items], marker_color="#1D5D7A"))
+    fig.add_trace(go.Bar(name=items[0]["group_b"], x=[item["short_label"] for item in items], y=[item["value_b"] for item in items], marker_color="#F5C242"))
+    fig.update_layout(barmode="group")
+    fig.update_xaxes(tickangle=-28)
+    fig.update_yaxes(ticksuffix="%", rangemode="tozero")
+    _ai_chart_layout(fig, 430)
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False}, key=f"ai-subgroup-{subgroup['dimension']}")
+    st.caption(subgroup["note"])
+
+
+def _render_ai_policy_attention(attention: dict, sensitivity: dict) -> None:
+    topics = attention.get("topics", [])
+    fig = go.Figure(go.Bar(
+        x=[item["score_display"] for item in topics[::-1]], y=[item["topic_name_zh"] for item in topics[::-1]],
+        orientation="h", marker_color="#F5C242", text=[str(item["score_display"]) for item in topics[::-1]], textposition="outside", cliponaxis=False,
+    ))
+    fig.update_xaxes(range=[0, 108], title="政策關注度分數")
+    _ai_chart_layout(fig, max(420, len(topics) * 38 + 80))
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False}, key="ai-policy-attention")
+    st.caption(attention.get("ranking_note_zh", ""))
+    profiles = sensitivity.get("profiles", [])
+    if profiles:
+        st.caption(f"已保留 {len(profiles)} 組權重敏感度設定；排名變動需回看各主題的證據元件。")
+    for item in topics:
+        with st.expander(f"#{item['rank_baseline']} {item['topic_name_zh']}｜{item['score_display']} 分", expanded=False):
+            st.caption(item["confidence_reason"])
+            st.write("可用元件：" + "、".join(item["available_components"]))
+            if item["missing_components"]:
+                st.write("缺少元件：" + "、".join(item["missing_components"]))
+            for limitation in item["limitations"][:3]:
+                st.caption("• " + limitation)
 
 
 def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, cities: gpd.GeoDataFrame) -> None:
@@ -174,8 +507,8 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
         selected_view = st.segmented_control(
             "地圖強調焦點",
             options=list(POLICY_VIEWS.keys()),
-            default="綜合政策訊號",
-            key="policy_view",
+            default="居住成本",
+            key="policy_view_focus",
         )
     with district_col:
         selected_district_layer = st.segmented_control(
@@ -192,7 +525,7 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
             key="policy_basemap",
     )
     if selected_view is None:
-        selected_view = "綜合政策訊號"
+        selected_view = "居住成本"
     if selected_district_layer is None:
         selected_district_layer = DISTRICT_ANALYSIS_LAYER_RENT
     if selected_basemap is None:
@@ -269,25 +602,6 @@ def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, ci
         st.caption(f"有效行政區：{len(youth_job_data)} 區｜資料缺值不補值")
         st.plotly_chart(build_youth_job_scatter(youth_job_data), use_container_width=True)
 
-    with st.expander("查看完整政策介入矩陣", expanded=False):
-        st.caption(
-            "完整清單保留各規則的長文字與所有命中行政區；不代表政策優先順序或正式政策處方。"
-        )
-        if intervention_matrix.empty:
-            st.info("目前沒有足夠的有效行政區資料建立政策介入矩陣。")
-        else:
-            st.dataframe(
-                intervention_matrix,
-                hide_index=True,
-                use_container_width=True,
-                column_config={
-                    "資料訊號": st.column_config.TextColumn("資料訊號", width="large"),
-                    "政策觀察": st.column_config.TextColumn("政策觀察", width="large"),
-                    "可評估工具": st.column_config.TextColumn("可評估政策方向", width="large"),
-                    "涉及行政區": st.column_config.TextColumn("涉及行政區", width="large"),
-                },
-            )
-
     with st.expander("資料來源、方法與限制", expanded=False):
         render_policy_method_notes()
 
@@ -351,7 +665,36 @@ def render_career_policy_observations(
     career_policy: pd.DataFrame,
     career_policy_md: str,
     career_ladder: pd.DataFrame | None = None,
+    nursing_policy_lens: dict | None = None,
 ) -> None:
+    source_options = [
+        "護理師｜完整示範",
+        "建築／室內設計助理｜資料建構中",
+        "餐旅／觀光服務人員｜資料建構中",
+    ]
+    nursing_source = source_options[0]
+    selected_source = st.selectbox(
+        "目前分析來源職業",
+        options=source_options,
+        index=0,
+        key="policy_career_source_dropdown",
+    )
+    if selected_source is None:
+        selected_source = nursing_source
+    st.caption("目前完整示範：護理師｜其他職業保留擴充入口")
+
+    if st.session_state.get("policy_career_active_source_occupation") != selected_source:
+        st.session_state.policy_career_view = "overview"
+        st.session_state.selected_policy_path = None
+        st.session_state.policy_career_active_source_occupation = selected_source
+
+    if selected_source != nursing_source:
+        st.info(
+            "此來源職業的政策觀察資料建構中。未來將依相同架構整合轉職壓力、技能缺口、台灣職缺訊號、課程供給與政策工具分流。"
+            "目前完整示範案例為：護理師。"
+        )
+        return
+
     paths = _career_policy_paths(career_policy, career_ladder)
     path_names = paths["target_occupation_name"].dropna().astype(str).tolist()
     if "policy_career_view" not in st.session_state:
@@ -368,7 +711,7 @@ def render_career_policy_observations(
             return
         st.session_state.policy_career_view = "overview"
 
-    _render_career_policy_overview(career_policy, career_policy_md, paths)
+    _render_nursing_policy_dashboard(nursing_policy_lens, career_policy, career_policy_md, paths)
     return
 
     context = career_policy.iloc[0]
@@ -547,6 +890,260 @@ def render_career_policy_observations(
         )
 
 
+def _render_nursing_policy_dashboard(
+    nursing_policy_lens: dict | None,
+    career_policy: pd.DataFrame,
+    career_policy_md: str,
+    paths: pd.DataFrame,
+) -> None:
+    if not nursing_policy_lens:
+        # Fallback to the existing overview when the demo JSON is unavailable.
+        _render_career_policy_overview(career_policy, career_policy_md, paths)
+        return
+
+    st.markdown(
+        """
+        <div class="qj-policy-section-head">
+            <div class="qj-policy-section-title">護理人力政策觀察｜留任改善與轉職支持</div>
+            <div class="qj-policy-section-copy">本頁不預測個人轉職成功率，而是整合護理人力現況、工作條件訊號、技能可轉移性與訓練資源，協助青年局判斷政策應優先放在留才、開課、補助、媒合，或補充調查。</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.info(
+        "關鍵結論：護理人力問題不是單純「缺人就多開課」。對想留下的人，政策應改善工作條件與留任支持；"
+        "對想轉換的人，政策應提供跨域課程、補助與實務媒合。"
+    )
+
+    st.markdown("#### 整體青年職涯與培訓背景指標")
+    _render_nursing_youth_background(career_policy, career_policy_md)
+
+    _render_nursing_policy_split()
+
+    st.markdown("#### 護理人力現況指標")
+    _render_nursing_kpi_cards(nursing_policy_lens.get("status_cards", []))
+
+    _render_nursing_evidence_matrix(nursing_policy_lens.get("transition_paths", []))
+
+    for limitation in nursing_policy_lens.get("limitations", []) or []:
+        st.info(str(limitation))
+
+    with st.expander("查看護理師詳細分析、資料明細與模型輸出", expanded=True):
+        st.markdown("#### 查看護理師各轉職路徑詳細分析")
+        _render_policy_path_cards(paths)
+        st.markdown("#### 資料明細與模型輸出")
+        st.markdown("**Skill Gap**")
+        _render_skill_gap_chart(career_policy)
+        st.markdown("**Market evidence**")
+        _render_market_evidence_table(career_policy)
+        st.markdown("**Training Gap**")
+        _render_training_gap_table(career_policy)
+        st.markdown("**Technical fields**")
+        _render_all_paths_technical_table(paths)
+        _render_career_policy_limitations()
+
+
+def _render_nursing_kpi_cards(status_cards: list[dict]) -> None:
+    if not status_cards:
+        return
+    cards_html = "".join(
+        f'<div class="qj-career-policy-card"><span>{html.escape(str(card.get("label", "")))}</span>'
+        f'<b>{html.escape(str(card.get("value", "資料待補")))}</b>'
+        f'<small>{html.escape(str(card.get("note", "")))}</small></div>'
+        for card in status_cards[:4]
+    )
+    st.markdown(f'<div class="qj-career-policy-grid">{cards_html}</div>', unsafe_allow_html=True)
+
+
+def _render_nursing_policy_split_card(
+    title: str, scenario: str, tools: list[str], needed_data: list[str]
+) -> None:
+    with st.container(border=True):
+        st.markdown(f"**{title}**")
+        st.caption(scenario)
+        tools_col, data_col = st.columns(2, gap="medium")
+        with tools_col:
+            st.markdown("**政策工具**")
+            for item in tools:
+                st.markdown(f"- {item}")
+        with data_col:
+            st.markdown("**需要資料**")
+            for item in needed_data:
+                st.markdown(f"- {item}")
+
+
+def _render_nursing_policy_split() -> None:
+    st.markdown("### 政策分流：留任改善 vs 轉職支持")
+    left, right = st.columns(2, gap="medium")
+    with left:
+        _render_nursing_policy_split_card(
+            "留任改善",
+            "適用情境：需求訊號高、留任 / 吸引力風險高、技能缺口低，代表問題不在訓練不足，而在工作條件與職涯支持。",
+            [
+                "改善排班與休假彈性",
+                "追蹤護病比與夜班負擔",
+                "降低行政填報負擔",
+                "留任支持與職涯分級",
+                "與衛生局、醫療院所合作改善職場環境",
+            ],
+            [
+                "護病比月資料",
+                "護理人員年齡分布",
+                "離職原因問卷",
+                "加班 / 輪班 / 休假資料",
+                "留任措施前後比較",
+            ],
+        )
+    with right:
+        _render_nursing_policy_split_card(
+            "轉職支持",
+            "適用情境：青年仍希望離開臨床，但可保留護理專業，轉向醫療資訊、臨床資料管理、個案管理、長照協調等相鄰路徑。",
+            [
+                "免費線上資源與技能自評",
+                "短期跨域課程",
+                "完成 prerequisite 後取得補助資格",
+                "進階課程 / 證照 / 專題補助",
+                "醫院資訊部門、研究單位、長照機構實習與媒合",
+            ],
+            [
+                "青年探索紀錄",
+                "skill gap 統計",
+                "課程時數與費用",
+                "報名人數與結訓率",
+                "課後就業率",
+                "轉職後薪資變化",
+            ],
+        )
+
+
+def _render_nursing_evidence_matrix(transition_paths: list[dict]) -> None:
+    st.markdown("### 護理師轉職與留任路徑 Evidence Matrix")
+    if not transition_paths:
+        st.info("目前沒有可顯示的護理師轉職與留任路徑。")
+        return
+    rows = [
+        {
+            "路徑": path.get("路徑", "資料待補"),
+            "需求訊號": path.get("市場需求", "資料待補"),
+            "留任 / 吸引力風險": path.get("留任／吸引力風險", "資料待補"),
+            "技能缺口": path.get("技能缺口", "資料待補"),
+            "課程供給": path.get("現有課程供給", "資料待補"),
+            "建議政策工具": path.get("建議政策工具", "資料待補"),
+            "資料可信度": path.get("資料可信度", "資料待補"),
+        }
+        for path in transition_paths
+    ]
+    st.dataframe(
+        pd.DataFrame(rows),
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "路徑": st.column_config.TextColumn("路徑", width="medium"),
+            "需求訊號": st.column_config.TextColumn("需求訊號"),
+            "留任 / 吸引力風險": st.column_config.TextColumn("留任 / 吸引力風險"),
+            "技能缺口": st.column_config.TextColumn("技能缺口"),
+            "課程供給": st.column_config.TextColumn("課程供給"),
+            "建議政策工具": st.column_config.TextColumn("建議政策工具", width="large"),
+            "資料可信度": st.column_config.TextColumn("資料可信度"),
+        },
+    )
+    st.caption("「需求訊號」代表資料訊號的相對強弱，不是精準市場預測。")
+
+
+def _render_nursing_youth_background(career_policy: pd.DataFrame, career_policy_md: str) -> None:
+    context = career_policy.iloc[0]
+    st.markdown(
+        f"""
+        <div class="qj-career-policy-grid">
+            <div class="qj-career-policy-card"><span>新北青年母體</span><b>{int(float(context['ntpc_population_18_35'])):,}</b><small>歷史 snapshot｜Exact 18–35｜{html.escape(str(context['ntpc_population_age_harmonization']))}</small></div>
+            <div class="qj-career-policy-card"><span>有轉換工作打算</span><b>{float(context['mol_transition_intention_percent']):.1f}%</b><small>Proxy 15–29｜{html.escape(str(context['mol_transition_age_harmonization']))}</small></div>
+            <div class="qj-career-policy-card"><span>近一年參加教育訓練</span><b>{float(context['mol_training_participation_percent']):.1f}%</b><small>Proxy 15–29｜{html.escape(str(context['mol_training_age_harmonization']))}</small></div>
+            <div class="qj-career-policy-card"><span>訓練資訊 / 費用障礙</span><b>{float(context['mol_no_course_info_percent']):.1f}% / {float(context['mol_fee_barrier_percent']):.1f}%</b><small>未參訓者｜單選主因｜Proxy</small></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "年齡範圍不同：新北人口為 Exact 18–35；MOL 勞動與培訓指標為全台 15–29 Proxy。人口資料為歷史 snapshot，不作同期比較。"
+    )
+    for observation in _extract_policy_observations(career_policy_md)[:5]:
+        st.caption(f"- {observation}")
+
+
+def _build_nursing_diagnosis_matrix(matrix: dict) -> go.Figure:
+    nodes = matrix.get("nodes", [])
+    colors = ["#C2410C", "#0F766E", "#2F6F9F", "#7C5C99"]
+    text_positions = ["top center", "middle left", "middle right", "bottom center"]
+    fig = go.Figure()
+    for index, node in enumerate(nodes):
+        fig.add_trace(
+            go.Scatter(
+                x=[float(node.get("market_demand", 0))],
+                y=[float(node.get("retention_risk", 0))],
+                mode="markers+text",
+                text=[str(node.get("name", ""))],
+                textposition=text_positions[index % len(text_positions)],
+                marker={
+                    "size": 22 if index == 0 else 15,
+                    "color": colors[index % len(colors)],
+                    "line": {"color": "#FFFFFF", "width": 1},
+                },
+                customdata=[[str(node.get("market_label", "")), str(node.get("risk_label", ""))]],
+                hovertemplate="%{text}<br>需求訊號：%{customdata[0]}<br>留任／吸引力風險：%{customdata[1]}<extra></extra>",
+                showlegend=False,
+            )
+        )
+    fig.add_vline(x=2, line_dash="dash", line_color="#CBD5E1")
+    fig.add_hline(y=2, line_dash="dash", line_color="#CBD5E1")
+    fig.update_layout(
+        height=300,
+        margin={"l": 8, "r": 8, "t": 12, "b": 4},
+        plot_bgcolor="#F8FAFC",
+        paper_bgcolor="rgba(0,0,0,0)",
+        xaxis={
+            "title": "需求訊號（低 → 高）",
+            "range": [0.65, 3.35],
+            "tickvals": [1, 2, 3],
+            "ticktext": ["低", "中", "高"],
+            "gridcolor": "#E2E8F0",
+        },
+        yaxis={
+            "title": "留任 / 吸引力風險（低 → 高）",
+            "range": [0.65, 3.35],
+            "tickvals": [1, 2, 3],
+            "ticktext": ["低", "中", "高"],
+            "gridcolor": "#E2E8F0",
+        },
+    )
+    return fig
+
+
+def _build_nursing_trend_chart(chart: dict) -> go.Figure:
+    points = chart.get("points", [])
+    fig = go.Figure(
+        go.Scatter(
+            x=[str(point.get("year", "")) for point in points],
+            y=[float(point.get("value", 0)) for point in points],
+            mode="lines+markers+text",
+            text=[f"{float(point.get('value', 0)):.2f}%" for point in points],
+            textposition="top center",
+            line={"color": "#0F766E", "width": 3},
+            marker={"color": "#0F766E", "size": 9},
+            hovertemplate="%{x}<br>%{y:.2f}%<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        height=240,
+        margin={"l": 8, "r": 8, "t": 12, "b": 4},
+        plot_bgcolor="#F8FAFC",
+        paper_bgcolor="rgba(0,0,0,0)",
+        showlegend=False,
+        yaxis={"title": str(chart.get("y_label", "")), "rangemode": "tozero", "gridcolor": "#E2E8F0"},
+        xaxis={"title": None, "type": "category"},
+    )
+    return fig
+
+
 def _render_career_policy_overview(
     career_policy: pd.DataFrame,
     career_policy_md: str,
@@ -556,8 +1153,8 @@ def _render_career_policy_overview(
     st.markdown(
         """
         <div class="qj-policy-section-head">
-            <div class="qj-policy-section-title">職涯政策觀察</div>
-            <div class="qj-policy-section-copy">整合青年統計、轉職 feasibility、TaiwanJobs 市場訊號與職訓課程證據；不產生成功率、排名或補助金額。</div>
+            <div class="qj-policy-section-title">職涯政策觀察｜從來源職業出發的轉職與培訓路徑</div>
+            <div class="qj-policy-section-copy">從選定的來源職業出發，觀察其轉職與培訓路徑的需求、技能缺口、市場訊號與課程供給；這不是所有目標職業的通用頁，也不產生成功率、排名或補助金額。</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -582,7 +1179,7 @@ def _render_career_policy_overview(
         "潛在課程覆蓋可作為課程供給訊號，不代表完整 curriculum 或技能已補足。",
         "High=0 應解讀為公開市場證據不足，不代表職涯不存在。",
     ]
-    st.markdown("### 可檢視的轉職與培訓路徑")
+    st.markdown("### 護理師可檢視的轉職與培訓路徑")
     st.caption(
         "結合轉職可行性、培訓課程與市場訊號，協助青年局判斷哪些路徑值得先補資料或設計支持工具。"
     )
@@ -647,7 +1244,7 @@ def _render_policy_path_cards(paths: pd.DataFrame) -> None:
             title = str(row["target_occupation_name"])
             with columns[offset]:
                 with st.container(border=True, key=f"policy_career_path_{index}"):
-                    st.markdown(f"**{_occupation_zh(title)}**")
+                    st.markdown(f"**護理師 → {_occupation_zh(title)}**")
                     st.caption(title)
                     st.caption(f"政策介入：{_intervention_zh(str(row.get('policy_intervention_types', '')))}")
                     st.caption(f"市場訊號：{_market_status_label(row)}｜學習負擔：{_learning_burden_zh(row.get('learning_burden'))}")
@@ -747,6 +1344,35 @@ def _render_policy_evidence_reason(value: object) -> None:
         with st.expander("查看證據理由", expanded=False):
             for reason in reasons[4:]:
                 st.caption(f"- {reason}")
+
+
+def _render_skill_gap_chart(career_policy: pd.DataFrame) -> None:
+    skill_gap = _common_skill_gaps(career_policy).head(8)
+    if skill_gap.empty:
+        st.info("目前沒有可整理的 missing skill。")
+        return
+    chart_data = skill_gap.copy()
+    chart_data["技能"] = chart_data["skill"].map(_skill_zh)
+    chart_data = chart_data.sort_values("path_count")
+    figure = px.bar(
+        chart_data,
+        x="path_count",
+        y="技能",
+        orientation="h",
+        text="path_count",
+        labels={"path_count": "出現路徑數", "技能": ""},
+        color_discrete_sequence=["#8FCBAA"],
+    )
+    figure.update_layout(
+        height=280,
+        margin={"l": 4, "r": 4, "t": 8, "b": 4},
+        plot_bgcolor="#F8FAFC",
+        paper_bgcolor="rgba(0,0,0,0)",
+        showlegend=False,
+        xaxis={"dtick": 1, "gridcolor": "#E2E8F0", "title": "出現路徑數"},
+    )
+    st.plotly_chart(figure, use_container_width=True, config={"displayModeBar": False})
+    st.caption("橫軸為該技能出現在幾條探索路徑（分母為 8 條），代表跨路徑共通的技能缺口，不是需求人數或重要度。")
 
 
 def _render_skill_gap_table(career_policy: pd.DataFrame) -> None:
@@ -1230,6 +1856,33 @@ def _translate_policy_observation(text: str) -> str:
     return translations.get(text, text)
 
 
+def _add_policy_metro_lines(map_obj: folium.Map, metro_lines: dict) -> None:
+    """Draw all metro lines using each line's own color; used only for the 交通可達 view."""
+    features = metro_lines.get("features", []) if isinstance(metro_lines, dict) else []
+    if not features:
+        return
+
+    def line_style(feature: dict) -> dict:
+        properties = feature.get("properties", {})
+        color = str(properties.get("line_color") or "#4F83A6")
+        return {"color": color, "weight": 3.4, "opacity": 0.8}
+
+    group = folium.FeatureGroup(name="捷運路線", show=True)
+    folium.GeoJson(
+        metro_lines,
+        name="捷運路線",
+        style_function=line_style,
+        control=False,
+        tooltip=folium.GeoJsonTooltip(
+            fields=["line_name_zh", "line_id"],
+            aliases=["路線", "Line"],
+            labels=True,
+            sticky=False,
+        ),
+    ).add_to(group)
+    group.add_to(map_obj)
+
+
 def build_policy_map(
     policy: pd.DataFrame,
     towns: gpd.GeoDataFrame,
@@ -1256,14 +1909,22 @@ def build_policy_map(
         control_scale=True,
         prefer_canvas=True,
     )
-    _add_policy_basemap(map_obj, basemap)
+    if view == "生活機能":
+        _add_policy_landuse_basemap(map_obj)
+        _add_ntpc_focus_mask(map_obj, towns)
+    else:
+        _add_policy_basemap(map_obj, basemap)
     _fit_policy_bounds(map_obj, policy)
     _add_policy_boundaries(map_obj, towns, cities)
     _add_policy_district_analysis_layer(map_obj, towns, district_analysis_layer)
+    if view == "交通可達":
+        _add_policy_metro_lines(map_obj, load_metro_lines())
 
+    value_span = max_value - min_value
     for _, row in policy.iterrows():
         value = float(row[view_config["field"]])
-        radius = 9.0
+        normalized = (value - min_value) / value_span if value_span > 0 else 0.5
+        radius = 6.0 + normalized * 10.0
         color = color_map(value)
         tooltip = _integrated_policy_tooltip(row)
 
@@ -1734,6 +2395,45 @@ def render_policy_method_notes() -> None:
         """,
         unsafe_allow_html=True,
     )
+
+
+def _add_policy_landuse_basemap(map_obj: folium.Map) -> None:
+    """Use the NLSC public land-use survey tiles as the basemap (for the 生活機能 view)."""
+    folium.TileLayer(
+        tiles=NLSC_LANDUSE_TILE_URL,
+        name="土地使用分區",
+        attr=NLSC_LANDUSE_ATTR,
+        overlay=False,
+        control=False,
+        show=True,
+    ).add_to(map_obj)
+
+
+def _add_ntpc_focus_mask(map_obj: folium.Map, towns: gpd.GeoDataFrame) -> None:
+    """Dim everything outside New Taipei City so the land-use basemap highlights NTPC."""
+    ntpc = towns[towns["COUNTYNAME"] == "新北市"]
+    if ntpc.empty:
+        return
+    from shapely.geometry import box, mapping
+    from shapely.ops import unary_union
+
+    try:
+        ntpc_area = unary_union(list(ntpc.geometry))
+        outer = box(120.9, 24.4, 122.3, 25.7)
+        mask = outer.difference(ntpc_area)
+    except Exception:
+        return
+    folium.GeoJson(
+        data=mapping(mask),
+        name="新北聚焦遮罩",
+        control=False,
+        style_function=lambda _feature: {
+            "fillColor": "#F1EEE6",
+            "color": "#F1EEE6",
+            "weight": 0,
+            "fillOpacity": 0.8,
+        },
+    ).add_to(map_obj)
 
 
 def _add_policy_basemap(map_obj: folium.Map, basemap: str) -> None:
