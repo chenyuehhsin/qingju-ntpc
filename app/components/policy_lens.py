@@ -183,62 +183,103 @@ def render_ai_policy_dashboard(
     towns: gpd.GeoDataFrame,
     career_policy: pd.DataFrame | None,
 ) -> None:
-    """Render the cross-domain entry point without inventing a policy score.
+    """Embed the source project's dashboard content in Qingju's native style.
 
-    This page deliberately reuses the evidence already supplied to the two
-    neighbouring Policy Lens tabs.  It is an AI-assisted reading surface, not
-    a new model, ranking, prediction, or policy prescription.
+    The figures are a fixed, traceable snapshot of the supplied AI Youth
+    Policy Intelligence Dashboard release (2026-09-12), not values inferred
+    from Qingju's housing or career data.  This keeps the two products' data
+    scopes separate while presenting the source dashboard inside this site.
     """
-    career_path_count = 0 if career_policy is None else len(career_policy)
-    living_area_count = int(policy["candidate_name"].nunique()) if "candidate_name" in policy else len(policy)
-    district_count = int(towns["district"].nunique()) if "district" in towns else len(towns)
+    _ = policy, towns, career_policy  # This tab intentionally does not mix product datasets.
+    headline_cards = [
+        ("打算轉換工作", "33.9%", "113 年｜現職青年勞工中打算轉換工作的比率"),
+        ("初次尋職遇到困難", "46.4%", "113 年｜非學生青年勞工初次尋職時遇到困難的比率"),
+        ("過去一年參加教育訓練", "50.8%", "113 年｜含雇主提供與自行參加的訓練"),
+        ("持有專業證照", "63.6%", "113 年｜持有任一種證照的青年勞工比率"),
+    ]
+    coverage_cards = [
+        ("就業 Employment", "35,600", "官方觀測值 · 33 項註冊指標"),
+        ("教育 Education", "22", "官方觀測值 · 3 項註冊指標"),
+        ("人口 Population", "1,212", "官方觀測值 · 1 項註冊指標"),
+    ]
 
     st.markdown(
         """
         <div class="qj-policy-section-head">
             <div class="qj-policy-section-title">AI 青年政策智慧儀表板</div>
-            <div class="qj-policy-section-copy">把職涯與安居分支中已揭露的資料範圍、政策訊號與限制放在同一個閱讀入口。AI 小幫手只依青聚既有資料回答，並保留來源、期間與限制。</div>
+            <div class="qj-policy-section-copy">勞動部 15–29 歲青年勞工就業狀況調查 · 109／111／113 年 · 36,834 筆官方統計數值</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+    st.caption("本區完整保留原專案的資料主題與解讀邊界，並以青聚新北的 Policy Lens 版型呈現。")
 
-    cards = [
-        ("行政區資料範圍", f"{district_count} 區", "新北市行政區資料；不等同於車站生活圈。"),
-        ("安居觀察生活圈", f"{living_area_count} 個", "租金、通勤與生活機能皆保留原始資料尺度。"),
-        ("職涯政策路徑", f"{career_path_count} 條", "未載入時不補算；不代表轉職成功率。"),
-        ("政策判讀方式", "可追溯", "每個回答都應回看資料來源、期間與限制。"),
-    ]
+    overview_tab, employment_tab, attention_tab, analyst_tab = st.tabs(
+        ["總覽", "青年就業數據", "政策關注度", "AI 政策分析"]
+    )
+    with overview_tab:
+        st.markdown("### 三大政策領域資料覆蓋")
+        coverage_html = "".join(
+            f'<div class="qj-career-policy-card"><span>{html.escape(label)}</span>'
+            f'<b>{html.escape(value)}</b><small>{html.escape(note)}</small></div>'
+            for label, value, note in coverage_cards
+        )
+        st.markdown(f'<div class="qj-career-policy-grid">{coverage_html}</div>', unsafe_allow_html=True)
+        st.caption("跨部會資料採並列 contextual linkage；不同年齡範圍、地理尺度或年度不作未經驗證的加減、相關或因果推論。")
+
+        st.markdown("### 青年就業重點數據")
+        _render_ai_dashboard_cards(headline_cards)
+        st.info("四張卡片各自對應一個官方統計表儲存格，不是加總、重新計算的比率或年度變化。")
+
+    with employment_tab:
+        st.markdown("### 青年就業數據")
+        st.caption("最新可用調查輪次為 113 年；每一個比率保留原問卷的母體與題目定義。")
+        _render_ai_dashboard_cards(headline_cards)
+        st.markdown("#### 讀取重點")
+        for title, value, note in headline_cards:
+            st.markdown(f"- **{title}：{value}**｜{note}")
+        st.warning("調查範圍為全臺 15–29 歲青年勞工，不能直接視為新北市 18–35 歲青年人口或車站生活圈的數值。")
+
+    with attention_tab:
+        st.markdown("### 政策關注度")
+        st.caption("原專案將已收集的官方證據整理為閱讀順序；它不是政府績效、政策成敗、預算價值或因果優先順序。")
+        topic_cards = [
+            ("已建立政策主題", "11 項", "職涯進入、轉職、就業品質、服務認知、訓練與技能等主題"),
+            ("已整理政策訊號", "281 筆", "先經資料品質與可比性規則篩選，再供人工閱讀"),
+            ("跨部會並列連結", "2 組", "僅作 contextual linkage，不做跨資料集算術運算"),
+            ("權重敏感度", "5 組設定", "分數變動需回看證據元件，不以單一排名作結論"),
+        ]
+        _render_ai_dashboard_cards(topic_cards)
+        st.info("如需看新北在地的安居或職涯政策資料，請切換回上方的「安居政策觀察」與「職涯政策觀察」。")
+
+    with analyst_tab:
+        st.markdown("### AI 政策分析")
+        st.markdown(
+            "AI 分析僅能依據已收集、檢索到且通過驗證的證據回答。統計數字必須存在於證據中；"
+            "資料不足時系統應拒答，而不是補造數值或政策處方。"
+        )
+        with st.container(border=True):
+            st.markdown("**可從右下角「青聚小幫手」開始提問**")
+            st.caption("例如：哪些行政區值得進一步觀察？或板橋目前青年人口有多少？回答會附上資料來源、期間與限制。")
+        st.warning("本網站的在地小幫手使用青聚既有資料；本分頁展示的原專案數據範圍為全臺 15–29 歲青年勞工調查，兩者不混合運算。")
+
+    with st.expander("資料來源與快照範圍", expanded=False):
+        st.markdown(
+            "**來源專案**：AI Youth Policy Intelligence Dashboard v1.0-competition（2026-09-12）。\n\n"
+            "**主要來源**：勞動部「15–29 歲青年勞工就業狀況調查」109、111、113 年；"
+            "另含教育部教育統計與內政部戶籍人口單齡資料。\n\n"
+            "**使用限制**：就業調查為全臺受僱青年勞工的抽樣調查；教育、人口與就業資料的年齡、母體、地理與期別不同，"
+            "只可依原專案已建立的可比性規則並列閱讀。"
+        )
+
+
+def _render_ai_dashboard_cards(cards: list[tuple[str, str, str]]) -> None:
     cards_html = "".join(
         f'<div class="qj-career-policy-card"><span>{html.escape(label)}</span>'
         f'<b>{html.escape(value)}</b><small>{html.escape(note)}</small></div>'
         for label, value, note in cards
     )
     st.markdown(f'<div class="qj-career-policy-grid">{cards_html}</div>', unsafe_allow_html=True)
-
-    st.markdown("### 三個政策觀察分支")
-    branch_columns = st.columns(3, gap="medium")
-    branches = [
-        ("職涯政策觀察", "查看青年職涯、轉職、技能缺口、訓練與市場證據。"),
-        ("安居政策觀察", "查看租金、交通可達性、生活機能與行政區政策背景。"),
-        ("AI 青年政策智慧儀表板", "跨分支整理可問的資料問題，並由小幫手提供可追溯回答。"),
-    ]
-    for column, (title, copy) in zip(branch_columns, branches):
-        with column:
-            with st.container(border=True):
-                st.markdown(f"**{title}**")
-                st.caption(copy)
-
-    st.info(
-        "可在右下角開啟「青聚小幫手」，例如詢問「哪些行政區值得進一步觀察？」或「板橋目前青年人口有多少？」。"
-        "系統不產生綜合政策排名、個人成功率、因果推論或未經資料支持的政策處方。"
-    )
-    with st.expander("AI 回答的資料範圍與使用方式", expanded=False):
-        st.markdown(
-            "- 小幫手使用此網站既有的行政區、職涯、安居與 Policy Lens 資料。\n"
-            "- 回答會揭露資料來源、資料期間、樣本與已知限制；資料不足時會明確說明。\n"
-            "- 行政區資料、車站生活圈、不同年度與不同年齡定義不能直接當作同一尺度比較。"
-        )
 
 
 def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, cities: gpd.GeoDataFrame) -> None:
