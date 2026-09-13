@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import html
 from collections.abc import Callable
 
 import pandas as pd
@@ -147,11 +146,7 @@ def _render_comparison_mode_cards(top1: pd.DataFrame) -> None:
         with st.container(border=True, key=f"housing_mode_card_{index}"):
             title_col, action_col = st.columns([0.68, 0.32], gap="small")
             with title_col:
-                st.markdown(
-                    f'<div class="qj-mode-card-title">{html.escape(str(mode))}'
-                    f'<span class="qj-mode-card-area">｜{html.escape(str(row["living_area"]))}</span></div>',
-                    unsafe_allow_html=True,
-                )
+                st.markdown(f"### {mode}")
             with action_col:
                 st.button(
                     f"查看{mode}",
@@ -160,6 +155,7 @@ def _render_comparison_mode_cards(top1: pd.DataFrame) -> None:
                     on_click=_open_single_mode,
                     args=(mode,),
                 )
+            st.markdown(f"**{row['living_area']}**")
             st.caption(
                 f"月租中位數 {money(row['rent'])} NTD｜通勤 {minutes(row['commute_minutes'])}｜"
                 f"生活機能 {float(row['livability_index']):.3f}"
