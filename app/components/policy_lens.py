@@ -42,6 +42,7 @@ from data_loader import (
     load_metro_lines,
     money,
 )
+from local_policy_answer import answer_policy_question
 
 
 POLICY_BASEMAP_MINIMAL = "極簡底圖"
@@ -289,9 +290,13 @@ def render_ai_policy_dashboard(
                 submitted = st.form_submit_button("依證據回答")
             if submitted:
                 if question.strip():
-                    st.info(
-                        "此版本不連接外部 AI 或 AWS 服務。請直接使用上方圖表、政策關注度與資料來源，"
-                        "依已驗證的官方證據進行查閱。"
+                    st.markdown("#### 回答")
+                    st.markdown(
+                        answer_policy_question(
+                            question,
+                            st.session_state["ai_policy_analysis_topic"],
+                            payloads,
+                        )
                     )
                 else:
                     st.warning("請先輸入問題。")
