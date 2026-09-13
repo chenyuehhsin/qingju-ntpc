@@ -275,7 +275,7 @@ def render_qingju_assistant(page: str) -> None:
         with st.popover("青聚小幫手", use_container_width=True):
             with st.container(key="qingju_assistant_content"):
                 st.subheader("青聚小幫手")
-                st.caption(f"陪你探索青聚新北 · 目前頁面：{page}。點擊外側或按 Esc 可收起。")
+                st.caption(f"陪你探索青聚新北 · 目前頁面：{page}。僅使用青聚既有的新北資料；AI 政策分析為獨立服務。")
                 examples = ["自行輸入", "職涯探索可以看什麼？", "護理轉職科技有哪些方向？",
                             "板橋目前青年人口有多少？", "比較板橋與淡水", "板橋租金是多少？",
                             "哪些行政區值得進一步觀察？", "每千名青年求才人數是什麼？"]
@@ -326,4 +326,4 @@ def render_qingju_assistant(page: str) -> None:
                         for note in result["limitations"]:
                             st.caption(note)
                 else:
-                    st.info("可以問職涯探索、行政區人口、職缺、租金與政策觀察；所有數字來自青聚網站既有資料。")
+                    st.info("可以問職涯探索、行政區人口、職缺、租金與政策觀察；所有數字僅來自青聚網站既有的新北資料。")
