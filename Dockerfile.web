@@ -11,7 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Keep all application assets in a single layer. CloudShell uses the VFS
 # Docker driver, where one layer per directory can exhaust its small disk.
-COPY app assets data outputs knowledge_base ./
+# Copying the repository preserves paths such as /app/app/app.py.
+COPY . ./
 
 EXPOSE 8501
 

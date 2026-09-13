@@ -1,0 +1,14 @@
+.git
+.venv
+.python
+.pytest_cache
+**/__pycache__
+**/*.pyc
+.aws
+.devcontainer
+.kiro
+backend
+docs
+frontend
+notebooks
+tests
