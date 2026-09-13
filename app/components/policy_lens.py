@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html
+import json
 import os
 import re
 import tempfile
@@ -16,6 +17,14 @@ from branca.colormap import LinearColormap
 from branca.element import MacroElement, Template
 
 PROJECT_CACHE_DIR = Path(tempfile.gettempdir()) / "qingju_ntpc_cache"
+AI_DASHBOARD_SNAPSHOT_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "data"
+    / "processed"
+    / "ai_youth_dashboard"
+    / "official_dashboard_snapshot.json"
+)
+AI_CHART_COLORS = ["#F5C242", "#1D5D7A", "#4C9173", "#D97950", "#8A6B3D", "#6E86A6"]
 os.environ.setdefault("XDG_CACHE_HOME", str(PROJECT_CACHE_DIR / "xdg"))
 os.environ.setdefault("MPLCONFIGDIR", str(PROJECT_CACHE_DIR / "matplotlib"))
 
@@ -183,74 +192,84 @@ def render_ai_policy_dashboard(
     towns: gpd.GeoDataFrame,
     career_policy: pd.DataFrame | None,
 ) -> None:
-    """Embed the source project's dashboard content in Qingju's native style.
-
-    The figures are a fixed, traceable snapshot of the supplied AI Youth
-    Policy Intelligence Dashboard release (2026-09-12), not values inferred
-    from Qingju's housing or career data.  This keeps the two products' data
-    scopes separate while presenting the source dashboard inside this site.
-    """
+    """Render the source dashboard's charts in Qingju's native UI."""
     _ = policy, towns, career_policy  # This tab intentionally does not mix product datasets.
-    headline_cards = [
-        ("打算轉換工作", "33.9%", "113 年｜現職青年勞工中打算轉換工作的比率"),
-        ("初次尋職遇到困難", "46.4%", "113 年｜非學生青年勞工初次尋職時遇到困難的比率"),
-        ("過去一年參加教育訓練", "50.8%", "113 年｜含雇主提供與自行參加的訓練"),
-        ("持有專業證照", "63.6%", "113 年｜持有任一種證照的青年勞工比率"),
-    ]
-    coverage_cards = [
-        ("就業 Employment", "35,600", "官方觀測值 · 33 項註冊指標"),
-        ("教育 Education", "22", "官方觀測值 · 3 項註冊指標"),
-        ("人口 Population", "1,212", "官方觀測值 · 1 項註冊指標"),
-    ]
+    snapshot = _load_ai_dashboard_snapshot()
+    if snapshot is None:
+        st.error("AI 青年政策智慧儀表板的資料快照未載入。")
+        return
+    payloads = snapshot["api_payloads"]
+    scope = payloads["data_scope"]
 
     st.markdown(
         """
         <div class="qj-policy-section-head">
             <div class="qj-policy-section-title">AI 青年政策智慧儀表板</div>
-            <div class="qj-policy-section-copy">勞動部 15–29 歲青年勞工就業狀況調查 · 109／111／113 年 · 36,834 筆官方統計數值</div>
+            <div class="qj-policy-section-copy">勞動部 15–29 歲青年勞工就業狀況調查 · 109／111／113 年 · 完整保留原專案圖表與資料限制</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    st.caption("本區完整保留原專案的資料主題與解讀邊界，並以青聚新北的 Policy Lens 版型呈現。")
+    st.caption(
+        f"資料範圍：{scope['population_definition']}｜{scope['geography_label']}｜"
+        f"{scope['observation_count']:,} 筆官方觀測值。圖表資料以 {snapshot['snapshot_version']} 快照部署。"
+    )
 
-    overview_tab, employment_tab, attention_tab, analyst_tab = st.tabs(
-        ["總覽", "青年就業數據", "政策關注度", "AI 政策分析"]
+    overview_tab, employment_tab, trends_tab, attention_tab, analyst_tab = st.tabs(
+        ["總覽", "青年就業數據", "歷年趨勢與服務", "政策關注度", "AI 政策分析"]
     )
     with overview_tab:
         st.markdown("### 三大政策領域資料覆蓋")
-        coverage_html = "".join(
-            f'<div class="qj-career-policy-card"><span>{html.escape(label)}</span>'
-            f'<b>{html.escape(value)}</b><small>{html.escape(note)}</small></div>'
-            for label, value, note in coverage_cards
-        )
-        st.markdown(f'<div class="qj-career-policy-grid">{coverage_html}</div>', unsafe_allow_html=True)
+        _render_ai_dashboard_cards(_ai_coverage_cards(payloads))
         st.caption("跨部會資料採並列 contextual linkage；不同年齡範圍、地理尺度或年度不作未經驗證的加減、相關或因果推論。")
 
         st.markdown("### 青年就業重點數據")
-        _render_ai_dashboard_cards(headline_cards)
+        _render_ai_dashboard_cards(_ai_headline_cards(payloads["cards"]["cards"]))
         st.info("四張卡片各自對應一個官方統計表儲存格，不是加總、重新計算的比率或年度變化。")
+        left, right = st.columns(2, gap="medium")
+        blocks = {item["block_id"]: item for item in payloads["distributions"]["blocks"]}
+        with left:
+            _render_ai_distribution(blocks["job_change_reason"], "overview")
+        with right:
+            _render_ai_distribution(blocks["first_job_search_difficulty"], "overview")
 
     with employment_tab:
         st.markdown("### 青年就業數據")
-        st.caption("最新可用調查輪次為 113 年；每一個比率保留原問卷的母體與題目定義。")
-        _render_ai_dashboard_cards(headline_cards)
-        st.markdown("#### 讀取重點")
-        for title, value, note in headline_cards:
-            st.markdown(f"- **{title}：{value}**｜{note}")
+        st.caption("最新可用調查輪次為 113 年；完整保留原專案的 8 組分類圖。每一個比率保留原問卷的母體與題目定義。")
+        blocks = payloads["distributions"]["blocks"]
+        for start in range(0, len(blocks), 2):
+            chart_left, chart_right = st.columns(2, gap="medium")
+            with chart_left:
+                _render_ai_distribution(blocks[start], "employment")
+            if start + 1 < len(blocks):
+                with chart_right:
+                    _render_ai_distribution(blocks[start + 1], "employment")
         st.warning("調查範圍為全臺 15–29 歲青年勞工，不能直接視為新北市 18–35 歲青年人口或車站生活圈的數值。")
+
+    with trends_tab:
+        st.markdown("### 歷年趨勢與政府服務")
+        st.caption("所有折線只連接原專案判定為可比較的相鄰年度；定義改變處保留斷點。")
+        trend_charts = payloads["trend_charts"]["charts"]
+        for start in range(0, len(trend_charts), 2):
+            chart_left, chart_right = st.columns(2, gap="medium")
+            with chart_left:
+                _render_ai_trend(trend_charts[start])
+            if start + 1 < len(trend_charts):
+                with chart_right:
+                    _render_ai_trend(trend_charts[start + 1])
+        st.markdown("#### 青年對政府就業服務的認知與使用")
+        _render_ai_service_awareness(payloads["service_awareness"])
+        st.markdown("#### 不同青年族群的差異")
+        subgroup_tabs = st.tabs([item["label_zh"] for item in payloads["subgroup_sex"]["dimensions"]])
+        for subgroup_tab, key in zip(subgroup_tabs, ("subgroup_sex", "subgroup_age", "subgroup_education")):
+            with subgroup_tab:
+                _render_ai_subgroup(payloads[key])
 
     with attention_tab:
         st.markdown("### 政策關注度")
         st.caption("原專案將已收集的官方證據整理為閱讀順序；它不是政府績效、政策成敗、預算價值或因果優先順序。")
-        topic_cards = [
-            ("已建立政策主題", "11 項", "職涯進入、轉職、就業品質、服務認知、訓練與技能等主題"),
-            ("已整理政策訊號", "281 筆", "先經資料品質與可比性規則篩選，再供人工閱讀"),
-            ("跨部會並列連結", "2 組", "僅作 contextual linkage，不做跨資料集算術運算"),
-            ("權重敏感度", "5 組設定", "分數變動需回看證據元件，不以單一排名作結論"),
-        ]
-        _render_ai_dashboard_cards(topic_cards)
-        st.info("如需看新北在地的安居或職涯政策資料，請切換回上方的「安居政策觀察」與「職涯政策觀察」。")
+        _render_ai_policy_attention(payloads["policy_attention"], payloads["policy_sensitivity"])
+        st.info("每一個分數都要連同可用元件、缺漏元件與權重敏感度閱讀；如需看新北在地資料，請切換上方的職涯或安居政策觀察。")
 
     with analyst_tab:
         st.markdown("### AI 政策分析")
@@ -265,7 +284,7 @@ def render_ai_policy_dashboard(
 
     with st.expander("資料來源與快照範圍", expanded=False):
         st.markdown(
-            "**來源專案**：AI Youth Policy Intelligence Dashboard v1.0-competition（2026-09-12）。\n\n"
+            "**來源專案**：AI Youth Policy Intelligence Dashboard（部署快照 2026-09-13）。\n\n"
             "**主要來源**：勞動部「15–29 歲青年勞工就業狀況調查」109、111、113 年；"
             "另含教育部教育統計與內政部戶籍人口單齡資料。\n\n"
             "**使用限制**：就業調查為全臺受僱青年勞工的抽樣調查；教育、人口與就業資料的年齡、母體、地理與期別不同，"
@@ -280,6 +299,162 @@ def _render_ai_dashboard_cards(cards: list[tuple[str, str, str]]) -> None:
         for label, value, note in cards
     )
     st.markdown(f'<div class="qj-career-policy-grid">{cards_html}</div>', unsafe_allow_html=True)
+
+
+@st.cache_data(show_spinner=False)
+def _load_ai_dashboard_snapshot() -> dict | None:
+    try:
+        with AI_DASHBOARD_SNAPSHOT_PATH.open(encoding="utf-8") as handle:
+            return json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _ai_headline_cards(cards: list[dict]) -> list[tuple[str, str, str]]:
+    return [
+        (item["title_zh"], f"{item['value']:g}{'%' if item.get('unit') == 'percent' else ''}", f"{item['survey_year']} 年｜{item['note_zh']}")
+        for item in cards if item.get("available")
+    ]
+
+
+def _ai_coverage_cards(payloads: dict) -> list[tuple[str, str, str]]:
+    return [
+        ("官方觀測值", f"{payloads['data_scope']['observation_count']:,}", "已收集的官方統計表儲存格"),
+        ("政策主題", f"{len(payloads['policy_attention'].get('topics', []))} 項", "原專案已建立的可閱讀主題"),
+        ("分類圖表", f"{len(payloads['distributions']['blocks'])} 組", "原專案設定的官方分類圖"),
+        ("歷年趨勢", f"{len(payloads['trend_charts']['charts'])} 組", "含可比性斷點規則"),
+    ]
+
+
+def _ai_chart_layout(fig: go.Figure, height: int = 360) -> go.Figure:
+    fig.update_layout(
+        height=height, margin=dict(l=10, r=10, t=34, b=12),
+        paper_bgcolor="white", plot_bgcolor="white",
+        font=dict(color="#1E3D5A", family="Noto Sans TC, sans-serif"),
+        legend=dict(orientation="h", y=-0.18, x=0),
+    )
+    fig.update_xaxes(gridcolor="#E8EDF2", zerolinecolor="#DCE4EC")
+    fig.update_yaxes(gridcolor="#E8EDF2", zerolinecolor="#DCE4EC")
+    return fig
+
+
+def _render_ai_distribution(block: dict, key_prefix: str) -> None:
+    if not block.get("available"):
+        st.info(f"{block['title_zh']}：{block.get('refusal_reason', '沒有可用資料')}")
+        return
+    items = [item for item in block["items"] if item.get("value") is not None]
+    st.markdown(f"#### {block['title_zh']}")
+    st.caption(f"{block['survey_year']} 年 · 樣本 {block.get('sample_size') or '—'} · {block['note_zh']}")
+    if block["chart"] == "composition":
+        fig = go.Figure(go.Pie(
+            labels=[item["short_label"] for item in items], values=[item["value"] for item in items],
+            hole=0.56, marker=dict(colors=AI_CHART_COLORS, line=dict(color="white", width=2)),
+            texttemplate="%{label}<br>%{value:.1f}%", textposition="outside",
+        ))
+        _ai_chart_layout(fig, 330)
+    else:
+        ordered = sorted(items, key=lambda item: item["value"], reverse=True)
+        fig = go.Figure(go.Bar(
+            x=[item["value"] for item in ordered], y=[item["short_label"] for item in ordered], orientation="h",
+            marker_color="#F5C242", text=[f"{item['value']:.1f}%" for item in ordered], textposition="outside", cliponaxis=False,
+        ))
+        fig.update_yaxes(autorange="reversed")
+        fig.update_xaxes(ticksuffix="%", rangemode="tozero")
+        _ai_chart_layout(fig, max(330, len(ordered) * 31 + 80))
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False}, key=f"ai-{key_prefix}-distribution-{block['block_id']}")
+    with st.expander("資料來源與限制", expanded=False):
+        st.caption(f"{block.get('source_table_id', '')} {block.get('source_table_title', '')}")
+        st.markdown(f"[查看官方統計表]({block['source_url']})")
+        if block.get("multi_select_note"):
+            st.caption(block["multi_select_note"])
+
+
+def _render_ai_trend(chart: dict) -> None:
+    st.markdown(f"#### {chart['title_zh']}")
+    st.caption(chart["note_zh"])
+    fig = go.Figure()
+    for color_index, series in enumerate(chart["series"]):
+        points = {point["survey_year"]: point for point in series["points"] if point.get("value") is not None}
+        color = AI_CHART_COLORS[color_index % len(AI_CHART_COLORS)]
+        fig.add_trace(go.Scatter(
+            x=list(points), y=[point["value"] for point in points.values()], mode="markers",
+            marker=dict(size=9, color=color), name=series["name_zh"], legendgroup=series["series_id"],
+            hovertemplate=f"{series['name_zh']}<br>%{{x}} 年：%{{y:.1f}}%<extra></extra>",
+        ))
+        for segment in series["segments"]:
+            if segment["connectable"] and segment["from_year"] in points and segment["to_year"] in points:
+                fig.add_trace(go.Scatter(
+                    x=[segment["from_year"], segment["to_year"]],
+                    y=[points[segment["from_year"]]["value"], points[segment["to_year"]]["value"]],
+                    mode="lines", line=dict(color=color, width=3), showlegend=False,
+                    legendgroup=series["series_id"], hoverinfo="skip",
+                ))
+    fig.update_xaxes(tickvals=chart["survey_years"], title="調查年度（民國）")
+    fig.update_yaxes(ticksuffix="%", rangemode="tozero")
+    _ai_chart_layout(fig)
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False}, key=f"ai-trend-{chart['chart_id']}")
+    if chart.get("has_definition_break"):
+        st.warning("此圖含問卷定義或作答方式變動；斷點兩端不作跨年變化解讀。")
+
+
+def _render_ai_service_awareness(service_data: dict) -> None:
+    if not service_data.get("available"):
+        st.info(service_data.get("reason", "沒有可用資料。"))
+        return
+    fig = go.Figure()
+    for color_index, segment in enumerate(service_data["segments"]):
+        values = []
+        for service in service_data["services"]:
+            lookup = {item["key"]: item["value"] for item in service["segments"]}
+            values.append(lookup.get(segment["key"]))
+        fig.add_trace(go.Bar(
+            name=segment["label_zh"], x=[service["service_label"] for service in service_data["services"]], y=values,
+            marker_color=AI_CHART_COLORS[color_index], hovertemplate="%{x}<br>%{fullData.name}：%{y:.1f}%<extra></extra>",
+        ))
+    fig.update_layout(barmode="stack")
+    fig.update_yaxes(range=[0, 100], ticksuffix="%")
+    _ai_chart_layout(fig, 390)
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False}, key="ai-service-awareness")
+    st.caption(service_data["note"])
+
+
+def _render_ai_subgroup(subgroup: dict) -> None:
+    if not subgroup.get("available"):
+        st.info(subgroup.get("reason", "沒有可用資料。"))
+        return
+    items = subgroup["items"]
+    fig = go.Figure()
+    fig.add_trace(go.Bar(name=items[0]["group_a"], x=[item["short_label"] for item in items], y=[item["value_a"] for item in items], marker_color="#1D5D7A"))
+    fig.add_trace(go.Bar(name=items[0]["group_b"], x=[item["short_label"] for item in items], y=[item["value_b"] for item in items], marker_color="#F5C242"))
+    fig.update_layout(barmode="group")
+    fig.update_xaxes(tickangle=-28)
+    fig.update_yaxes(ticksuffix="%", rangemode="tozero")
+    _ai_chart_layout(fig, 430)
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False}, key=f"ai-subgroup-{subgroup['dimension']}")
+    st.caption(subgroup["note"])
+
+
+def _render_ai_policy_attention(attention: dict, sensitivity: dict) -> None:
+    topics = attention.get("topics", [])
+    fig = go.Figure(go.Bar(
+        x=[item["score_display"] for item in topics[::-1]], y=[item["topic_name_zh"] for item in topics[::-1]],
+        orientation="h", marker_color="#F5C242", text=[str(item["score_display"]) for item in topics[::-1]], textposition="outside", cliponaxis=False,
+    ))
+    fig.update_xaxes(range=[0, 108], title="政策關注度分數")
+    _ai_chart_layout(fig, max(420, len(topics) * 38 + 80))
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False}, key="ai-policy-attention")
+    st.caption(attention.get("ranking_note_zh", ""))
+    profiles = sensitivity.get("profiles", [])
+    if profiles:
+        st.caption(f"已保留 {len(profiles)} 組權重敏感度設定；排名變動需回看各主題的證據元件。")
+    for item in topics:
+        with st.expander(f"#{item['rank_baseline']} {item['topic_name_zh']}｜{item['score_display']} 分", expanded=False):
+            st.caption(item["confidence_reason"])
+            st.write("可用元件：" + "、".join(item["available_components"]))
+            if item["missing_components"]:
+                st.write("缺少元件：" + "、".join(item["missing_components"]))
+            for limitation in item["limitations"][:3]:
+                st.caption("• " + limitation)
 
 
 def render_housing_policy_lens(policy: pd.DataFrame, towns: gpd.GeoDataFrame, cities: gpd.GeoDataFrame) -> None:
